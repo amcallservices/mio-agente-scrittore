@@ -89,7 +89,7 @@ def chiedi_gpt(prompt, system_prompt):
         response = client.chat.completions.create(
             model="gpt-4o", 
             messages=[{"role":"system","content":system_prompt},{"role":"user","content":prompt}],
-            temperature=0.7
+            temperature=0.8
         )
         return pulisci_testo_ia(response.choices[0].message.content)
     except Exception as e:
@@ -138,7 +138,7 @@ if titolo_l and trama_l:
 
     with tab1:
         if st.button("GENERA INDICE LOGICO"):
-            p_ind = f"In base al titolo '{titolo_l}' e alla trama '{trama_l}', crea un indice coerente. Usa 'Capitolo X: Titolo'."
+            p_ind = f"Crea un indice coerente per '{titolo_l}' basato sulla trama '{trama_l}'. Usa 'Capitolo X: Titolo'."
             st.session_state['indice'] = chiedi_gpt(p_ind, "Editor esperto.")
             sync_capitoli()
         
@@ -151,7 +151,7 @@ if titolo_l and trama_l:
 
     with tab2:
         opzioni = ["Prefazione"] + st.session_state['lista_capitoli'] + ["Ringraziamenti"]
-        sez_s = st.selectbox("Cosa scriviamo?", opzioni)
+        sez_s = st.selectbox("Seleziona sezione da scrivere:", opzioni)
         k_s = sez_s.lower().replace(" ", "_").replace(".", "")
         arg_cap = st.session_state.get('mappa_capitoli', {}).get(sez_s, "")
 
@@ -166,46 +166,41 @@ if titolo_l and trama_l:
             st.session_state[k_s] = st.text_area("Contenuto:", value=st.session_state[k_s], height=400, key=f"v_{k_s}")
 
     with tab3:
-        st.subheader("🛠️ Modifica e Rielaborazione Diretta")
+        st.subheader("🛠️ Rielaborazione Integrale del Testo")
         sez_m = st.selectbox("Seleziona sezione da rielaborare:", opzioni)
         k_m = sez_m.lower().replace(" ", "_").replace(".", "")
         
         if k_m in st.session_state:
-            # VERSIONING PER IL REFRESH DEL WIDGET
             if f"ver_{k_m}" not in st.session_state: st.session_state[f"ver_{k_m}"] = 0
             
-            istr_mod = st.text_area("Cosa vuoi cambiare esattamente? (es. 'Passa dal Voi al Tu', 'Rendi il tono più cupo', 'Riscrivi completamente')", 
-                                   placeholder="Scrivi qui la tua richiesta specifica...")
+            istr_mod = st.text_area("Istruzioni facoltative (es. 'Passa dal Voi al Tu'):", 
+                                   placeholder="Se lasci vuoto, l'IA riscriverà comunque il testo in modo nuovo e originale.")
             
-            # Area di testo dinamica
             testo_vecchio = st.text_area("Testo attuale:", 
                                         value=st.session_state[k_m], 
                                         height=300, 
                                         key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
             
-            if st.button("🚀 ESEGUI MODIFICA RICHIESTA"):
-                if istr_mod:
-                    with st.spinner("L'IA sta rielaborando il testo secondo la tua richiesta..."):
-                        # PROMPT MANDATORIO: L'IA DEVE SEGUIRE L'ORDINE DELL'UTENTE
-                        p_rielabora = (
-                            f"ISTRUZIONE MANDATORIA DELL'UTENTE: {istr_mod}\n\n"
-                            f"REGOLE DI SCRITTURA:\n"
-                            f"- Devi rielaborare il testo seguendo ESATTAMENTE l'istruzione sopra.\n"
-                            f"- Se richiesto di cambiare persona (es. da Voi a Tu), applicalo a tutto il testo.\n"
-                            f"- Mantieni la coerenza con il libro '{titolo_l}'.\n\n"
-                            f"TESTO ORIGINALE DA RIELABORARE:\n{testo_vecchio}"
-                        )
-                        nuovo_testo = chiedi_gpt(p_rielabora, S_PROMPT + " Editor Senior: Esegui Rewrite Rigoroso.")
-                        
-                        # Salvataggio e aggiornamento istantaneo
-                        st.session_state[k_m] = nuovo_testo
-                        st.session_state[f"ver_{k_m}"] += 1
-                        st.success("Testo rielaborato come richiesto!")
-                        st.rerun()
-                else:
-                    st.warning("Inserisci un'istruzione prima di cliccare!")
+            if st.button("🚀 APPLICA RIELABORAZIONE TOTALE"):
+                with st.spinner("L'IA sta riscrivendo interamente la sezione..."):
+                    # PROMPT MANDATORIO: L'IA DEVE RISCRIVERE TUTTO ANCHE SENZA ISTRUZIONI
+                    istruzioni_finali = istr_mod if istr_mod else "Riscrivi l'intero testo in modo nuovo, originale e fluido, mantenendo lo stesso significato ma cambiando la forma."
+                    
+                    p_rielabora = (
+                        f"ORDINE PRIORITARIO: Riscrivi interamente il testo seguente.\n"
+                        f"REQUISITO: Anche se non specificato, cambia la struttura delle frasi e il lessico.\n"
+                        f"ISTRUZIONE UTENTE: {istruzioni_finali}\n\n"
+                        f"CONTESTO EBOOK: '{titolo_l}' - '{trama_l}'\n\n"
+                        f"TESTO DA SOSTITUIRE:\n{testo_vecchio}"
+                    )
+                    nuovo_testo = chiedi_gpt(p_rielabora, S_PROMPT + " Editor Senior: Esegui Rewrite Totale e Originale.")
+                    
+                    st.session_state[k_m] = nuovo_testo
+                    st.session_state[f"ver_{k_m}"] += 1
+                    st.success("Testo rielaborato con successo!")
+                    st.rerun()
         else:
-            st.info("Genera prima il testo nella sezione 'Scrittura' per poterlo rielaborare.")
+            st.info("Genera prima il testo nella sezione 'Scrittura'.")
 
     with tab4:
         l_f = ["prefazione"] + [c.lower().replace(" ", "_").replace(".", "") for c in st.session_state['lista_capitoli']] + ["ringraziamenti"]
@@ -231,5 +226,3 @@ if titolo_l and trama_l:
                         doc.add_paragraph(st.session_state[s])
                 buf_w = BytesIO(); doc.save(buf_w); buf_w.seek(0)
                 st.download_button("📥 WORD", buf_w, file_name=f"{titolo_l}.docx")
-else:
-    st.info("👋 Inserisci Titolo e Trama a sinistra per iniziare.")
