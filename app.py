@@ -8,20 +8,30 @@ from io import BytesIO
 # 1. Connessione API
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- CONFIGURAZIONE PAGINA: SIDEBAR SEMPRE VISIBILE ---
+# --- CONFIGURAZIONE PAGINA: SIDEBAR SEMPRE ESPANSA ---
 st.set_page_config(
     page_title="AI di Antonino", 
     layout="wide", 
-    initial_sidebar_state="expanded" # Forza il menu a restare aperto
+    initial_sidebar_state="expanded"
 )
 
-# --- PRIVACY, MOBILE E OTTIMIZZAZIONE INTERFACCIA ---
+# --- PRIVACY E FORZATURA SIDEBAR SEMPRE PRESENTE ---
 hide_st_style = """
             <style>
             #MainMenu {visibility: hidden;}
             footer {visibility: hidden;}
             header {visibility: hidden;}
             .stDeployButton {display:none;}
+            
+            /* Forza la sidebar a non sparire e nasconde il tasto X di chiusura */
+            [data-testid="collapsedControl"] {
+                display: none;
+            }
+            section[data-testid="stSidebar"] > div {
+                width: 350px;
+            }
+            
+            /* Ottimizzazione pulsanti e testi */
             .stButton>button {
                 width: 100%;
                 border-radius: 10px;
@@ -35,7 +45,7 @@ hide_st_style = """
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# CLASSE PDF PROFESSIONALE
+# CLASSE PDF PROFESSIONALE (Solo nome Autore nell'intestazione)
 class PDF(FPDF):
     def __init__(self, autore):
         super().__init__()
@@ -75,12 +85,12 @@ def reset_app():
 # --- INTERFACCIA ---
 st.title("AI di Antonino: \"Crea il tuo EBook\"")
 
+# SIDEBAR (Sempre presente)
 with st.sidebar:
     st.header("Configurazione")
     titolo = st.text_input("Titolo Libro", "")
     autore = st.text_input("Nome Autore (per il PDF)", "")
     
-    # TUTTE LE LINGUE RICHIESTE
     lingua = st.selectbox("Lingua / Language", [
         "Italiano", "English", "Deutsch", "Français", 
         "Español", "Română", "Русский", "中文 (Chinese)"
@@ -109,7 +119,7 @@ if trama:
     S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi in lingua {lingua}. "
     S_P += f"Autore: {autore if autore else 'utente'}. "
     S_P += "REGOLE: Produci SOLO testo finale. NO saluti, NO commenti. "
-    S_P += "COERENZA: Rispetta l'evoluzione dei personaggi e dei fatti scritti nei capitoli precedenti."
+    S_P += "COERENZA: Assicura che la narrazione segua lo sviluppo dei capitoli precedenti."
 
     contesto_base = f"Titolo: {titolo}. Trama: {trama}. \n"
     if 'indice' in st.session_state:
@@ -137,7 +147,7 @@ if trama:
         if 'cover_url' in st.session_state:
             st.image(st.session_state['cover_url'], use_container_width=True)
 
-    # 3. SCRITTURA CON MEMORIA COERENTE
+    # 3. SCRITTURA
     with tab3:
         scelta = st.selectbox("Sezione", ["Prefazione", "Capitolo", "Ringraziamenti"])
         n_cap = st.number_input("N° Capitolo", 1, 30) if scelta == "Capitolo" else 0
@@ -145,9 +155,8 @@ if trama:
         
         if st.button("Avvia Scrittura"):
             with st.spinner(f"Scrittura in {lingua}..."):
-                # Recupero memoria testi precedenti
                 testi_prec = "\n".join([st.session_state[k][:400] for k in st.session_state if "capitolo" in k or "prefazione" in k])
-                prompt_full = f"{contesto_base}\nCronologia precedente: {testi_prec}\n\nScrivi ora: {scelta} {n_cap if n_cap>0 else ''}."
+                prompt_full = f"{contesto_base}\nCronologia: {testi_prec}\n\nScrivi: {scelta} {n_cap if n_cap>0 else ''}."
                 
                 testo_completo = ""
                 for f in ["Inizio", "Sviluppo", "Conclusione"]:
@@ -157,7 +166,7 @@ if trama:
         if key_attuale in st.session_state:
             st.text_area("Testo Generato", st.session_state[key_attuale], height=350)
 
-    # 4. MODIFICA STRUTTURANTE
+    # 4. MODIFICA
     with tab4:
         st.subheader("Modifica Strutturante")
         sez_mod = st.selectbox("Seleziona sezione", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
@@ -168,8 +177,8 @@ if trama:
             istr = st.text_input(f"Richiesta di ristrutturazione profonda in {lingua}")
             if st.button("Applica Ristrutturazione"):
                 with st.spinner("Rielaborazione editoriale..."):
-                    S_P_EDITOR = S_P + " Agisci come Senior Editor. Ristruttura profondamente il testo migliorando stile e coerenza."
-                    st.session_state[k_mod] = chiedi_gpt(f"Riorganizza questo testo:\n{t_attuale}\nRichiesta: {istr}", S_P_EDITOR)
+                    S_P_EDITOR = S_P + " Agisci come Senior Editor. Ristruttura profondamente il testo."
+                    st.session_state[k_mod] = chiedi_gpt(f"Riorganizza:\n{t_attuale}\nRichiesta: {istr}", S_P_EDITOR)
                     st.rerun()
         else:
             st.info("Genera prima questa sezione.")
@@ -177,13 +186,13 @@ if trama:
     # 5. ESPORTAZIONE
     with tab5:
         st.subheader("Esportazione Finale")
-        n_pdf = autore if autore else "Autore"
+        n_p = autore if autore else "Autore"
         sez_ordine = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
         
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Genera PDF"):
-                pdf = PDF(n_pdf)
+                pdf = PDF(n_p)
                 pdf.set_auto_page_break(True, 15)
                 pdf.add_page()
                 if 'cover_url' in st.session_state:
@@ -195,7 +204,7 @@ if trama:
                         pdf.set_font("Arial", "B", 25); pdf.cell(0, 100, titolo.upper(), 0, 1, "C")
                 else:
                     pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo.upper(), 0, 1, "C")
-                    pdf.set_font("Arial", "", 20); pdf.cell(0, 20, f"di {n_pdf}", 0, 1, "C")
+                    pdf.set_font("Arial", "", 20); pdf.cell(0, 20, f"di {n_p}", 0, 1, "C")
                 
                 for s in sez_ordine:
                     if s in st.session_state:
@@ -210,7 +219,7 @@ if trama:
             if st.button("Genera WORD"):
                 doc = Document()
                 doc.add_heading(titolo, 0)
-                doc.add_paragraph(f"Autore: {n_pdf}")
+                doc.add_paragraph(f"Autore: {n_p}")
                 for s in sez_ordine:
                     if s in st.session_state:
                         doc.add_page_break()
