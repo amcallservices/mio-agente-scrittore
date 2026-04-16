@@ -32,7 +32,6 @@ st.markdown("""
 
     .block-container { padding-top: 1rem; padding-bottom: 0rem; }
 
-    /* Titolo Richiesto */
     .custom-title {
         font-size: 38px;
         font-weight: bold;
@@ -45,7 +44,6 @@ st.markdown("""
         border: 1px solid #e6e9ef;
     }
 
-    /* Pulsanti Originali */
     .stButton>button {
         width: 100%;
         border-radius: 10px;
@@ -120,9 +118,7 @@ st.markdown('<div class="custom-title">AI di Antonino: Crea il tuo Ebook</div>',
 with st.sidebar:
     st.title("⚙️ Setup")
     titolo_l = st.text_input("Titolo Libro")
-    # CAMPO AUTORE VUOTO COME RICHIESTO
     nome_autore = st.text_input("Nome Autore", value="")
-    
     lingua_l = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
     genere_l = st.selectbox("Genere", ["Manuale Tecnico", "Manuale Psicologico", "Saggio", "Motivazionale", "Thriller", "Noir", "Fantasy", "Romanzo Rosa"])
     trama_l = st.text_area("Trama principale", height=150)
@@ -131,13 +127,21 @@ with st.sidebar:
         st.rerun()
 
 if trama_l:
-    S_PROMPT = f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}. REGOLE: Solo testo del libro, attieniti all'indice."
+    # SYSTEM PROMPT POTENZIATO PER EVITARE RIPETIZIONI E MANTENERE LOGICA
+    S_PROMPT = (
+        f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}. "
+        "REGOLE CRITICHE: \n"
+        "1. Evita assolutamente ripetizioni di concetti già espressi nei capitoli precedenti.\n"
+        "2. Mantieni un filo logico ferreo e una progressione narrativa costante.\n"
+        "3. Solo testo puro, no titoli, no commenti.\n"
+        "4. Usa uno stile fluido e professionale."
+    )
 
     tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura", "📝 3. Modifica", "📑 4. Esporta"])
 
     with tab1:
         if st.button("GENERA INDICE"):
-            st.session_state['indice'] = chiedi_gpt(f"Crea indice per '{titolo_l}': {trama_l}. Usa 'Capitolo X: Titolo'.", "Editor.")
+            st.session_state['indice'] = chiedi_gpt(f"Crea un indice logico e sequenziale per '{titolo_l}': {trama_l}. Usa 'Capitolo X: Titolo'.", "Editor Professionale.")
             sync_capitoli()
         if 'indice' not in st.session_state: st.session_state['indice'] = "Capitolo 1: Introduzione"
         st.session_state['indice'] = st.text_area("Indice editabile:", value=st.session_state['indice'], height=300)
@@ -151,35 +155,47 @@ if trama_l:
         opzioni = ["Prefazione"] + st.session_state['lista_capitoli'] + ["Ringraziamenti"]
         sez_s = st.selectbox("Cosa scriviamo?", opzioni)
         k_s = sez_s.lower().replace(" ", "_")
-        arg = st.session_state.get('mappa_capitoli', {}).get(sez_s, "")
+        arg_attuale = st.session_state.get('mappa_capitoli', {}).get(sez_s, "")
 
         if st.button(f"GENERA TESTO {sez_s.upper()}"):
-            with st.spinner("Scrivendo..."):
-                testo = ""
-                for f in ["Inizio", "Sviluppo", "Fine"]:
-                    testo += chiedi_gpt(f"Argomento: {arg}. Scrivi {sez_s} ({f}).", S_PROMPT) + "\n\n"
-                st.session_state[k_s] = testo
+            with st.spinner("Analisi coerenza e scrittura..."):
+                # RACCOLTA MEMORIA PER EVITARE RIPETIZIONI
+                memoria_ebook = ""
+                percorso_sezioni = ["prefazione"] + [c.lower().replace(" ", "_") for c in st.session_state['lista_capitoli']]
+                for s in percorso_sezioni:
+                    if s in st.session_state:
+                        memoria_ebook += f"GIA' SCRITTO IN {s.upper()}: {st.session_state[s][:600]}...\n"
+                
+                testo_completo = ""
+                for fase in ["Inizio", "Sviluppo", "Fine"]:
+                    p_scr = (
+                        f"CONTESTO EBOOK (NON RIPETERE): {memoria_ebook}\n\n"
+                        f"ARGOMENTO DA TRATTARE ORA: {arg_attuale}\n"
+                        f"AZIONE: Scrivi la parte di {fase} per la sezione {sez_s}. "
+                        "Assicurati che si colleghi perfettamente a quanto scritto prima senza essere ridondante."
+                    )
+                    testo_completo += chiedi_gpt(p_scr, S_PROMPT) + "\n\n"
+                st.session_state[k_s] = testo_completo
         
         if k_s in st.session_state:
             st.session_state[k_s] = st.text_area("Testo:", value=st.session_state[k_s], height=400, key=f"v_{k_s}")
 
     with tab3:
-        st.subheader("Revisione e Modifica Effettiva")
-        sez_m = st.selectbox("Seleziona sezione da cambiare:", opzioni)
+        st.subheader("Revisione Strategica")
+        sez_m = st.selectbox("Seleziona da migliorare:", opzioni)
         k_m = sez_m.lower().replace(" ", "_")
         
         if k_m in st.session_state:
             if f"ver_{k_m}" not in st.session_state: st.session_state[f"ver_{k_m}"] = 0
             
-            testo_input = st.text_area("Testo da modificare:", value=st.session_state[k_m], height=350, key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
-            istr = st.text_input("Cosa deve fare l'IA?")
+            testo_input = st.text_area("Testo attuale:", value=st.session_state[k_m], height=350, key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
+            istr = st.text_input("Istruzione per migliorare il testo:")
             
             if st.button("APPLICA MODIFICA"):
-                with st.spinner("L'IA sta riscrivendo..."):
-                    nuovo_t = chiedi_gpt(f"Istruzione: {istr}\nTesto attuale:\n{testo_input}", S_PROMPT + " Editor Senior.")
+                with st.spinner("Riorganizzazione testo..."):
+                    nuovo_t = chiedi_gpt(f"Migliora questo testo seguendo: {istr}. Mantieni la logica con il resto del libro.\nTesto:\n{testo_input}", S_PROMPT)
                     st.session_state[k_m] = nuovo_t
-                    st.session_state[f"ver_{k_m}"] += 1 # Forza il refresh del widget
-                    st.success("Modifica applicata!")
+                    st.session_state[f"ver_{k_m}"] += 1
                     st.rerun()
         else: st.info("Genera prima il testo.")
 
@@ -189,13 +205,13 @@ if trama_l:
         with c1:
             if st.button("ESPORTA PDF"):
                 pdf = PDF(nome_autore); pdf.set_auto_page_break(True, 15); pdf.add_page()
-                pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo_l.upper(), 0, 1, "C")
+                pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo_l.upper() if titolo_l else "LIBRO", 0, 1, "C")
                 if nome_autore:
                     pdf.set_font("Arial", "", 18); pdf.cell(0, 20, f"di {nome_autore}", 0, 1, "C")
                 for s in l_f:
                     if s in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.upper().replace("_", " "), 0, 1, "L")
-                        pdf.ln(10); pdf.set_font("Arial", "", 12)
+                        pdf.ln(10); pdf.set_font("Arial", "", 11)
                         txt_p = st.session_state[s].encode('latin-1', 'replace').decode('latin-1')
                         pdf.multi_cell(0, 8, txt_p)
                 st.download_button("📥 PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"{titolo_l}.pdf")
