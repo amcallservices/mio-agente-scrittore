@@ -6,6 +6,17 @@ from openai import OpenAI
 # 1. Configurazione e Connessione
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
+# --- NASCONDI ICONA GITHUB E MENU ---
+hide_st_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            header {visibility: hidden;}
+            .stDeployButton {display:none;}
+            </style>
+            """
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
 # CLASSE PDF PROFESSIONALE
 class PDF(FPDF):
     def __init__(self, autore):
@@ -24,8 +35,6 @@ def chiedi_gpt(p, s_p):
         temperature=0.8
     )
     risposta = r.choices[0].message.content
-    
-    # FILTRO RIGIDO ANTI-COMMENTI
     linee = risposta.split('\n')
     linee_pulite = []
     parole_vietate = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "ghostwriter", "va bene", "perfetto"]
@@ -33,7 +42,6 @@ def chiedi_gpt(p, s_p):
         testo_l = l.strip().lower()
         if testo_l and not any(testo_l.startswith(p) for p in parole_vietate):
             linee_pulite.append(l)
-    
     return '\n'.join(linee_pulite).strip()
 
 # --- INTERFACCIA ---
@@ -86,7 +94,6 @@ if trama:
     with tab3:
         scelta = st.selectbox("Cosa scriviamo?", ["Prefazione", "Capitolo", "Ringraziamenti"])
         n_cap = st.number_input("Numero (se capitolo)", 1, 30) if scelta == "Capitolo" else 0
-        
         key_attuale = f"{scelta.lower()}_{n_cap}" if n_cap > 0 else scelta.lower()
 
         if st.button("Avvia Scrittura"):
@@ -95,11 +102,8 @@ if trama:
                 fasi = ["Parte iniziale", "Sviluppo centrale", "Conclusione"]
                 for f in fasi:
                     testo_completo += chiedi_gpt(f"Scrivi la '{f}' di: {scelta} {n_cap if n_cap>0 else ''}. Titolo: {titolo}. Modalità: {modalita}.", S_P) + "\n\n"
-                
                 st.session_state[key_attuale] = testo_completo
-                st.success("Scrittura completata!")
 
-        # MOSTRA SEMPRE IL TESTO SE ESISTE NELLA MEMORIA
         if key_attuale in st.session_state:
             st.text_area("Contenuto Generato", st.session_state[key_attuale], height=400)
 
@@ -107,22 +111,19 @@ if trama:
         st.subheader("Revisione Sezioni")
         sezione_mod = st.selectbox("Seleziona da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         chiave_mod = sezione_mod.lower().replace(" ", "_")
-        
         if chiave_mod in st.session_state:
             st.text_area("Testo attuale", st.session_state[chiave_mod], height=200)
             richiesta = st.text_input("Cosa vuoi cambiare?")
             if st.button("Applica Modifica"):
-                nuovo = chiedi_gpt(f"Modifica questo testo: {st.session_state[chiave_mod]}. Richiesta: {richiesta}", S_P)
-                st.session_state[chiave_mod] = nuovo
-                st.rerun() # Ricarica per mostrare il testo modificato
+                st.session_state[chiave_mod] = chiedi_gpt(f"Modifica questo testo: {st.session_state[chiave_mod]}. Richiesta: {richiesta}", S_P)
+                st.rerun()
         else:
-            st.info("Genera prima questa sezione per poterla modificare.")
+            st.info("Genera prima questa sezione.")
 
     with tab5:
         if st.button("Genera EBook Finale (PDF)"):
             pdf = PDF(autore if autore else "Autore")
             pdf.set_auto_page_break(True, 15)
-            
             pdf.add_page()
             if 'cover_url' in st.session_state:
                 try:
