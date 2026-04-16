@@ -8,14 +8,14 @@ from io import BytesIO
 # --- CONNESSIONE API ---
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- CONFIGURAZIONE PAGINA (SIDEBAR SEMPRE APERTA) ---
+# --- CONFIGURAZIONE PAGINA (SIDEBAR FISSA) ---
 st.set_page_config(
-    page_title="AI di Antonino: Editor Ebook Mondiale",
+    page_title="AI di Antonino: Editor Ebook Professionale",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- BLOCCO CSS (UI PROFESSIONALE & SIDEBAR BLOCCATA) ---
+# --- BLOCCO CSS (UI & SIDEBAR) ---
 st.markdown("""
 <style>
 #MainMenu, footer, header, [data-testid="stHeader"] {visibility: hidden;}
@@ -43,10 +43,6 @@ section[data-testid="stSidebar"] {
     background-color: #007BFF !important; color: white !important;
     font-size: 16px; border: none; box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
 }
-
-.stButton>button:hover {
-    background-color: #0056b3 !important; transform: translateY(-2px);
-}
 </style>
 """, unsafe_allow_html=True)
 
@@ -56,118 +52,129 @@ def chiedi_gpt(prompt, system_prompt):
         response = client.chat.completions.create(
             model="gpt-4o", 
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
-            temperature=0.75
+            temperature=0.7
         )
         return response.choices[0].message.content.strip()
     except Exception as e: return f"Error: {str(e)}"
 
 def sync_capitoli():
-    testo = st.session_state.get("indice_raw", "")
-    mappa = {}
-    for l in testo.split('\n'):
-        match = re.search(r'(?i)(Capitolo|Chapter|Kapitel|Capítulo|Раздел|章节|Secţiune)\s*\d+|^\d+\.', l)
-        if match:
-            cap_key = match.group(0).strip().title()
-            descr = l.replace(match.group(0), "").strip(": -")
-            mappa[cap_key] = descr if descr else "Approfondimento"
-    st.session_state['mappa_capitoli'] = mappa
-    st.session_state['lista_capitoli'] = list(mappa.keys())
+    """Estrae i capitoli dall'area di testo dell'indice e li mette nel selettore di scrittura"""
+    testo_indice = st.session_state.get("indice_raw", "")
+    if not testo_indice:
+        st.session_state['lista_capitoli'] = []
+        return
 
-# --- SIDEBAR (CONFIGURAZIONE COMPLETA) ---
+    # Trova linee che iniziano con numeri o parole chiave capitolo
+    linee = testo_indice.split('\n')
+    capitoli_trovati = []
+    for l in linee:
+        l = l.strip()
+        # Regex per catturare "Capitolo X: Titolo" o "1. Titolo"
+        if re.search(r'^(Capitolo|Chapter|Cap\.|Parte|\d+\.)', l, re.IGNORECASE):
+            capitoli_trovati.append(l)
+    
+    st.session_state['lista_capitoli'] = capitoli_trovati
+
+# --- SIDEBAR ---
 with st.sidebar:
-    st.title("⚙️ Configurazione Ebook")
-    titolo_l = st.text_input("Titolo del Libro")
+    st.title("⚙️ Configurazione")
+    titolo_l = st.text_input("Titolo del Libro", key="tit_input")
     autore_l = st.text_input("Nome Autore")
     lingua = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
-    
-    # TUTTI I GENERI RIPRISTINATI
     genere = st.selectbox("Genere", [
         "Saggio Scientifico", "Manuale Tecnico", "Manuale Psicologico", 
-        "Business & Finanza", "Motivazionale / Self-Help", "Biografia", 
-        "Libro di Quiz / Test", "Saggio Breve", "Romanzo Storico", 
-        "Thriller", "Noir", "Fantasy", "Fantascienza"
+        "Business & Finanza", "Motivazionale / Self-Help", "Libro di Quiz", 
+        "Romanzo Storico", "Thriller", "Fantasy", "Fantascienza"
     ])
+    modalita = st.selectbox("Stile", ["Standard", "Professionale Accademico"])
+    trama = st.text_area("Trama/Argomento", height=150)
     
-    modalita = st.selectbox("Tipologia di Scrittura", ["Standard", "Professionale (Accademica/Tecnica)"])
-    trama = st.text_area("Trama o Argomento Centrale", height=150)
-    
-    if st.button("🔄 RESET PROGETTO"):
+    if st.button("🔄 RESET"):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
 
-# --- LOGICA DI SCRITTURA A 3 FASI ---
-lingua_map = {
-    "Italiano": ["Introduzione dettagliata", "Sviluppo centrale profondo", "Conclusione e analisi finale"],
-    "English": ["Detailed Introduction", "Deep Central Development", "Final Analysis"],
-    "Deutsch": ["Einleitung", "Zentrale Entwicklung", "Schlussfolgerung"],
-    "Français": ["Introduction", "Développement", "Conclusion"],
-    "Español": ["Introducción", "Desarrollo", "Conclusión"]
-}
-fasi = lingua_map.get(lingua, ["Part 1", "Part 2", "Part 3"])
-
 # --- UI PRINCIPALE ---
-st.markdown(f'<div class="custom-title">AI: {titolo_l if titolo_l else "Ebook Creator"}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="custom-title">Editor AI di Antonino</div>', unsafe_allow_html=True)
 
 if titolo_l and trama:
-    livello = "estremamente tecnico e accademico" if modalita == "Professionale (Accademica/Tecnica)" else "chiaro e divulgativo"
-    S_PROMPT = f"Autorità mondiale in {genere}. Scrivi in {lingua}. Stile: {livello}. Target: 2000+ parole per capitolo. Rigore assoluto."
+    # System Prompt per il filo logico
+    S_PROMPT = f"Sei un autore esperto di {genere}. Scrivi in {lingua}. Stile: {modalita}. Obiettivo: coerenza totale tra i capitoli e 2000+ parole."
 
-    t1, t2, t3, t4 = st.tabs(["📊 Indice", "✍️ Scrittura & Quiz", "📖 Anteprima", "📑 Esporta"])
+    t1, t2, t3, t4 = st.tabs(["📊 1. Genera Indice", "✍️ 2. Scrittura Coerente", "📖 3. Anteprima", "📑 4. Esporta"])
 
     with t1:
-        if st.button("Genera Indice Professionale"):
-            st.session_state["indice_raw"] = chiedi_gpt(f"Crea un indice lungo per un libro '{genere}' intitolato '{titolo_l}' in {lingua}.", "Editor.")
+        st.subheader("Fase 1: Definizione dell'Indice")
+        if st.button("🚀 GENERA INDICE AUTOMATICO"):
+            prompt_indice = f"Crea un indice dettagliato e logico per un libro intitolato '{titolo_l}'. Argomento: {trama}. Lingua: {lingua}. Usa il formato 'Capitolo X: Titolo'."
+            st.session_state["indice_raw"] = chiedi_gpt(prompt_indice, "Editor di ebook professionale.")
             sync_capitoli()
-        st.session_state["indice_raw"] = st.text_area("Modifica Indice", value=st.session_state.get("indice_raw", ""), height=300)
-        if st.button("Sincronizza Capitoli"): sync_capitoli(); st.rerun()
+        
+        st.session_state["indice_raw"] = st.text_area("Modifica il tuo Indice qui (una riga per capitolo):", 
+                                                    value=st.session_state.get("indice_raw", ""), height=350)
+        
+        if st.button("✅ SALVA E SINCRONIZZA CAPITOLI"):
+            sync_capitoli()
+            st.success(f"Sincronizzati {len(st.session_state.get('lista_capitoli', []))} capitoli!")
 
     with t2:
-        if "lista_capitoli" not in st.session_state: sync_capitoli()
-        opzioni = ["Prefazione"] + st.session_state.get("lista_capitoli", []) + ["Ringraziamenti"]
-        cap_sel = st.selectbox("Seleziona sezione:", opzioni)
-        key_sez = f"txt_{cap_sel.replace(' ', '_')}"
+        st.subheader("Fase 2: Scrittura con Filo Logico")
+        lista_c = st.session_state.get("lista_capitoli", [])
         
-        c1, c2, c3 = st.columns([2, 2, 1])
-        with c1:
-            if st.button(f"✨ SCRIVI: {cap_sel}"):
-                with st.spinner("L'IA sta scrivendo 2000+ parole..."):
-                    testo_completo = ""
-                    for f in fasi:
-                        testo_completo += chiedi_gpt(f"Scrivi la fase '{f}' per la sezione '{cap_sel}'. Sii prolisso e tecnico.", S_PROMPT) + "\n\n"
-                    st.session_state[key_sez] = testo_completo
-        with c2:
-            istr = st.text_input("Istruzione modifica", key=f"istr_{key_sez}")
-            if st.button("🚀 RIELABORA"):
-                st.session_state[key_sez] = chiedi_gpt(f"Rielabora secondo: {istr}. Testo:\n{st.session_state.get(key_sez,'')}", S_PROMPT)
-        with c3:
-            if st.button("🧠 QUIZ"):
-                prompt_q = f"Crea 10 quiz a risposta multipla su questo testo:\n{st.session_state.get(key_sez,'')}"
-                st.session_state[f"quiz_{key_sez}"] = chiedi_gpt(prompt_q, "Esperto Quiz.")
+        if not lista_c:
+            st.warning("Torna nella Tab 1 e genera/salva l'indice prima di scrivere.")
+        else:
+            opzioni_scrittura = ["Prefazione"] + lista_c + ["Ringraziamenti"]
+            cap_sel = st.selectbox("Seleziona cosa scrivere:", opzioni_scrittura)
+            key_sez = f"txt_{cap_sel.replace(' ', '_')}"
 
-        st.session_state[key_sez] = st.text_area("Editor Testo", value=st.session_state.get(key_sez, ""), height=450)
-        if f"quiz_{key_sez}" in st.session_state:
-            st.info(st.session_state[f"quiz_{key_sez}"])
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button(f"✨ SCRIVI: {cap_sel}"):
+                    with st.spinner("Scrittura in corso... Sto analizzando l'indice per mantenere il filo logico."):
+                        # Recupero contesto per il filo logico
+                        contesto_indice = st.session_state["indice_raw"]
+                        prompt_scrittura = f"""
+                        L'indice completo del libro è: {contesto_indice}.
+                        Ora scrivi il capitolo: '{cap_sel}'.
+                        Assicurati che si colleghi logicamente ai capitoli precedenti e che prepari il terreno per i successivi.
+                        Scrivi almeno 2000 parole in modo tecnico e approfondito.
+                        """
+                        # Generazione in 3 blocchi per lunghezza
+                        testo = ""
+                        for fase in ["Inizio", "Corpo Centrale", "Conclusione"]:
+                            testo += chiedi_gpt(f"{prompt_scrittura}. Parte: {fase}.", S_PROMPT) + "\n\n"
+                        st.session_state[key_sez] = testo
+
+            with col_b:
+                if st.button("🧠 GENERA QUIZ / TEST"):
+                    if key_sez in st.session_state:
+                        prompt_q = f"Basandoti su questo testo, crea 10 domande a risposta multipla con soluzione:\n{st.session_state[key_sez]}"
+                        st.session_state[f"quiz_{key_sez}"] = chiedi_gpt(prompt_q, "Esperto Quiz.")
+
+            st.session_state[key_sez] = st.text_area("Contenuto Capitolo", value=st.session_state.get(key_sez, ""), height=450)
+            if f"quiz_{key_sez}" in st.session_state:
+                st.info(st.session_state[f"quiz_{key_sez}"])
 
     with t3:
-        p_html = f"<div class='preview-box'><h1 style='text-align:center;'>{titolo_l.upper()}</h1>"
-        if autore_l: p_html += f"<h3 style='text-align:center;'>di {autore_l}</h3>"
-        p_html += "<hr><br>"
-        for s in opzioni:
+        st.subheader("📖 Anteprima Libro")
+        preview = f"<div class='preview-box'><h1 style='text-align:center;'>{titolo_l}</h1>"
+        for s in ["Prefazione"] + lista_c + ["Ringraziamenti"]:
             sk = f"txt_{s.replace(' ', '_')}"
-            if sk in st.session_state:
-                p_html += f"<h2>{s.upper()}</h2><p>{st.session_state[sk].replace('\\n', '<br>')}</p><br>"
-        st.markdown(p_html + "</div>", unsafe_allow_html=True)
+            if sk in st.session_state and st.session_state[sk]:
+                preview += f"<h2>{s}</h2><p>{st.session_state[sk].replace('\\n', '<br>')}</p><br>"
+        st.markdown(preview + "</div>", unsafe_allow_html=True)
 
     with t4:
-        # Codice export (PDF/Word) abbreviato per brevità ma funzionale
-        st.write("Seleziona il formato per scaricare l'intero libro.")
-        if st.button("Scarica Word"):
-            doc = Document(); doc.add_heading(titolo_l, 0)
-            for s in opzioni:
+        st.subheader("📑 Esporta il tuo lavoro")
+        if st.button("Scarica file Word (.docx)"):
+            doc = Document()
+            doc.add_heading(titolo_l, 0)
+            for s in ["Prefazione"] + lista_c + ["Ringraziamenti"]:
                 sk = f"txt_{s.replace(' ', '_')}"
                 if sk in st.session_state:
-                    doc.add_heading(s, level=1); doc.add_paragraph(st.session_state[sk])
+                    doc.add_heading(s, level=1)
+                    doc.add_paragraph(st.session_state[sk])
             buf = BytesIO(); doc.save(buf); buf.seek(0)
-            st.download_button("Salva file .docx", buf, file_name=f"{titolo_l}.docx")
+            st.download_button("Salva Ebook", buf, file_name=f"{titolo_l}.docx")
 else:
-    st.info("👋 Compila i dati nella sidebar a sinistra per iniziare.")
+    st.info("👋 Inserisci Titolo e Trama nella sidebar per attivare l'indice e la scrittura.")
