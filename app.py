@@ -64,14 +64,13 @@ def chiedi_gpt(p, s_p):
     )
     risposta = r.choices[0].message.content
     
-    # FILTRO ANTI-COMMENTI ULTRA-RIGIDO
+    # FILTRO ANTI-COMMENTI AGGRESSIVO
     linee = risposta.split('\n')
     linee_pulite = []
-    # Lista estesa di frasi da killer
     tag_da_eliminare = [
         "ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", 
         "here is", "sure", "i hope", "voilà", "aquí está", "hier ist", "iată", "вот", "这里是",
-        "proseguiamo", "abbiamo scritto", "fammi sapere", "buona lettura"
+        "proseguiamo", "abbiamo scritto", "fammi sapere", "buona lettura", "capitolo"
     ]
     for l in linee:
         testo_l = l.strip().lower()
@@ -79,7 +78,6 @@ def chiedi_gpt(p, s_p):
             linee_pulite.append(l)
     
     testo_finale = '\n'.join(linee_pulite).strip()
-    # Rimuove frasi di cortesia finali con RegEx
     testo_finale = re.sub(r"(?i)(spero che|fammi sapere|ecco il|buona scrittura|fammi sapere cosa|spero sia di aiuto|spero ti piaccia).*$", "", testo_finale).strip()
     return testo_finale
 
@@ -90,6 +88,9 @@ def reset_app():
 
 # --- INTERFACCIA ---
 st.title("AI di Antonino: \"Crea il tuo EBook\"")
+
+# Definizione ordine sezioni globale per coerenza
+sezioni_totali = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
 
 with st.sidebar:
     st.header("⚙️ Configurazione")
@@ -113,74 +114,72 @@ with st.sidebar:
         reset_app()
 
 if trama:
-    # PROMPT DI SISTEMA PER COERENZA E NARRATIVA PURA
-    S_P = f"Sei un Ghostwriter professionista esperto in {modalita}. Scrivi in {lingua}. "
-    S_P += "REGOLE MANDATORIE: Scrivi SOLO il testo del libro. NON salutare, NON commentare, NON spiegare nulla. "
-    S_P += "LOGICA: Assicura una concatenazione perfetta tra i capitoli. Mantieni coerenza con quanto scritto prima."
+    S_P = f"Sei un Ghostwriter professionista esperto in {modalita}. Scrivi rigorosamente in {lingua}. REGOLE: Scrivi SOLO il testo del libro. NO saluti, NO commenti. MANTENERE COERENZA LOGICA TOTALE con i testi precedenti."
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina", "✍️ Scrittura", "📝 Modifica", "📑 Esporta"])
 
     with tab1:
         if st.button("Genera Indice"):
-            st.session_state['indice'] = chiedi_gpt(f"Crea un indice logico in {lingua} per: {titolo}. Trama: {trama}", S_P)
+            st.session_state['indice'] = chiedi_gpt(f"Crea un indice logico e sequenziale in {lingua} per: {titolo}. Trama: {trama}", S_P)
         if 'indice' in st.session_state:
             st.text_area("Indice", st.session_state['indice'], height=200)
 
     with tab2:
         if st.button("Genera Copertina AI"):
-            with st.spinner("Creazione..."):
+            with st.spinner("Creazione immagine..."):
                 try:
-                    p_img = f"Professional book cover for '{titolo}', {modalita} style, no text."
+                    p_img = f"Professional book cover for '{titolo}', {modalita} style, no text, cinematic high quality."
                     res = client.images.generate(model="dall-e-3", prompt=p_img, n=1, size="1024x1792")
                     st.session_state['cover_url'] = res.data[0].url
-                except Exception as e: st.error(e)
+                except Exception as e: st.error(f"Errore DALL-E: {e}")
         if 'cover_url' in st.session_state:
             st.image(st.session_state['cover_url'], use_container_width=True)
 
     with tab3:
-        tipo = st.selectbox("Sezione", ["Prefazione", "Capitolo", "Ringraziamenti"])
-        n = st.number_input("N°", 1, 30) if tipo == "Capitolo" else 0
+        tipo = st.selectbox("Sezione da scrivere", ["Prefazione", "Capitolo", "Ringraziamenti"])
+        n = st.number_input("Numero Capitolo", 1, 30) if tipo == "Capitolo" else 0
         chiave = f"{tipo.lower()}_{n}" if n > 0 else tipo.lower()
         
         if st.button("Scrivi Sezione"):
             with st.spinner(f"Scrittura in corso..."):
-                # RECUPERO MEMORIA DI TUTTI I CAPITOLI PRECEDENTI PER COERENZA
-                memoria_completa = ""
-                sezioni_scritte = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)]
-                for s in sezioni_ordine: # definita sotto ma usabile
+                # Recupero memoria per concatenazione logica
+                memoria_testi = ""
+                for s in sezioni_totali:
                     if s in st.session_state:
-                        memoria_completa += f"--- {s.upper()} ---\n{st.session_state[s][:600]}\n\n"
+                        memoria_testi += f"--- {s.upper()} ---\n{st.session_state[s][:500]}\n\n"
                 
-                contesto_per_ia = f"Titolo: {titolo}\nTrama: {trama}\n\nCOERENZA CON TESTI PRECEDENTI:\n{memoria_completa}"
+                contesto_prompt = f"Titolo: {titolo}\nTrama: {trama}\n\nMEMORIA E CONCATENAZIONE:\n{memoria_testi}"
                 
                 testo_sez = ""
-                for parte in ["Inizio", "Sviluppo", "Fine"]:
-                    testo_sez += chiedi_gpt(f"{contesto_per_ia}\n\nScrivi ora {tipo} {n if n>0 else ''} (Parte: {parte}). Continua logicamente la storia.", S_P) + "\n\n"
+                parti = ["Inizio", "Sviluppo", "Conclusione"]
+                for p_fase in parti:
+                    testo_sez += chiedi_gpt(f"{contesto_prompt}\n\nScrivi {tipo} {n if n>0 else ''} (Parte: {p_fase}). Assicura che si colleghi perfettamente a quanto scritto sopra.", S_P) + "\n\n"
                 st.session_state[chiave] = testo_sez
         
         if chiave in st.session_state:
-            st.text_area("Contenuto", st.session_state[chiave], height=350)
+            st.text_area("Testo", st.session_state[chiave], height=350)
 
     with tab4:
         st.subheader("Editor Professionale")
-        s_mod = st.selectbox("Seleziona sezione da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
+        s_mod = st.selectbox("Cosa modifichiamo?", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         k_mod = s_mod.lower().replace(" ", "_")
         
         if k_mod in st.session_state:
             t_or = st.text_area("Testo attuale", st.session_state[k_mod], height=250)
-            istr = st.text_input("Istruzione per la ristrutturazione")
+            istr = st.text_input("Istruzione per ristrutturare il testo")
             if st.button("Applica Ristrutturazione"):
                 with st.spinner("Rielaborazione..."):
-                    st.session_state[k_mod] = t_or # Salvataggio manuale preventivo
+                    st.session_state[k_mod] = t_or
                     nuovo = chiedi_gpt(f"Riorganizza e ristruttura profondamente seguendo: {istr}\n\nTesto:\n{t_or}", S_P + " Agisci come Senior Editor.")
                     st.session_state[k_mod] = nuovo
-                    st.success("Modifica applicata!")
+                    st.success("Modifica applicata con successo!")
                     st.rerun()
         else: st.info("Genera prima la sezione.")
 
     with tab5:
+        st.subheader("Download Finale")
         nome_a = autore if autore else "Autore"
-        sezioni_ordine = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
+        
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Genera PDF"):
@@ -188,27 +187,29 @@ if trama:
                 pdf.set_auto_page_break(True, 15); pdf.add_page()
                 if 'cover_url' in st.session_state:
                     try:
-                        img = requests.get(st.session_state['cover_url']).content
-                        with open("temp.jpg", "wb") as f: f.write(img)
+                        img_res = requests.get(st.session_state['cover_url']).content
+                        with open("temp.jpg", "wb") as f_img: f_img.write(img_res)
                         pdf.image("temp.jpg", 0, 0, 210, 297)
                     except: pdf.cell(0, 10, titolo)
                 else: 
                     pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo.upper(), 0, 1, "C")
-                for s in sezioni_ordine:
+                
+                for s in sezioni_totali:
                     if s in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.upper(), 0, 1, "L")
                         pdf.ln(10); pdf.set_font("Arial", "", 11)
                         pdf.multi_cell(0, 7, st.session_state[s].encode('latin-1', 'replace').decode('latin-1'))
                 pdf.output("libro.pdf")
-                with open("libro.pdf", "rb") as f: st.download_button("📥 PDF", f, file_name=f"{titolo}.pdf")
+                with open("libro.pdf", "rb") as f_pdf: st.download_button("📥 Scarica PDF", f_pdf, file_name=f"{titolo}.pdf", use_container_width=True)
         
-        with col2 if 'col2' in locals() else c2:
+        with c2:
             if st.button("Genera WORD"):
                 doc = Document()
                 doc.add_heading(titolo, 0)
-                for s in sezioni_ordine:
+                doc.add_paragraph(f"Autore: {nome_a}")
+                for s in sezioni_totali:
                     if s in st.session_state:
                         doc.add_page_break(); doc.add_heading(s.upper(), level=1)
                         doc.add_paragraph(st.session_state[s])
                 buf = BytesIO(); doc.save(buf); buf.seek(0)
-                st.download_button("📥 WORD", buf, file_name=f"{titolo}.docx")
+                st.download_button("📥 Scarica WORD", buf, file_name=f"{titolo}.docx", use_container_width=True)
