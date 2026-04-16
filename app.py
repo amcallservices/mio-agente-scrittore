@@ -10,7 +10,7 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(
-    page_title="AI di Antonino: Ebook & Quiz Professionale",
+    page_title="AI di Antonino: Ebook Professionale con Quiz",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -89,10 +89,10 @@ with st.sidebar:
         st.rerun()
 
 # --- UI PRINCIPALE ---
-st.markdown(f'<div class="custom-title">Editor Ebook & Quiz di Antonino</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="custom-title">Editor Ebook con Quiz di Antonino</div>', unsafe_allow_html=True)
 
 if titolo_l and trama:
-    S_PROMPT = f"Esperto mondiale in {genere}. Scrittura in {lingua}. Stile: {modalita}. Obiettivo: 2000+ parole e coerenza logica."
+    S_PROMPT = f"Esperto in {genere}. Scrittura in {lingua}. Obiettivo: 2000+ parole, rigore e coerenza logica."
 
     t1, t2, t3, t4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura & Quiz", "📖 3. Anteprima", "📑 4. Esporta"])
 
@@ -104,43 +104,41 @@ if titolo_l and trama:
         st.session_state["indice_raw"] = st.text_area("Modifica Indice:", value=st.session_state.get("indice_raw", ""), height=350)
         if st.button("✅ SALVA E SINCRONIZZA"):
             sync_capitoli()
-            st.success("Capitoli sincronizzati correttamente!")
+            st.success("Capitoli sincronizzati!")
 
     with t2:
         lista_c = st.session_state.get("lista_capitoli", [])
         if not lista_c:
-            st.warning("Genera e salva l'indice nella Tab 1 prima di procedere.")
+            st.warning("Genera l'indice nella Tab 1.")
         else:
             opzioni = ["Prefazione"] + lista_c + ["Ringraziamenti"]
             cap_sel = st.selectbox("Seleziona sezione:", opzioni)
             key_sez = f"txt_{cap_sel.replace(' ', '_')}"
-            key_quiz = f"quiz_{cap_sel.replace(' ', '_')}"
 
-            col_a, col_b = st.columns(2)
-            with col_a:
+            c_a, c_b = st.columns(2)
+            with c_a:
                 if st.button(f"✨ SCRIVI: {cap_sel}"):
-                    with st.spinner("Generazione testo (Target 2000+ parole)..."):
-                        contesto = f"Indice: {st.session_state['indice_raw']}. Capitolo attuale: {cap_sel}."
+                    with st.spinner("Scrittura capitolo in corso..."):
+                        contesto = f"Indice: {st.session_state['indice_raw']}. Capitolo: {cap_sel}."
                         testo = ""
                         for fase in ["Inizio", "Corpo", "Fine"]:
                             testo += chiedi_gpt(f"{contesto}\nScrivi la parte: {fase}.", S_PROMPT) + "\n\n"
                         st.session_state[key_sez] = testo
             
-            with col_b:
-                if st.button("🧠 GENERA TEST/QUIZ"):
+            with c_b:
+                if st.button("🧠 AGGIUNGI QUIZ AL CAPITOLO"):
                     if key_sez in st.session_state and st.session_state[key_sez]:
-                        with st.spinner("Creazione test in corso..."):
-                            prompt_q = f"Basandoti sul testo di '{cap_sel}', genera un quiz di 10 domande a risposta multipla con soluzioni.\n\nTesto:\n{st.session_state[key_sez]}"
-                            st.session_state[key_quiz] = chiedi_gpt(prompt_q, "Esperto in creazione test.")
+                        with st.spinner("Creazione quiz e inserimento nel testo..."):
+                            prompt_q = f"Basandoti sul testo seguente, genera un TEST DI VALUTAZIONE (10 domande con soluzioni). Scrivilo come sezione finale del capitolo.\n\nTesto:\n{st.session_state[key_sez]}"
+                            quiz_testo = chiedi_gpt(prompt_q, "Esperto Quiz accademici.")
+                            # Aggiunge il quiz direttamente al testo del capitolo
+                            st.session_state[key_sez] += f"\n\n---\n\n### TEST DI VALUTAZIONE - {cap_sel.upper()}\n\n" + quiz_testo
+                            st.success("Quiz aggiunto in fondo al capitolo!")
+                            st.rerun()
                     else:
-                        st.error("Genera prima il testo del capitolo!")
+                        st.error("Genera prima il testo!")
 
-            st.session_state[key_sez] = st.text_area("Editor Capitolo:", value=st.session_state.get(key_sez, ""), height=400)
-            
-            if key_quiz in st.session_state:
-                st.markdown("---")
-                st.subheader(f"📝 Quiz per: {cap_sel}")
-                st.write(st.session_state[key_quiz])
+            st.session_state[key_sez] = st.text_area("Editor Capitolo:", value=st.session_state.get(key_sez, ""), height=450)
 
     with t3:
         preview = f"<div class='preview-box'><h1 style='text-align:center;'>{titolo_l}</h1>"
@@ -162,6 +160,6 @@ if titolo_l and trama:
                     doc.add_heading(s, level=1)
                     doc.add_paragraph(st.session_state[sk])
             buf = BytesIO(); doc.save(buf); buf.seek(0)
-            st.download_button("Salva Ebook", buf, file_name=f"{titolo_l}.docx")
+            st.download_button("Salva Ebook Completo", buf, file_name=f"{titolo_l}.docx")
 else:
-    st.info("👋 Inserisci Titolo e Trama a sinistra per iniziare.")
+    st.info("👋 Compila i dati nella sidebar.")
