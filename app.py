@@ -17,7 +17,7 @@ hide_st_style = """
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# CLASSE PDF PROFESSIONALE (MODIFICATA PER MOSTRARE SOLO AUTORE)
+# CLASSE PDF PROFESSIONALE (Solo Autore nell'header)
 class PDF(FPDF):
     def __init__(self, autore):
         super().__init__()
@@ -25,7 +25,6 @@ class PDF(FPDF):
     def header(self):
         if self.page_no() > 1:
             self.set_font('Arial', 'I', 8)
-            # Qui apparirà solo il nome dell'autore in alto a ogni pagina
             self.cell(0, 10, f"{self.autore}", 0, 0, 'C')
             self.ln(20)
 
@@ -40,11 +39,7 @@ def chiedi_gpt(p, s_p):
     # FILTRO ANTI-COMMENTI
     linee = risposta.split('\n')
     linee_pulite = []
-    tag_da_eliminare = [
-        "ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", 
-        "ciao", "ghostwriter", "va bene", "perfetto", "fammi sapere", 
-        "buona lettura", "proseguiamo", "posso aiutarti", "scritto per te"
-    ]
+    tag_da_eliminare = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", "perfetto", "fammi sapere"]
     for l in linee:
         testo_l = l.strip().lower()
         if testo_l and not any(testo_l.startswith(p) for p in tag_da_eliminare):
@@ -77,16 +72,18 @@ with st.sidebar:
 
 if trama:
     S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore if autore else 'utente'}. "
-    S_P += "IMPORTANTE: Produci SOLO testo narrativo. NON aggiungere introduzioni o saluti finali."
+    S_P += "REGOLE: Produci SOLO testo narrativo. NON aggiungere introduzioni o saluti finali."
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta PDF"])
 
+    # --- TAB STRUTTURA ---
     with tab1:
         if st.button("Genera Indice"):
             st.session_state['indice'] = chiedi_gpt(f"Crea l'indice per il libro '{titolo}'. Trama: {trama}", S_P)
         if 'indice' in st.session_state:
             st.text_area("Indice generato", st.session_state['indice'], height=250)
 
+    # --- TAB COPERTINA ---
     with tab2:
         st.subheader("Generatore di Copertina Artistica")
         if st.button("Genera Immagine Copertina"):
@@ -100,10 +97,12 @@ if trama:
         if 'cover_url' in st.session_state:
             st.image(st.session_state['cover_url'], caption="Anteprima Copertina", width=350)
 
+    # --- TAB SCRITTURA ---
     with tab3:
         scelta = st.selectbox("Cosa scriviamo?", ["Prefazione", "Capitolo", "Ringraziamenti"])
         n_cap = st.number_input("Numero (se capitolo)", 1, 30) if scelta == "Capitolo" else 0
         key_attuale = f"{scelta.lower()}_{n_cap}" if n_cap > 0 else scelta.lower()
+        
         if st.button("Avvia Scrittura"):
             with st.spinner(f"Scrittura in corso..."):
                 testo_completo = ""
@@ -111,29 +110,41 @@ if trama:
                 for f in fasi:
                     testo_completo += chiedi_gpt(f"Scrivi la '{f}' di: {scelta} {n_cap if n_cap>0 else ''}. Titolo: {titolo}.", S_P) + "\n\n"
                 st.session_state[key_attuale] = testo_completo
+        
         if key_attuale in st.session_state:
-            st.text_area("Contenuto Generato", st.session_state[key_attuale], height=400)
+            st.text_area("Contenuto", st.session_state[key_attuale], height=400, key=f"view_{key_attuale}")
 
+    # --- TAB MODIFICA (CORRETTA) ---
     with tab4:
         st.subheader("Revisione e Modifica Testi")
+        # Menu per selezionare cosa modificare
         sezione_mod = st.selectbox("Seleziona sezione da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         chiave_mod = sezione_mod.lower().replace(" ", "_")
+        
         if chiave_mod in st.session_state:
-            st.text_area("Testo attuale", st.session_state[chiave_mod], height=250)
-            istruzione = st.text_input("Cosa vuoi cambiare?")
-            if st.button("Applica Modifica"):
-                st.session_state[chiave_mod] = chiedi_gpt(f"Modifica questo testo: {st.session_state[chiave_mod]}. Richiesta: {istruzione}", S_P)
-                st.rerun()
+            # Mostra il testo attuale in un'area che può essere anche modificata a mano
+            nuovo_input_manuale = st.text_area("Testo attuale (puoi modificarlo anche qui)", st.session_state[chiave_mod], height=300)
+            st.session_state[chiave_mod] = nuovo_input_manuale # Salva eventuali modifiche manuali
+            
+            istruzione = st.text_input("Oppure chiedi all'IA di modificarlo (es: 'Rendilo più poetico')")
+            
+            if st.button("Applica Modifica con IA"):
+                with st.spinner("L'IA sta riscrivendo..."):
+                    prompt_modifica = f"Testo originale:\n{st.session_state[chiave_mod]}\n\nModifica richiesta: {istruzione}"
+                    testo_riscritto = chiedi_gpt(prompt_modifica, S_P)
+                    st.session_state[chiave_mod] = testo_riscritto
+                    st.success("Modifica applicata!")
+                    st.rerun() # Forza il ricaricamento per mostrare il testo aggiornato
         else:
-            st.info("Genera prima questa sezione.")
+            st.info("Genera prima questa sezione nella scheda 'Scrittura'.")
 
+    # --- TAB ESPORTAZIONE ---
     with tab5:
         if st.button("Genera EBook Finale (PDF)"):
             nome_da_stampare = autore if autore else "Autore"
             pdf = PDF(nome_da_stampare)
             pdf.set_auto_page_break(True, 15)
             
-            # --- PAGINA COPERTINA ---
             pdf.add_page()
             if 'cover_url' in st.session_state:
                 try:
@@ -143,11 +154,9 @@ if trama:
                 except:
                     pdf.set_font("Arial", "B", 30); pdf.cell(0, 100, titolo.upper(), 0, 1, "C")
             else:
-                # Se non c'è immagine, copertina pulita solo Titolo e Autore
                 pdf.set_font("Arial", "B", 35); pdf.ln(80); pdf.cell(0, 20, titolo.upper(), 0, 1, "C")
                 pdf.set_font("Arial", "", 20); pdf.cell(0, 20, f"di {nome_da_stampare}", 0, 1, "C")
 
-            # --- CONTENUTI ---
             sezioni_ordine = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
             for s in sezioni_ordine:
                 if s in st.session_state:
