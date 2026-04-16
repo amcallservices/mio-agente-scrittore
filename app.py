@@ -1,5 +1,5 @@
 import streamlit as st
-import os, requests
+import os, requests, re
 from fpdf import FPDF
 from openai import OpenAI
 
@@ -32,17 +32,26 @@ def chiedi_gpt(p, s_p):
     r = client.chat.completions.create(
         model="gpt-4o", 
         messages=[{"role":"system","content":s_p},{"role":"user","content":p}],
-        temperature=0.8
+        temperature=0.7
     )
     risposta = r.choices[0].message.content
+    
+    # --- FILTRO ANTI-COMMENTI POTENZIATO ---
     linee = risposta.split('\n')
     linee_pulite = []
-    parole_vietate = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "ghostwriter", "va bene", "perfetto"]
+    tag_da_eliminare = [
+        "ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", 
+        "ciao", "ghostwriter", "va bene", "perfetto", "fammi sapere", 
+        "buona lettura", "proseguiamo", "posso aiutarti", "scritto per te"
+    ]
     for l in linee:
         testo_l = l.strip().lower()
-        if testo_l and not any(testo_l.startswith(p) for p in parole_vietate):
+        if testo_l and not any(testo_l.startswith(p) for p in tag_da_eliminare):
             linee_pulite.append(l)
-    return '\n'.join(linee_pulite).strip()
+    
+    testo_finale = '\n'.join(linee_pulite).strip()
+    testo_finale = re.sub(r"(?i)(spero che|fammi sapere se|ecco il testo|buona scrittura|fammi sapere cosa).*$", "", testo_finale).strip()
+    return testo_finale
 
 # --- INTERFACCIA ---
 st.title("AI di Antonino: \"Crea il tuo EBook\"")
@@ -67,7 +76,7 @@ with st.sidebar:
 
 if trama:
     S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore if autore else 'utente'}. "
-    S_P += "REGOLE: Scrivi SOLO il contenuto del libro. NON salutare, NON fare commenti. Inizia subito con il testo."
+    S_P += "IMPORTANTE: Produci SOLO testo narrativo. NON aggiungere introduzioni o saluti finali. Inizia e finisci SOLO con il contenuto del libro."
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta PDF"])
 
@@ -87,7 +96,6 @@ if trama:
                     st.session_state['cover_url'] = res_img.data[0].url
                 except Exception as e:
                     st.error(f"Errore: {e}")
-        
         if 'cover_url' in st.session_state:
             st.image(st.session_state['cover_url'], caption="Anteprima Copertina", width=350)
 
@@ -101,24 +109,38 @@ if trama:
                 testo_completo = ""
                 fasi = ["Parte iniziale", "Sviluppo centrale", "Conclusione"]
                 for f in fasi:
-                    testo_completo += chiedi_gpt(f"Scrivi la '{f}' di: {scelta} {n_cap if n_cap>0 else ''}. Titolo: {titolo}. Modalità: {modalita}.", S_P) + "\n\n"
+                    testo_completo += chiedi_gpt(f"Scrivi la '{f}' di: {scelta} {n_cap if n_cap>0 else ''}. Titolo: {titolo}.", S_P) + "\n\n"
                 st.session_state[key_attuale] = testo_completo
 
         if key_attuale in st.session_state:
             st.text_area("Contenuto Generato", st.session_state[key_attuale], height=400)
 
     with tab4:
-        st.subheader("Revisione Sezioni")
-        sezione_mod = st.selectbox("Seleziona da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
+        st.subheader("Revisione e Modifica Testi")
+        # Elenco dinamico delle sezioni generate
+        sezioni_generate = ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)]
+        sezione_mod = st.selectbox("Seleziona sezione da modificare", sezioni_generate)
         chiave_mod = sezione_mod.lower().replace(" ", "_")
+        
         if chiave_mod in st.session_state:
-            st.text_area("Testo attuale", st.session_state[chiave_mod], height=200)
-            richiesta = st.text_input("Cosa vuoi cambiare?")
+            # Mostriamo il testo attuale
+            testo_vecchio = st.session_state[chiave_mod]
+            st.text_area("Testo attuale", testo_vecchio, height=250)
+            
+            istruzione = st.text_input("Cosa vuoi cambiare? (es: 'Rendi il tono più drammatico' o 'Aggiungi un dialogo')")
+            
             if st.button("Applica Modifica"):
-                st.session_state[chiave_mod] = chiedi_gpt(f"Modifica questo testo: {st.session_state[chiave_mod]}. Richiesta: {richiesta}", S_P)
-                st.rerun()
+                with st.spinner("Modifica in corso..."):
+                    # Chiediamo all'IA di riscrivere basandosi sul vecchio testo
+                    prompt_modifica = f"Testo originale: {testo_vecchio}\n\nRichiesta di modifica: {istruzione}"
+                    nuovo_testo = chiedi_gpt(prompt_modifica, S_P)
+                    
+                    # SALVATAGGIO DEFINITIVO NELLA SESSIONE
+                    st.session_state[chiave_mod] = nuovo_testo
+                    st.success("Testo modificato con successo!")
+                    st.rerun() # Forza il ricaricamento della pagina per mostrare il nuovo testo
         else:
-            st.info("Genera prima questa sezione.")
+            st.info("Genera prima questa sezione nella scheda 'Scrittura' per poterla modificare qui.")
 
     with tab5:
         if st.button("Genera EBook Finale (PDF)"):
