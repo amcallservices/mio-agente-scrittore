@@ -15,27 +15,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS AVANZATO PER BLOCCARE LA SIDEBAR ---
+# --- CSS PER BLOCCARE LA SIDEBAR E NASCONDERE MENU ---
 style_permanente = """
     <style>
-    /* Nasconde il menu hamburger in alto a sinistra */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stDeployButton {display:none;}
 
-    /* Rimuove il pulsante '>' e 'X' che permette di chiudere la sidebar */
     [data-testid="collapsedControl"] {
         display: none !important;
     }
     
-    /* Blocca la larghezza della sidebar e impedisce la chiusura */
     section[data-testid="stSidebar"] {
         min-width: 350px !important;
         max-width: 350px !important;
     }
 
-    /* Ottimizzazione UI per Mobile e Desktop */
     .stButton>button {
         width: 100%;
         border-radius: 10px;
@@ -84,7 +80,6 @@ def reset_app():
 # --- INTERFACCIA ---
 st.title("AI di Antonino: \"Crea il tuo EBook\"")
 
-# SIDEBAR FISSA
 with st.sidebar:
     st.header("⚙️ Configurazione")
     titolo = st.text_input("Titolo Libro", "")
@@ -107,7 +102,7 @@ with st.sidebar:
         reset_app()
 
 if trama:
-    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi in {lingua}. REGOLE: Solo testo finale, no saluti. Mantieni coerenza assoluta con i capitoli precedenti."
+    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi in {lingua}. REGOLE: Solo testo finale, no saluti. Mantieni coerenza assoluta."
     
     contesto_evolutivo = f"Titolo: {titolo}. Trama: {trama}. \n"
     if 'indice' in st.session_state:
@@ -123,9 +118,9 @@ if trama:
 
     with tab2:
         if st.button("Genera Copertina AI"):
-            with st.spinner("Creazione immagine..."):
+            with st.spinner("Creazione..."):
                 try:
-                    p_img = f"Professional book cover for '{titolo}', {modalita} style, cinematic, no text."
+                    p_img = f"Professional book cover for '{titolo}', {modalita} style, no text."
                     res = client.images.generate(model="dall-e-3", prompt=p_img, n=1, size="1024x1792")
                     st.session_state['cover_url'] = res.data[0].url
                 except Exception as e: st.error(e)
@@ -138,33 +133,44 @@ if trama:
         chiave = f"{tipo.lower()}_{n}" if n > 0 else tipo.lower()
         
         if st.button("Scrivi Sezione"):
-            with st.spinner(f"Scrittura in {lingua}..."):
-                # Recupero memoria per coerenza
+            with st.spinner(f"Scrittura..."):
                 memoria = "\n".join([st.session_state[k][:400] for k in st.session_state if "capitolo" in k or "prefazione" in k])
                 testo_sez = ""
                 for parte in ["Inizio", "Sviluppo", "Fine"]:
-                    testo_sez += chiedi_gpt(f"{contesto_evolutivo}\nMemoria: {memoria}\nScrivi {tipo} {n if n>0 else ''} (Parte: {parte})", S_P) + "\n\n"
+                    testo_sez += chiedi_gpt(f"{contesto_evolutivo}\nMemoria: {memoria}\nScrivi {tipo} {n if n>0 else ''} ({parte})", S_P) + "\n\n"
                 st.session_state[chiave] = testo_sez
         if chiave in st.session_state:
             st.text_area("Contenuto", st.session_state[chiave], height=350)
 
+    # --- TAB MODIFICA CORRETTA ---
     with tab4:
         st.subheader("Editor Professionale")
         s_mod = st.selectbox("Cosa modifichiamo?", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         k_mod = s_mod.lower().replace(" ", "_")
+        
         if k_mod in st.session_state:
-            t_or = st.text_area("Testo originale", st.session_state[k_mod], height=250)
-            istr = st.text_input("Istruzioni per l'IA")
-            if st.button("Riscrivi Sezione"):
-                st.session_state[k_mod] = chiedi_gpt(f"Riscrivi questo testo seguendo: {istr}\n\nTesto:\n{t_or}", S_P + " Agisci come Senior Editor.")
-                st.rerun()
-        else: st.info("Genera prima la sezione.")
+            # Recuperiamo il testo attuale e permettiamo all'utente di vederlo
+            testo_da_cambiare = st.session_state[k_mod]
+            t_or = st.text_area("Testo attuale", testo_da_cambiare, height=250)
+            
+            istr = st.text_input("Istruzioni per la ristrutturazione (IA)")
+            
+            if st.button("Riscrivi con IA"):
+                with st.spinner("Ristrutturazione in corso..."):
+                    # Salviamo prima il testo nell'area (per modifiche manuali)
+                    st.session_state[k_mod] = t_or
+                    # Chiediamo la modifica
+                    nuovo_testo = chiedi_gpt(f"Riscrivi integralmente questo testo seguendo: {istr}\n\nTesto:\n{t_or}", S_P + " Agisci come Senior Editor.")
+                    # Applichiamo e forziamo il refresh
+                    st.session_state[k_mod] = nuovo_testo
+                    st.success("Modifica applicata!")
+                    st.rerun()
+        else:
+            st.info("Genera prima la sezione nella scheda 'Scrittura'.")
 
     with tab5:
-        st.subheader("Download Finale")
-        nome_a = autore if autore else "Autore Studio AI"
+        nome_a = autore if autore else "Autore"
         sez_f = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
-        
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Genera PDF"):
