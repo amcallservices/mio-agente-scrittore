@@ -25,10 +25,10 @@ def chiedi_gpt(p, s_p):
     )
     risposta = r.choices[0].message.content
     
-    # FILTRO RIGIDO ANTI-COMMENTI
+    # FILTRO RIGIDO ANTI-COMMENTI (Elimina chiacchiere dell'IA)
     linee = risposta.split('\n')
     linee_pulite = []
-    parole_vietate = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "ghostwriter", "va bene"]
+    parole_vietate = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "ghostwriter", "va bene", "perfetto"]
     for l in linee:
         testo_l = l.strip().lower()
         if testo_l and not any(testo_l.startswith(p) for p in parole_vietate):
@@ -41,8 +41,9 @@ st.title("AI di Antonino: \"Crea il tuo EBook\"")
 
 with st.sidebar:
     st.header("Configurazione Libro")
-    titolo = st.text_input("Titolo Libro", "Titolo")
-    autore = st.text_input("Autore", "Antonino")
+    titolo = st.text_input("Titolo Libro", "")
+    # CAMPO AUTORE VUOTO COME RICHIESTO
+    autore = st.text_input("Inserisci il tuo nome (Autore)", "")
     
     modalita = st.selectbox("Modalità di scrittura", [
         "Thriller Psicologico (Analisi mentale e tensione)", 
@@ -52,13 +53,14 @@ with st.sidebar:
         "Thriller (Azione e suspense)",
         "Motivazionale (Ispirazione)",
         "Fantasy (Epico)",
-        "Romanzo Storico"
+        "Romanzo Storico",
+        "Romanzo Rosa"
     ])
-    trama = st.text_area("Trama/Argomento")
+    trama = st.text_area("Di cosa parla il tuo libro? (Trama)")
 
 if trama:
-    # Prompt di sistema per narrativa pura senza fronzoli
-    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore}. "
+    # Prompt di sistema per narrativa pura
+    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore if autore else 'l'utente'}. "
     S_P += "REGOLE: Scrivi SOLO il contenuto del libro. NON salutare, NON fare commenti, NON spiegare nulla. Inizia subito con il testo."
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta PDF"])
@@ -72,7 +74,7 @@ if trama:
     with tab2:
         st.subheader("Generatore di Copertina Artistica")
         if st.button("Genera Immagine Copertina"):
-            with st.spinner("Creazione immagine in corso..."):
+            with st.spinner("L'IA sta creando la copertina..."):
                 try:
                     prompt_img = f"Professional book cover for '{titolo}', genre: {modalita}, theme: {trama[:100]}. High resolution, cinematic, no text."
                     res_img = client.images.generate(model="dall-e-3", prompt=prompt_img, n=1, size="1024x1792")
@@ -88,7 +90,7 @@ if trama:
         n_cap = st.number_input("Numero (se capitolo)", 1, 30) if scelta == "Capitolo" else 0
         
         if st.button("Avvia Scrittura"):
-            with st.spinner("Scrittura profonda..."):
+            with st.spinner("Scrittura in corso..."):
                 testo_completo = ""
                 fasi = ["Parte iniziale", "Sviluppo centrale", "Conclusione"]
                 for f in fasi:
@@ -96,7 +98,7 @@ if trama:
                 
                 key = f"{scelta.lower()}_{n_cap}" if n_cap > 0 else scelta.lower()
                 st.session_state[key] = testo_completo
-                st.success("Testo generato!")
+                st.success("Testo generato con successo!")
                 st.text_area("Risultato", testo_completo, height=300)
 
     with tab4:
@@ -105,17 +107,17 @@ if trama:
         chiave_mod = sezione_mod.lower().replace(" ", "_")
         
         if chiave_mod in st.session_state:
-            richiesta = st.text_input("Cosa vuoi cambiare?")
+            richiesta = st.text_input("Cosa vuoi cambiare in questo testo?")
             if st.button("Applica Modifica"):
                 nuovo = chiedi_gpt(f"Modifica questo testo: {st.session_state[chiave_mod]}. Richiesta: {richiesta}", S_P)
                 st.session_state[chiave_mod] = nuovo
                 st.success("Modifica applicata!")
         else:
-            st.info("Genera prima questa sezione.")
+            st.info("Genera prima questa sezione per poterla modificare.")
 
     with tab5:
-        if st.button("Crea PDF"):
-            pdf = PDF(autore)
+        if st.button("Genera EBook Finale (PDF)"):
+            pdf = PDF(autore if autore else "Autore")
             pdf.set_auto_page_break(True, 15)
             
             # PAGINA COPERTINA
@@ -144,4 +146,4 @@ if trama:
             
             pdf.output("ebook.pdf")
             with open("ebook.pdf", "rb") as f:
-                st.download_button("📥 SCARICA PDF FINALE", f, file_name=f"{titolo}.pdf")
+                st.download_button("📥 SCARICA PDF FINALE", f, file_name=f"{titolo if titolo else 'Ebook'}.pdf")
