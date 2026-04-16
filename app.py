@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- BLOCCO CSS ---
+# --- BLOCCO CSS (UI PULITA E SIDEBAR BLOCCATA) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -70,7 +70,7 @@ class PDF(FPDF):
         super().__init__()
         self.autore = autore
     def header(self):
-        if self.page_no() > 1:
+        if self.page_no() > 1 and self.autore:
             self.set_font('Arial', 'I', 8)
             self.cell(0, 10, f"Autore: {self.autore}", 0, 0, 'C')
             self.ln(20)
@@ -120,7 +120,9 @@ st.markdown('<div class="custom-title">AI di Antonino: Crea il tuo Ebook</div>',
 with st.sidebar:
     st.title("⚙️ Setup")
     titolo_l = st.text_input("Titolo Libro")
-    nome_autore = st.text_input("Nome Autore")
+    # CAMPO AUTORE VUOTO COME RICHIESTO
+    nome_autore = st.text_input("Nome Autore", value="")
+    
     lingua_l = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
     genere_l = st.selectbox("Genere", ["Manuale Tecnico", "Manuale Psicologico", "Saggio", "Motivazionale", "Thriller", "Noir", "Fantasy", "Romanzo Rosa"])
     trama_l = st.text_area("Trama principale", height=150)
@@ -129,7 +131,7 @@ with st.sidebar:
         st.rerun()
 
 if trama_l:
-    S_PROMPT = f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}. Solo testo del libro, attieniti all'indice."
+    S_PROMPT = f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}. REGOLE: Solo testo del libro, attieniti all'indice."
 
     tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura", "📝 3. Modifica", "📑 4. Esporta"])
 
@@ -167,23 +169,19 @@ if trama_l:
         k_m = sez_m.lower().replace(" ", "_")
         
         if k_m in st.session_state:
-            # Mostriamo il testo attuale. Usiamo un 'versioning' per forzare l'aggiornamento
             if f"ver_{k_m}" not in st.session_state: st.session_state[f"ver_{k_m}"] = 0
             
             testo_input = st.text_area("Testo da modificare:", value=st.session_state[k_m], height=350, key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
-            istr = st.text_input("Cosa deve fare l'IA? (es: 'Rendilo più lungo', 'Cambia il finale')")
+            istr = st.text_input("Cosa deve fare l'IA?")
             
             if st.button("APPLICA MODIFICA"):
                 with st.spinner("L'IA sta riscrivendo..."):
-                    # 1. Chiedi all'IA
                     nuovo_t = chiedi_gpt(f"Istruzione: {istr}\nTesto attuale:\n{testo_input}", S_PROMPT + " Editor Senior.")
-                    # 2. Aggiorna lo stato
                     st.session_state[k_m] = nuovo_t
-                    # 3. Cambia la versione della chiave per forzare Streamlit a mostrare il nuovo testo
-                    st.session_state[f"ver_{k_m}"] += 1
+                    st.session_state[f"ver_{k_m}"] += 1 # Forza il refresh del widget
                     st.success("Modifica applicata!")
                     st.rerun()
-        else: st.info("Genera prima il testo nella scheda Scrittura.")
+        else: st.info("Genera prima il testo.")
 
     with tab4:
         l_f = ["prefazione"] + [c.lower().replace(" ", "_") for c in st.session_state['lista_capitoli']] + ["ringraziamenti"]
@@ -192,15 +190,19 @@ if trama_l:
             if st.button("ESPORTA PDF"):
                 pdf = PDF(nome_autore); pdf.set_auto_page_break(True, 15); pdf.add_page()
                 pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo_l.upper(), 0, 1, "C")
+                if nome_autore:
+                    pdf.set_font("Arial", "", 18); pdf.cell(0, 20, f"di {nome_autore}", 0, 1, "C")
                 for s in l_f:
                     if s in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.upper().replace("_", " "), 0, 1, "L")
                         pdf.ln(10); pdf.set_font("Arial", "", 12)
-                        pdf.multi_cell(0, 8, st.session_state[s].encode('latin-1', 'replace').decode('latin-1'))
+                        txt_p = st.session_state[s].encode('latin-1', 'replace').decode('latin-1')
+                        pdf.multi_cell(0, 8, txt_p)
                 st.download_button("📥 PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"{titolo_l}.pdf")
         with c2:
             if st.button("ESPORTA WORD"):
-                doc = Document(); doc.add_heading(titolo_l, 0)
+                doc = Document(); doc.add_heading(titolo_l if titolo_l else "Libro", 0)
+                if nome_autore: doc.add_paragraph(f"Autore: {nome_autore}")
                 for s in l_f:
                     if s in st.session_state:
                         doc.add_page_break(); doc.add_heading(s.upper().replace("_", " "), level=1)
