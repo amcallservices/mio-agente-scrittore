@@ -2,11 +2,13 @@ import streamlit as st
 import os, requests, re
 from fpdf import FPDF
 from openai import OpenAI
+from docx import Document
+from io import BytesIO
 
-# 1. Configurazione API
+# 1. Connessione API
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- OTTIMIZZAZIONE MOBILE E PRIVACY TOTALE ---
+# --- PRIVACY E OTTIMIZZAZIONE MOBILE ---
 st.set_page_config(page_title="AI di Antonino", layout="wide")
 
 hide_st_style = """
@@ -15,8 +17,6 @@ hide_st_style = """
             footer {visibility: hidden;}
             header {visibility: hidden;}
             .stDeployButton {display:none;}
-            
-            /* Ottimizzazione per smartphone */
             .stButton>button {
                 width: 100%;
                 border-radius: 10px;
@@ -26,15 +26,11 @@ hide_st_style = """
             .stTextArea textarea {
                 font-size: 16px !important;
             }
-            .stTabs [data-baseweb="tab"] {
-                font-size: 14px;
-                white-space: pre-wrap;
-            }
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# CLASSE PDF PROFESSIONALE (Solo nome Autore)
+# CLASSE PDF PROFESSIONALE
 class PDF(FPDF):
     def __init__(self, autore):
         super().__init__()
@@ -88,30 +84,26 @@ with st.sidebar:
         "Romanzo Storico",
         "Romanzo Rosa"
     ])
-    trama = st.text_area("Di cosa parla il tuo libro? (Trama)")
-    
+    trama = st.text_area("Trama del libro")
     st.markdown("---")
     if st.button("🔄 RICOMINCIA NUOVO EBOOK"):
         reset_app()
 
 if trama:
     S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore if autore else 'utente'}. "
-    S_P += "REGOLE: Produci SOLO testo narrativo. NON aggiungere introduzioni o saluti finali. Inizia e finisci SOLO con il contenuto del libro."
+    S_P += "REGOLE: Produci SOLO testo narrativo. NON aggiungere introduzioni o saluti finali."
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta PDF"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta"])
 
-    # --- 1. STRUTTURA ---
     with tab1:
         if st.button("Genera Indice"):
             st.session_state['indice'] = chiedi_gpt(f"Crea l'indice per il libro '{titolo}'. Trama: {trama}", S_P)
         if 'indice' in st.session_state:
-            st.text_area("Indice generato", st.session_state['indice'], height=250)
+            st.text_area("Indice", st.session_state['indice'], height=250)
 
-    # --- 2. COPERTINA ---
     with tab2:
-        st.subheader("Copertina Artistica")
-        if st.button("Genera Immagine"):
-            with st.spinner("Creazione..."):
+        if st.button("Genera Copertina"):
+            with st.spinner("Creazione immagine..."):
                 try:
                     prompt_img = f"Professional book cover for '{titolo}', genre: {modalita}, theme: {trama[:100]}. High resolution, cinematic, no text."
                     res_img = client.images.generate(model="dall-e-3", prompt=prompt_img, n=1, size="1024x1792")
@@ -121,75 +113,76 @@ if trama:
         if 'cover_url' in st.session_state:
             st.image(st.session_state['cover_url'], use_container_width=True)
 
-    # --- 3. SCRITTURA ---
     with tab3:
-        scelta = st.selectbox("Cosa scriviamo?", ["Prefazione", "Capitolo", "Ringraziamenti"])
-        n_cap = st.number_input("Numero (se capitolo)", 1, 30) if scelta == "Capitolo" else 0
+        scelta = st.selectbox("Sezione", ["Prefazione", "Capitolo", "Ringraziamenti"])
+        n_cap = st.number_input("N°", 1, 30) if scelta == "Capitolo" else 0
         key_attuale = f"{scelta.lower()}_{n_cap}" if n_cap > 0 else scelta.lower()
-        
         if st.button("Avvia Scrittura"):
-            with st.spinner(f"Scrittura in corso..."):
+            with st.spinner("Scrittura profonda..."):
                 testo_completo = ""
-                fasi = ["Parte iniziale", "Sviluppo centrale", "Conclusione"]
-                for f in fasi:
-                    testo_completo += chiedi_gpt(f"Scrivi la '{f}' di: {scelta} {n_cap if n_cap>0 else ''}. Titolo: {titolo}.", S_P) + "\n\n"
+                for f in ["Inizio", "Sviluppo", "Fine"]:
+                    testo_completo += chiedi_gpt(f"Scrivi la parte {f} di {scelta} {n_cap if n_cap>0 else ''}.", S_P) + "\n\n"
                 st.session_state[key_attuale] = testo_completo
-        
         if key_attuale in st.session_state:
-            st.text_area("Contenuto", st.session_state[key_attuale], height=400, key=f"view_{key_attuale}")
+            st.text_area("Contenuto", st.session_state[key_attuale], height=350)
 
-    # --- 4. MODIFICA ---
     with tab4:
         st.subheader("Editor Professionale")
-        sezione_mod = st.selectbox("Seleziona sezione da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
-        chiave_mod = sezione_mod.lower().replace(" ", "_")
-        
-        if chiave_mod in st.session_state:
-            testo_input = st.text_area("Testo attuale", st.session_state[chiave_mod], height=300)
-            st.session_state[chiave_mod] = testo_input
-            
-            istruzione = st.text_input("Quale modifica desideri?")
-            
-            if st.button("Applica Modifica"):
-                with st.spinner("Modifica in corso..."):
-                    S_P_MOD = S_P + " Agisci come un Senior Editor. Riorganizza il testo, migliora il ritmo e la profondità."
-                    prompt_modifica = f"Testo originale:\n{st.session_state[chiave_mod]}\n\nRichiesta di modifica: {istruzione}"
-                    st.session_state[chiave_mod] = chiedi_gpt(prompt_modifica, S_P_MOD)
-                    st.success("Testo aggiornato!")
+        sez_mod = st.selectbox("Cosa modificare?", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
+        k_mod = sez_mod.lower().replace(" ", "_")
+        if k_mod in st.session_state:
+            t_in = st.text_area("Testo attuale", st.session_state[k_mod], height=250)
+            st.session_state[k_mod] = t_in
+            istr = st.text_input("Istruzione Editor (Ristrutturazione profonda)")
+            if st.button("Applica Ristrutturazione"):
+                with st.spinner("Rielaborazione..."):
+                    S_P_MOD = S_P + " Agisci come Senior Editor. Ristruttura profondamente."
+                    st.session_state[k_mod] = chiedi_gpt(f"Testo:\n{t_in}\nRichiesta: {istr}", S_P_MOD)
                     st.rerun()
         else:
             st.info("Genera prima questa sezione.")
 
-    # --- 5. PDF ---
     with tab5:
-        if st.button("Genera EBook Finale"):
-            nome_da_stampare = autore if autore else "Autore"
-            pdf = PDF(nome_da_stampare)
-            pdf.set_auto_page_break(True, 15)
-            pdf.add_page()
-            
-            if 'cover_url' in st.session_state:
-                try:
-                    img_data = requests.get(st.session_state['cover_url']).content
-                    with open("cover_temp.jpg", "wb") as f: f.write(img_data)
-                    pdf.image("cover_temp.jpg", 0, 0, 210, 297)
-                except:
-                    pdf.set_font("Arial", "B", 30); pdf.cell(0, 100, titolo.upper(), 0, 1, "C")
-            else:
-                pdf.set_font("Arial", "B", 35); pdf.ln(80); pdf.cell(0, 20, titolo.upper(), 0, 1, "C")
-                pdf.set_font("Arial", "", 20); pdf.cell(0, 20, f"di {nome_da_stampare}", 0, 1, "C")
+        st.subheader("Scarica il tuo Libro")
+        n_p = autore if autore else "Autore"
+        sezioni_ordine = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Genera PDF"):
+                pdf = PDF(n_p)
+                pdf.set_auto_page_break(True, 15)
+                pdf.add_page()
+                if 'cover_url' in st.session_state:
+                    try:
+                        img_data = requests.get(st.session_state['cover_url']).content
+                        with open("c_temp.jpg", "wb") as f: f.write(img_data)
+                        pdf.image("c_temp.jpg", 0, 0, 210, 297)
+                    except:
+                        pdf.set_font("Arial", "B", 30); pdf.cell(0, 100, titolo.upper(), 0, 1, "C")
+                else:
+                    pdf.set_font("Arial", "B", 35); pdf.ln(80); pdf.cell(0, 20, titolo.upper(), 0, 1, "C")
+                    pdf.set_font("Arial", "", 20); pdf.cell(0, 20, f"di {n_p}", 0, 1, "C")
+                for s in sezioni_ordine:
+                    if s in st.session_state:
+                        pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.upper(), 0, 1, "L")
+                        pdf.ln(10); pdf.set_font("Arial", "", 11)
+                        pdf.multi_cell(0, 7, st.session_state[s].encode('latin-1', 'replace').decode('latin-1'))
+                pdf.output("e.pdf")
+                with open("e.pdf", "rb") as f:
+                    st.download_button("📥 PDF", f, file_name=f"{titolo}.pdf", use_container_width=True)
 
-            sezioni_ordine = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
-            for s in sezioni_ordine:
-                if s in st.session_state:
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 18)
-                    pdf.cell(0, 10, s.replace("_", " ").upper(), 0, 1, "L")
-                    pdf.ln(10)
-                    pdf.set_font("Arial", "", 11)
-                    testo_pdf = st.session_state[s].encode('latin-1', 'replace').decode('latin-1')
-                    pdf.multi_cell(0, 7, testo_pdf)
-            
-            pdf.output("ebook.pdf")
-            with open("ebook.pdf", "rb") as f:
-                st.download_button("📥 SCARICA PDF FINALE", f, file_name=f"{titolo}.pdf", use_container_width=True)
+        with col2:
+            if st.button("Genera WORD"):
+                doc = Document()
+                doc.add_heading(titolo, 0)
+                doc.add_paragraph(f"Autore: {n_p}")
+                for s in sezioni_ordine:
+                    if s in st.session_state:
+                        doc.add_page_break()
+                        doc.add_heading(s.upper(), level=1)
+                        doc.add_paragraph(st.session_state[s])
+                buf = BytesIO()
+                doc.save(buf)
+                buf.seek(0)
+                st.download_button("📥 WORD", buf, file_name=f"{titolo}.docx", use_container_width=True)
