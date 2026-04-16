@@ -6,7 +6,7 @@ from openai import OpenAI
 # 1. Configurazione e Connessione
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# CLASSE PDF CORRETTA (Testo a tutta pagina e gestione immagini)
+# CLASSE PDF PROFESSIONALE
 class PDF(FPDF):
     def __init__(self, autore):
         super().__init__()
@@ -14,7 +14,7 @@ class PDF(FPDF):
     def header(self):
         if self.page_no() > 1:
             self.set_font('Arial', 'I', 8)
-            self.cell(0, 10, f"{self.autore} - Ultimate Author Studio", 0, 0, 'C')
+            self.cell(0, 10, f"{self.autore} - AI di Antonino", 0, 0, 'C')
             self.ln(20)
 
 def chiedi_gpt(p, s_p):
@@ -25,26 +25,25 @@ def chiedi_gpt(p, s_p):
     )
     risposta = r.choices[0].message.content
     
-    # FILTRO ANTI-COMMENTI: Rimuove introduzioni e conclusioni dell'IA
+    # FILTRO RIGIDO ANTI-COMMENTI
     linee = risposta.split('\n')
     linee_pulite = []
-    parole_vietate = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "ghostwriter"]
+    parole_vietate = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "ghostwriter", "va bene"]
     for l in linee:
         testo_l = l.strip().lower()
-        if not any(testo_l.startswith(p) for p in parole_vietate):
+        if testo_l and not any(testo_l.startswith(p) for p in parole_vietate):
             linee_pulite.append(l)
     
     return '\n'.join(linee_pulite).strip()
 
 # --- INTERFACCIA ---
-st.title("🖋️ Ultimate Author Studio AI")
+st.title("AI di Antonino: \"Crea il tuo EBook\"")
 
 with st.sidebar:
     st.header("Configurazione Libro")
     titolo = st.text_input("Titolo Libro", "Titolo")
     autore = st.text_input("Autore", "Antonino")
     
-    # NUOVE TIPOLOGIE AGGIUNTE
     modalita = st.selectbox("Modalità di scrittura", [
         "Thriller Psicologico (Analisi mentale e tensione)", 
         "Saggio Psicologico (Analitico e riflessivo)",
@@ -52,14 +51,15 @@ with st.sidebar:
         "Noir (Cupo e descrittivo)", 
         "Thriller (Azione e suspense)",
         "Motivazionale (Ispirazione)",
-        "Fantasy (Epico)"
+        "Fantasy (Epico)",
+        "Romanzo Storico"
     ])
     trama = st.text_area("Trama/Argomento")
 
 if trama:
-    # Prompt di sistema rigido per evitare chiacchiere
+    # Prompt di sistema per narrativa pura senza fronzoli
     S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore}. "
-    S_P += "REGOLE ASSOLUTE: Scrivi SOLO il testo del libro. NON aggiungere introduzioni, NON salutare, NON fare commenti. Inizia direttamente con il contenuto."
+    S_P += "REGOLE: Scrivi SOLO il contenuto del libro. NON salutare, NON fare commenti, NON spiegare nulla. Inizia subito con il testo."
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta PDF"])
 
@@ -72,9 +72,9 @@ if trama:
     with tab2:
         st.subheader("Generatore di Copertina Artistica")
         if st.button("Genera Immagine Copertina"):
-            with st.spinner("DALL-E 3 sta creando la copertina..."):
+            with st.spinner("Creazione immagine in corso..."):
                 try:
-                    prompt_img = f"Professional book cover for '{titolo}', genre: {modalita}, theme: {trama[:100]}. High resolution, cinematic, no text or typography."
+                    prompt_img = f"Professional book cover for '{titolo}', genre: {modalita}, theme: {trama[:100]}. High resolution, cinematic, no text."
                     res_img = client.images.generate(model="dall-e-3", prompt=prompt_img, n=1, size="1024x1792")
                     st.session_state['cover_url'] = res_img.data[0].url
                 except Exception as e:
@@ -88,9 +88,8 @@ if trama:
         n_cap = st.number_input("Numero (se capitolo)", 1, 30) if scelta == "Capitolo" else 0
         
         if st.button("Avvia Scrittura"):
-            with st.spinner("Scrittura profonda in corso..."):
+            with st.spinner("Scrittura profonda..."):
                 testo_completo = ""
-                # Tre fasi per garantire lunghezza e profondità
                 fasi = ["Parte iniziale", "Sviluppo centrale", "Conclusione"]
                 for f in fasi:
                     testo_completo += chiedi_gpt(f"Scrivi la '{f}' di: {scelta} {n_cap if n_cap>0 else ''}. Titolo: {titolo}. Modalità: {modalita}.", S_P) + "\n\n"
@@ -140,7 +139,6 @@ if trama:
                     pdf.cell(0, 10, s.replace("_", " ").upper(), 0, 1, "L")
                     pdf.ln(10)
                     pdf.set_font("Arial", "", 11)
-                    # CORREZIONE FINALE PDF: multi_cell(0, ...) usa tutta la riga
                     testo_pdf = st.session_state[s].encode('latin-1', 'replace').decode('latin-1')
                     pdf.multi_cell(0, 7, testo_pdf)
             
