@@ -6,23 +6,23 @@ from docx import Document
 from io import BytesIO
 
 # =================================================================
-# 1. CONNESSIONE API E CONFIGURAZIONE DI SISTEMA
+# 1. CONNESSIONE API E SETUP DI SISTEMA
 # =================================================================
-# La chiave API deve essere configurata nei secrets di Streamlit
+# Collegamento sicuro tramite Streamlit Secrets
 try:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 except Exception as e:
-    st.error("Errore: Chiave API OpenAI non trovata nei Secrets.")
+    st.error("Errore critico: OpenAI API Key non trovata. Controlla i Secrets.")
 
-# Configurazione della pagina Streamlit per massima visibilità
+# Configurazione Pagina con Sidebar bloccata e visibile
 st.set_page_config(
     page_title="AI di Antonino: Ebook Mondiale Creator PRO",
     layout="wide",
-    initial_sidebar_state="expanded" # Forza la sidebar a restare aperta
+    initial_sidebar_state="expanded"
 )
 
 # =================================================================
-# 2. DIZIONARIO TRADUZIONI INTEGRALE (INTERFACCIA COMPLETA)
+# 2. DIZIONARIO TRADUZIONI INTEGRALE (8 LINGUE)
 # =================================================================
 TRADUZIONI = {
     "Italiano": {
@@ -61,8 +61,7 @@ TRADUZIONI = {
         "btn_quiz": "🧠 QUIZ HINZUFÜGEN", "btn_edit": "🚀 ÜBERARBEITEN",
         "msg_run": "Experte schreibt...", "preface": "Vorwort", "ack": "Danksagungen",
         "preview_tit": "📖 Leseansicht", "btn_word": "📥 Ebook herunterladen (.docx)",
-        "msg_err_idx": "Generieren Sie zuerst den Index.", "msg_success_sync": "Kapitel synchronisiert!",
-        "label_editor": "Text-Editor", "label_quiz_area": "Quiz-Bereich"
+        "msg_err_idx": "Generieren Sie zuerst den Index.", "msg_success_sync": "Kapitel synchronisiert!"
     },
     "Français": {
         "side_tit": "⚙️ Configuration",
@@ -73,8 +72,7 @@ TRADUZIONI = {
         "lbl_sec": "Section:", "btn_write": "✨ ÉCRIRE LA SECTION",
         "btn_quiz": "🧠 AJOUTER UN QUIZ", "btn_edit": "🚀 REFORMULER",
         "msg_run": "L'expert écrit...", "preface": "Préface", "ack": "Remerciements",
-        "preview_tit": "📖 Vue Lecture", "btn_word": "📥 Télécharger (.docx)",
-        "msg_err_idx": "Générez d'abord l'index.", "msg_success_sync": "Chapitres synchronisés!"
+        "preview_tit": "📖 Vue Lecture", "btn_word": "📥 Télécharger (.docx)"
     },
     "Español": {
         "side_tit": "⚙️ Configuración",
@@ -85,8 +83,7 @@ TRADUZIONI = {
         "lbl_sec": "Sección:", "btn_write": "✨ ESCRIBIR SECCIÓN",
         "btn_quiz": "🧠 AÑADIR CUESTIONARIO", "btn_edit": "🚀 REESCRIBIR",
         "msg_run": "El experto está escribiendo...", "preface": "Prefacio", "ack": "Agradecimientos",
-        "preview_tit": "📖 Vista de lectura", "btn_word": "📥 Descargar (.docx)",
-        "msg_err_idx": "Genere el índice primero.", "msg_success_sync": "Capítulos sincronizados!"
+        "preview_tit": "📖 Vista de lectura", "btn_word": "📥 Descargar (.docx)"
     },
     "Română": {
         "side_tit": "⚙️ Configurare",
@@ -97,8 +94,7 @@ TRADUZIONI = {
         "lbl_sec": "Secțiune:", "btn_write": "✨ SCRIE SECȚIUNEA",
         "btn_quiz": "🧠 ADAUGĂ QUIZ", "btn_edit": "🚀 REFORMULEAZĂ",
         "msg_run": "Se scrie...", "preface": "Prefață", "ack": "Mulțumiri",
-        "preview_tit": "📖 Vizualizare lectură", "btn_word": "📥 Descarcă (.docx)",
-        "msg_err_idx": "Generați mai întâi indexul.", "msg_success_sync": "Capitole sincronizate!"
+        "preview_tit": "📖 Vizualizare lectură", "btn_word": "📥 Descarcă (.docx)"
     },
     "Русский": {
         "side_tit": "⚙️ Настройки",
@@ -125,101 +121,88 @@ TRADUZIONI = {
 }
 
 # =================================================================
-# 3. BLOCCO CSS (UI AVANZATA E STILE)
+# 3. CSS CUSTOM: PULSANTI BLU E SIDEBAR BLOCCATA
 # =================================================================
 st.markdown("""
 <style>
-/* Nascondi Header e Footer Streamlit */
+/* Reset Header e Footer Streamlit per pulizia totale */
 #MainMenu, footer, header, [data-testid="stHeader"] {visibility: hidden;}
 [data-testid="collapsedControl"] { display: none !important; }
 
-/* Configurazione Sidebar Larga e Fissa */
+/* Sidebar Larga e Sempre Attiva */
 section[data-testid="stSidebar"] { 
     min-width: 400px !important; 
     max-width: 400px !important; 
-    background-color: #f4f7f9;
-    border-right: 1px solid #d1d9e6;
+    background-color: #f8f9fa;
+    border-right: 2px solid #dee2e6;
 }
 
-/* Titolo Customizzato */
+/* Titolo Centrale Moderno */
 .custom-title {
-    font-size: 42px; 
-    font-weight: 800; 
-    color: #002b5c; 
+    font-size: 40px; 
+    font-weight: bold; 
+    color: #000000; 
     text-align: center;
     padding: 25px; 
-    background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-    border-radius: 20px;
+    background-color: #f8f9fa;
+    border-radius: 15px;
     margin-bottom: 30px; 
-    border: 1px solid #bccad6;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    border: 1px solid #dee2e6;
 }
 
-/* Anteprima Ebook - Stile Pagina Reale */
+/* Anteprima Ebook: Effetto Carta Stampata Professionale */
 .preview-box {
     background-color: #ffffff; 
-    padding: 70px; 
+    padding: 60px; 
     border: 1px solid #d3d6db;
-    border-radius: 4px; 
+    border-radius: 5px; 
     height: 800px; 
     overflow-y: scroll;
-    font-family: 'Georgia', serif; 
+    font-family: 'Times New Roman', serif; 
     line-height: 1.8; 
     color: #1a1a1a;
-    box-shadow: 0px 20px 40px rgba(0,0,0,0.1);
+    box-shadow: 0px 15px 35px rgba(0,0,0,0.1);
     margin: 0 auto;
-    max-width: 900px;
 }
 
-/* Pulsanti Blu Antonino PRO */
+/* PULSANTI BLU ANTONINO - Alta Visibilità */
 .stButton>button {
     width: 100%; 
     border-radius: 12px; 
     height: 4em; 
-    font-weight: 700;
+    font-weight: bold;
     background-color: #007BFF !important; 
     color: white !important;
-    font-size: 17px !important; 
+    font-size: 18px !important; 
     border: none; 
-    box-shadow: 0px 6px 15px rgba(0, 123, 255, 0.25);
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0px 4px 12px rgba(0, 123, 255, 0.3);
+    transition: all 0.3s ease;
+    cursor: pointer;
 }
 
 .stButton>button:hover { 
     background-color: #0056b3 !important; 
-    transform: translateY(-3px); 
-    box-shadow: 0px 10px 25px rgba(0, 86, 179, 0.35);
+    transform: translateY(-2px); 
+    box-shadow: 0px 6px 18px rgba(0, 86, 179, 0.4);
 }
 
-/* Input e Selectbox */
-.stTextInput>div>div>input, .stSelectbox>div>div>div {
-    border-radius: 10px !important;
+/* Stile Input */
+.stTextInput>div>div>input {
+    border-radius: 8px !important;
 }
 
-h2 { color: #004a99; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+/* Scrollbar personalizzata per anteprima */
+.preview-box::-webkit-scrollbar { width: 10px; }
+.preview-box::-webkit-scrollbar-track { background: #f1f1f1; }
+.preview-box::-webkit-scrollbar-thumb { background: #007BFF; border-radius: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 # =================================================================
-# 4. CLASSI E FUNZIONI CORE (PDF, GPT, LOGICA)
+# 4. FUNZIONI LOGICHE E GESTIONE TESTO
 # =================================================================
-class PDF(FPDF):
-    """Gestore Esportazione PDF con supporto autore"""
-    def __init__(self, autore):
-        super().__init__()
-        self.autore = autore
-    def header(self):
-        if self.page_no() > 1 and self.autore:
-            self.set_font('Arial', 'I', 8)
-            self.cell(0, 10, f"Author: {self.autore}", 0, 0, 'C')
-            self.ln(10)
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
 def chiedi_gpt(prompt, system_prompt):
-    """Funzione di comunicazione con OpenAI GPT-4o"""
+    """Interfaccia principale con il modello GPT-4o"""
     try:
         response = client.chat.completions.create(
             model="gpt-4o", 
@@ -229,110 +212,109 @@ def chiedi_gpt(prompt, system_prompt):
             ],
             temperature=0.75
         )
-        testo = response.choices[0].message.content.strip()
-        # Pulizia automatica tag IA
-        tag_inutili = ["ecco", "certamente", "spero", "ciao", "fase", "parte", "here is", "sure"]
-        linee = testo.split("\n")
-        pulito = [l for l in linee if not any(l.lower().startswith(t) for t in tag_inutili)]
-        return "\n".join(pulito).strip()
+        testo_grezzo = response.choices[0].message.content.strip()
+        # Pulizia rigorosa dei metadati IA
+        tag_filtraggio = ["ecco", "certamente", "spero", "ciao", "fase", "parte", "here is", "sure", "ok"]
+        righe = testo_grezzo.split("\n")
+        risultato = [r for r in righe if not any(r.lower().startswith(t) for t in tag_filtraggio)]
+        return "\n".join(risultato).strip()
     except Exception as e:
-        return f"Errore Tecnico API: {str(e)}"
+        return f"Errore Connessione: {str(e)}"
 
 def sync_capitoli():
-    """Analizza l'indice testuale e aggiorna la lista capitoli nel session_state"""
+    """Analizza l'indice e popola la lista dei capitoli selezionabili"""
     testo = st.session_state.get("indice_raw", "")
     if not testo:
         st.session_state['lista_capitoli'] = []
         return
-    linee = testo.split('\n')
-    trovati = []
-    # Pattern per riconoscere capitoli: Numerati, "Capitolo X", "Chapter X", ecc.
-    pattern = r'^(Capitolo|Chapter|Kapitel|Capítulo|Раздел|章节|Secţiune|Parte|\d+\.)'
-    for l in linee:
-        if re.search(pattern, l.strip(), re.I):
-            trovati.append(l.strip())
-    st.session_state['lista_capitoli'] = trovati
+    righe = testo.split('\n')
+    validi = []
+    # Rilevamento capitoli tramite regex (compatibile con 8 lingue)
+    for r in righe:
+        if re.search(r'(?i)(Capitolo|Chapter|Kapitel|Capítulo|Раздел|章节|Secţiune|Parte|\d+\.)', r.strip()):
+            validi.append(r.strip())
+    st.session_state['lista_capitoli'] = validi
 
 # =================================================================
-# 5. SIDEBAR: CONFIGURAZIONE PROGETTO
+# 5. SIDEBAR: SETUP EDITORIALE COMPLETO
 # =================================================================
 with st.sidebar:
-    # Scelta Lingua (Determina tutto il dizionario)
-    lang_choice = st.selectbox("🌐 Seleziona Lingua / Language", list(TRADUZIONI.keys()))
-    L = TRADUZIONI[lang_choice]
+    # Selettore Lingua: Determina tutte le etichette dell'app
+    lingua_selezionata = st.selectbox("🌐 Lingua Interfaccia / Language", list(TRADUZIONI.keys()))
+    L = TRADUZIONI[lingua_selezionata]
     
     st.title(L["side_tit"])
-    titolo_l = st.text_input(L["lbl_tit"], placeholder="Es: I Segreti della Scienza")
-    autore_l = st.text_input(L["lbl_auth"], placeholder="Nome dell'Autore")
+    titolo_l = st.text_input(L["lbl_tit"], placeholder="Inserisci titolo...")
+    autore_l = st.text_input(L["lbl_auth"], placeholder="Nome dell'autore")
     
-    # Elenco Generi Completo (Richiesto: Scientifico, Quiz, Rosa, ecc.)
-    genere_list = [
+    # Lista Generi Completa (Scientifico, Rosa, Quiz inclusi)
+    elenco_generi = [
         "Saggio Scientifico", "Manuale Tecnico", "Manuale Psicologico", 
         "Business & Marketing", "Motivazionale / Self-Help", "Biografia / Autobiografia", 
         "Libro di Quiz / Test Didattico", "Saggio Breve", "Romanzo Rosa", 
         "Romanzo Storico", "Thriller / Noir", "Fantasy", "Fantascienza"
     ]
-    genere = st.selectbox(L["lbl_gen"], genere_list)
+    genere = st.selectbox(L["lbl_gen"], elenco_generi)
     
-    # Modalità di Scrittura
+    # Selezione Tipologia Scrittura
     modalita = st.selectbox(L["lbl_style"], ["Standard", "Professionale (Accademica/Tecnica)"])
     
-    # Trama/Prompt Centrale
-    trama = st.text_area(L["lbl_plot"], height=150, placeholder="Descrivi l'argomento centrale...")
+    # Trama / Descrizione Argomento
+    trama = st.text_area(L["lbl_plot"], height=150, placeholder="Descrivi il tema centrale...")
     
     st.markdown("---")
-    # Pulsante Reset
+    # Tasto Reset Progetto
     if st.button(L["btn_res"]):
-        for k in list(st.session_state.keys()): del st.session_state[k]
+        for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
 
 # =================================================================
-# 6. LOGICA DI SCRITTURA E COERENZA (FILO LOGICO)
+# 6. LOGICA DI SCRITTURA INTEGRATA E ANTI-RIPETIZIONE
 # =================================================================
-# Mappatura fasi per forzare la lunghezza (2000 parole)
-fasi_map = {
-    "Italiano": ["Introduzione Sistematica", "Analisi dei Dati e Sviluppo", "Sintesi e Conclusioni"],
-    "English": ["Systematic Introduction", "Data Analysis & Development", "Synthesis & Conclusions"],
-    "Deutsch": ["Einleitung", "Entwicklung", "Zusammenfassung"],
-    "Français": ["Introduction", "Développement", "Synthèse"],
-    "Español": ["Introducción", "Desarrollo", "Síntesis"]
+# Mappatura fasi per forzare la lunghezza (Target 2000 parole)
+mappa_fasi = {
+    "Italiano": ["Esposizione e Introduzione", "Corpo Centrale Analitico", "Conclusioni e Prospettive"],
+    "English": ["Deep Introduction", "Analytical Core", "Conclusions & Perspectives"],
+    "Deutsch": ["Einleitung", "Hauptteil", "Fazit"],
+    "Français": ["Introduction", "Développement", "Conclusion"],
+    "Español": ["Introducción", "Desarrollo", "Conclusión"]
 }
-fasi = fasi_map.get(lang_choice, ["Part 1", "Part 2", "Part 3"])
+fasi_lavoro = mappa_fasi.get(lingua_selezionata, ["Phase 1", "Phase 2", "Phase 3"])
 
 # =================================================================
-# 7. UI PRINCIPALE (TAB SYSTEM)
+# 7. UI PRINCIPALE: TAB NAVIGATION
 # =================================================================
-st.markdown(f'<div class="custom-title">AI: {titolo_l if titolo_l else "Ebook Creator Professional"}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="custom-title">AI Editor: {titolo_l if titolo_l else "Creatore Ebook Mondiale"}</div>', unsafe_allow_html=True)
 
 if titolo_l and trama:
-    # Definizione Prompt di Sistema Avanzato (Anti-Ripetizione e Filo Logico)
-    stile_ia = "altamente tecnico e accademico" if modalita == "Professionale (Accademica/Tecnica)" else "fluido e coinvolgente"
+    # Configurazione Prompt IA Autorità Mondiale
+    tono = "formale, accademico e tecnico" if modalita == "Professionale (Accademica/Tecnica)" else "creativo, fluido e naturale"
     
-    # Costruiamo un "Context Summary" basato sui capitoli già scritti per evitare ripetizioni
-    context_keys = [k for k in st.session_state.keys() if k.startswith("txt_")]
-    context_brief = "Evita di ripetere concetti già trattati nelle sezioni precedenti." if context_keys else ""
+    # Gestione Filo Logico: controllo capitoli precedenti
+    sezioni_salvate = [k for k in st.session_state.keys() if k.startswith("txt_")]
+    memoria_testo = "Assicurati di non ripetere dati o concetti già espressi nelle altre sezioni del libro." if sezioni_salvate else ""
 
     S_PROMPT = f"""
-Sei un'Autorità Mondiale nel settore {genere}. Scrivi esclusivamente in {lang_choice}.
-Stile richiesto: {stile_ia}. Target: Capitoli monumentali (minimo 2000 parole).
+Sei un'Autorità Mondiale nel settore {genere}. Scrivi in {lingua_selezionata}.
+Stile: {tono}. Target: 2000 parole per ogni capitolo.
 
-REGOLE DI COERENZA E UNICITÀ:
-1. FILO LOGICO: Ogni capitolo deve essere una prosecuzione logica del precedente.
-2. ANTI-RIPETIZIONE: {context_brief} Non usare gli stessi esempi, dati o citazioni in capitoli diversi.
-3. DETTAGLIO: Espandi ogni paragrafo con analisi, casi studio e approfondimenti tecnici.
-4. STRUTTURA: Usa sottotitoli interni e liste puntate dove necessario.
-5. NO META-DATA: Scrivi solo il testo del libro.
+REGOLE MANDATORIE:
+1. ANTI-RIPETIZIONE: {memoria_testo} Varia il lessico e gli esempi.
+2. FILO LOGICO: Ogni capitolo deve essere collegato all'indice e alla trama generale: {trama}.
+3. DETTAGLIO: Fornisci analisi profonde, dati tecnici e descrizioni esaustive.
+4. STRUTTURA: Utilizza titoli interni, paragrafi ben spaziati e sezioni logiche.
+5. NO DIALOGO IA: Scrivi solo il testo finale del libro, senza preamboli.
 """
 
     tabs = st.tabs(L["tabs"])
 
-    # --- TAB 1: INDICE E STRUTTURA ---
+    # --- TAB 1: INDICE E ARCHITETTURA ---
     with tabs[0]:
-        st.subheader("📊 Pianificazione della Struttura")
+        st.subheader("📊 Architettura dell'Opera")
         if st.button(L["btn_idx"]):
-            with st.spinner("L'Editor sta strutturando il libro..."):
-                p_idx = f"Crea un indice completo, logico e sequenziale per un libro di {genere} intitolato '{titolo_l}' in {lang_choice}. Argomento: {trama}. Assicura un'evoluzione coerente tra i capitoli."
-                st.session_state["indice_raw"] = chiedi_gpt(p_idx, "Professional Book Planner & Architect.")
+            with st.spinner("L'IA sta organizzando la struttura logica..."):
+                p_idx = f"Genera un indice monumentale, logico e progressivo per un libro '{genere}' intitolato '{titolo_l}' in {lingua_selezionata}. Argomento: {trama}. Assicurati che non ci siano ripetizioni tra i capitoli."
+                st.session_state["indice_raw"] = chiedi_gpt(p_idx, "Professional Book Architect.")
                 sync_capitoli()
         
         st.session_state["indice_raw"] = st.text_area(L["lbl_tit"], value=st.session_state.get("indice_raw", ""), height=400)
@@ -341,114 +323,124 @@ REGOLE DI COERENZA E UNICITÀ:
             sync_capitoli()
             st.success(L["msg_success_sync"])
 
-    # --- TAB 2: SCRITTURA, RIELABORAZIONE E QUIZ ---
+    # --- TAB 2: SCRITTURA, EDITING E QUIZ INTEGRATO ---
     with tabs[1]:
-        lista_c = st.session_state.get("lista_capitoli", [])
-        if not lista_c:
+        capitoli_sincronizzati = st.session_state.get("lista_capitoli", [])
+        if not capitoli_sincronizzati:
             st.warning(L["msg_err_idx"])
         else:
-            opzioni_finali = [L["preface"]] + lista_c + [L["ack"]]
-            cap_sel = st.selectbox(L["lbl_sec"], opzioni_finali)
-            key_sez = f"txt_{cap_sel.replace(' ', '_').replace('.', '')}"
+            # Menu Sezioni
+            menu_sez = [L["preface"]] + capitoli_sincronizzati + [L["ack"]]
+            sez_corrente = st.selectbox(L["lbl_sec"], menu_sez)
+            chiave_testo = f"txt_{sez_corrente.replace(' ', '_').replace('.', '')}"
 
-            # Layout 3 Colonne per i Comandi
-            col_w, col_e, col_q = st.columns([2, 2, 1])
+            # Griglia Comandi (Scrittura, Rielaborazione, Quiz)
+            c_write, c_rewrite, c_quiz = st.columns([2, 2, 1])
             
-            with col_w:
+            with c_write:
                 if st.button(L["btn_write"]):
                     with st.spinner(L["msg_run"]):
-                        # Logica a 3 fasi per forzare 2000 parole
-                        testo_capitolo = ""
-                        for f_nome in fasi:
-                            prompt_fase = f"L'indice del libro è: {st.session_state['indice_raw']}. Scrivi la sezione '{cap_sel}', focalizzandoti sulla fase: {f_nome}. Espandi al massimo."
-                            testo_capitolo += chiedi_gpt(prompt_fase, S_PROMPT) + "\n\n"
-                        st.session_state[key_sez] = testo_capitolo
+                        testo_finale = ""
+                        # Generazione in 3 fasi per garantire le 2000 parole senza tagli
+                        for fase_n in fasi_lavoro:
+                            p_fase = f"L'indice del libro è: {st.session_state['indice_raw']}. Scrivi la sezione '{sez_corrente}', fase specifica: {fase_n}. Espandi ogni dettaglio."
+                            testo_finale += chiedi_gpt(p_fase, S_PROMPT) + "\n\n"
+                        st.session_state[chiave_testo] = testo_finale
             
-            with col_e:
-                istr_m = st.text_input(L["btn_edit"], key=f"istr_{key_sez}", placeholder="Esempio: Rendi più drammatico...")
-                if st.button(L["btn_edit"] + " 🚀"):
-                    if key_sez in st.session_state:
-                        with st.spinner("Rielaborazione..."):
-                            p_edit = f"Rielabora il seguente testo seguendo questa istruzione: {istr_m}. Mantieni lo stile autoritario.\n\nTesto attuale:\n{st.session_state[key_sez]}"
-                            st.session_state[key_sez] = chiedi_gpt(p_edit, S_PROMPT)
+            with c_rewrite:
+                istr_ia = st.text_input(L["btn_edit"], key=f"istr_{chiave_testo}", placeholder="Es: Più cupo, più tecnico...")
+                if st.button(L["btn_edit"] + " 🪄"):
+                    if chiave_testo in st.session_state:
+                        with st.spinner("Rielaborazione in corso..."):
+                            p_edit = f"Riscrivi il testo seguendo questa direttiva: {istr_ia}. Mantieni la coerenza. Testo:\n{st.session_state[chiave_testo]}"
+                            st.session_state[chiave_testo] = chiedi_gpt(p_edit, S_PROMPT)
                             st.rerun()
 
-            with col_q:
-                if st.button("🧠 QUIZ"):
-                    if key_sez in st.session_state:
-                        with st.spinner("Creazione Quiz..."):
-                            p_quiz = f"Basandoti sul capitolo '{cap_sel}', genera 10 domande a risposta multipla con soluzioni corrette spiegate. Scrivi in {lang_choice}."
-                            quiz_res = chiedi_gpt(p_quiz, "Accademico esperto in valutazione.")
-                            # Integrazione del Quiz nel testo del libro
-                            st.session_state[key_sez] += f"\n\n---\n\n### TEST DI AUTOVALUTAZIONE: {cap_sel}\n\n" + quiz_res
-                            st.success("Quiz Aggiunto!")
+            with c_quiz:
+                if st.button(L["btn_quiz"]):
+                    if chiave_testo in st.session_state:
+                        with st.spinner("Generando Quiz..."):
+                            p_quiz = f"Crea un test di 10 domande a risposta multipla basato sul capitolo '{sez_corrente}'. Includi soluzioni spiegate. Lingua: {lingua_selezionata}."
+                            test_ia = chiedi_gpt(p_quiz, "Specialista in valutazione didattica.")
+                            # Il quiz viene iniettato nel testo per essere esportato
+                            st.session_state[chiave_testo] += f"\n\n---\n\n### TEST DI VALUTAZIONE: {sez_corrente}\n\n" + test_ia
+                            st.success("Quiz integrato!")
                             st.rerun()
 
-            # Editor di Testo Manuale (Session State Persistence)
-            if key_sez in st.session_state:
-                st.markdown(f"### {L['label_editor'] if 'label_editor' in L else 'Editor'}")
-                st.session_state[key_sez] = st.text_area("Edit", value=st.session_state[key_sez], height=500, key=f"area_{key_sez}")
+            # Editor Testuale con persistenza dati
+            if chiave_testo in st.session_state:
+                st.markdown(f"#### {L['label_editor']}")
+                st.session_state[chiave_testo] = st.text_area("Live Editor", value=st.session_state[chiave_testo], height=500, key=f"area_{chiave_testo}")
 
-    # --- TAB 3: ANTEPRIMA REALISTICA ---
+    # --- TAB 3: ANTEPRIMA PROFESSIONALE ---
     with tabs[2]:
         st.subheader(L["preview_tit"])
-        # Costruzione dell'HTML per l'anteprima
-        preview_html = f"<div class='preview-box'>"
-        preview_html += f"<h1 style='text-align:center; font-size:48px; color:#000;'>{titolo_l.upper()}</h1>"
+        # Costruzione dinamica della visualizzazione libro
+        html_libro = f"<div class='preview-box'>"
+        html_libro += f"<h1 style='text-align:center; font-size:50px; color:#000;'>{titolo_l.upper()}</h1>"
         if autore_l:
-            preview_html += f"<h3 style='text-align:center; font-style:italic; font-size:24px;'>{autore_l}</h3>"
-        preview_html += "<div style='height:300px'></div>" # Spazio per frontespizio
+            html_libro += f"<h3 style='text-align:center; font-style:italic; font-size:26px;'>di {autore_l}</h3>"
+        html_libro += "<div style='height:250px'></div>" # Spazio frontespizio
         
-        # Iterazione su tutte le sezioni salvate
-        for s in opzioni_finali:
-            sk = f"txt_{s.replace(' ', '_').replace('.', '')}"
-            if sk in st.session_state and st.session_state[sk].strip():
-                preview_html += f"<h2 style='page-break-before:always; color:#000; font-size:32px;'>{s.upper()}</h2>"
-                # Trasformazione newline in <br> per HTML
-                testo_formattato = st.session_state[sk].replace('\n', '<br>')
-                preview_html += f"<p style='text-align:justify;'>{testo_formattato}</p>"
+        testo_trovato = False
+        for s_idx in menu_sez:
+            k_sez = f"txt_{s_idx.replace(' ', '_').replace('.', '')}"
+            if k_sez in st.session_state and st.session_state[k_sez].strip():
+                html_libro += f"<h2 style='page-break-before:always; color:#000; font-size:32px; border:none;'>{s_idx.upper()}</h2>"
+                # Pulizia per HTML
+                txt_html = st.session_state[k_sez].replace('\n', '<br>')
+                html_libro += f"<p style='text-align:justify; font-size:18px;'>{txt_html}</p>"
+                testo_trovato = True
         
-        preview_html += "</div>"
-        st.markdown(preview_html, unsafe_allow_html=True)
+        if not testo_trovato:
+            html_libro += f"<p style='text-align:center; color:#888;'>Nessun contenuto disponibile. Inizia la scrittura nella Tab 2.</p>"
+        
+        html_libro += "</div>"
+        st.markdown(html_libro, unsafe_allow_html=True)
 
-    # --- TAB 4: ESPORTAZIONE PROFESSIONALE ---
+    # --- TAB 4: ESPORTAZIONE E DOWNLOAD ---
     with tabs[3]:
-        st.subheader("📑 Finalizzazione ed Esportazione")
-        st.write("Puoi scaricare il tuo libro in formato Word professionale. Il file conterrà l'indice, tutti i capitoli e i quiz generati.")
+        st.subheader("📑 Esportazione Documento")
+        st.info("Il file generato conterrà l'indice, il testo completo dei capitoli e tutti i quiz inseriti.")
         
         if st.button(L["btn_word"]):
-            doc = Document()
-            # Impostazioni Titolo
-            doc.add_heading(titolo_l, 0)
-            if autore_l: doc.add_paragraph(f"Autore: {autore_l}")
+            documento = Document()
+            # Impostazione frontespizio
+            documento.add_heading(titolo_l, 0)
+            if autore_l: documento.add_paragraph(f"Autore: {autore_l}")
             
-            # Aggiunta Indice nel documento
-            doc.add_page_break()
-            doc.add_heading("INDICE", level=1)
-            doc.add_paragraph(st.session_state.get("indice_raw", ""))
+            # Aggiunta Indice
+            documento.add_page_break()
+            documento.add_heading("INDICE", level=1)
+            documento.add_paragraph(st.session_state.get("indice_raw", ""))
             
-            # Aggiunta Capitoli
-            for s in opzioni_finali:
-                sk = f"txt_{s.replace(' ', '_').replace('.', '')}"
-                if sk in st.session_state:
-                    doc.add_page_break()
-                    doc.add_heading(s.upper(), level=1)
-                    doc.add_paragraph(st.session_state[sk])
+            # Ciclo su tutte le sezioni compilate
+            for s_export in menu_sez:
+                chiave_export = f"txt_{s_export.replace(' ', '_').replace('.', '')}"
+                if chiave_export in st.session_state:
+                    documento.add_page_break()
+                    documento.add_heading(s_export.upper(), level=1)
+                    documento.add_paragraph(st.session_state[chiave_export])
             
-            # Gestione del buffer di memoria per il download
-            buf_word = BytesIO()
-            doc.save(buf_word)
-            buf_word.seek(0)
-            st.download_button(L["btn_word"], buf_word, file_name=f"{titolo_l.replace(' ','_')}.docx")
+            # Generazione Buffer per download Word
+            memoria_file = BytesIO()
+            documento.save(memoria_file)
+            memoria_file.seek(0)
+            st.download_button(L["btn_word"], memoria_file, file_name=f"{titolo_l.replace(' ','_')}.docx")
 
 else:
-    # Pagina di Benvenuto
-    st.info("👋 Benvenuto nell'Ebook Creator di Antonino. Inserisci Titolo e Trama nella sidebar per sbloccare l'IA.")
+    # Schermata Iniziale: Guida Rapida
+    st.info("👋 Benvenuto nell'Ebook Creator di Antonino. Configura la sidebar a sinistra per sbloccare le funzioni.")
     st.markdown("""
-    ### Come Funziona:
-    1. **Configura**: Scegli lingua, genere e stile.
-    2. **Indice**: Lascia che l'IA crei una struttura logica coerente.
-    3. **Scrittura**: Genera ogni capitolo con un focus sull'analisi profonda (min 2000 parole).
-    4. **Quiz**: Aggiungi test di valutazione direttamente nel testo.
-    5. **Esporta**: Scarica il tuo libro pronto per la pubblicazione!
+    ### Istruzioni d'uso:
+    1. **Configurazione**: Scegli lingua, genere (Scientifico, Rosa, Quiz, ecc.) e tipologia di scrittura.
+    2. **Indice (Tab 1)**: Genera la struttura del libro. È fondamentale sincronizzare l'indice per abilitare la scrittura.
+    3. **Scrittura (Tab 2)**: L'IA scriverà capitoli monumentali evitando ripetizioni e mantenendo il filo logico.
+    4. **Quiz**: Puoi aggiungere test di autovalutazione alla fine di ogni capitolo con un solo click.
+    5. **Anteprima (Tab 3)**: Leggi il tuo libro in formato cartaceo virtuale.
+    6. **Download (Tab 4)**: Scarica il file Word completo e pronto per la stampa o pubblicazione.
     """)
+
+# =================================================================
+# FINE DEL CODICE - ARCHITETTURA PROGETTO EBOOK CREATOR
+# =================================================================
