@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- BLOCCO CSS ---
+# --- BLOCCO CSS (UI PULITA, SIDEBAR BLOCCATA E TITOLO VISIBILE) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -68,6 +68,7 @@ class PDF(FPDF):
         super().__init__()
         self.autore = autore
     def header(self):
+        # Se l'autore è vuoto, non scrive l'intestazione nelle pagine successive
         if self.page_no() > 1 and self.autore:
             self.set_font('Arial', 'I', 8)
             self.cell(0, 10, f"Autore: {self.autore}", 0, 0, 'C')
@@ -118,7 +119,9 @@ st.markdown('<div class="custom-title">AI di Antonino: Crea il tuo Ebook</div>',
 with st.sidebar:
     st.title("⚙️ Configurazione")
     titolo_l = st.text_input("Titolo del Libro", placeholder="Inserisci il titolo...")
+    # CAMPO AUTORE VUOTO
     nome_autore = st.text_input("Nome Autore", value="")
+    
     lingua_l = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
     genere_l = st.selectbox("Genere", ["Manuale Tecnico", "Manuale Psicologico", "Saggio", "Motivazionale", "Thriller", "Noir", "Fantasy", "Romanzo Rosa"])
     trama_l = st.text_area("Trama e Argomento Centrale", height=180, placeholder="Descrivi chiaramente di cosa parla il libro...")
@@ -129,7 +132,6 @@ with st.sidebar:
         st.rerun()
 
 if titolo_l and trama_l:
-    # SYSTEM PROMPT BINDING: Ancora il contenuto al Titolo e alla Trama
     S_PROMPT = (
         f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}.\n"
         f"RIFERIMENTO FISSO: Il libro si intitola '{titolo_l}' e tratta di: '{trama_l}'.\n"
@@ -166,14 +168,20 @@ if titolo_l and trama_l:
         if st.button(f"SCRIVI {sez_s.upper()}"):
             with st.spinner(f"Scrittura in corso... (Focus: {titolo_l})"):
                 testo_cap = ""
-                # Generazione in blocchi per evitare ripetizioni e garantire profondità
+                # Analisi memoria precedente per evitare ripetizioni
+                memoria = ""
+                percorso_memoria = ["prefazione"] + [c.lower().replace(" ", "_") for c in st.session_state['lista_capitoli']]
+                for m_k in percorso_memoria:
+                    if m_k in st.session_state:
+                        memoria += f"RIASSUNTO {m_k.upper()}: {st.session_state[m_k][:400]}...\n"
+
                 for fase in ["Incipit", "Sviluppo centrale", "Sintesi e chiusura"]:
                     p_scr = (
-                        f"Stai scrivendo la sezione: {sez_s}.\n"
-                        f"Argomento del capitolo: {arg_cap}.\n"
-                        f"Focus Libro: {titolo_l} - {trama_l}.\n"
-                        f"Fase attuale: {fase}.\n"
-                        "Assicurati che il contenuto sia originale e strettamente legato al tema centrale."
+                        f"CONTESTO EBOOK: {memoria}\n"
+                        f"Sezione attuale: {sez_s}.\n"
+                        f"Argomento specifico: {arg_cap}.\n"
+                        f"Fase: {fase}.\n"
+                        "Assicurati che il contenuto sia originale e strettamente legato al tema centrale senza ripetere quanto già scritto."
                     )
                     testo_cap += chiedi_gpt(p_scr, S_PROMPT) + "\n\n"
                 st.session_state[k_s] = testo_cap
@@ -201,24 +209,23 @@ if titolo_l and trama_l:
             with c_mod2:
                 dettagli = st.text_area("Dettagli per la modifica:", placeholder="Cosa deve cambiare esattamente?", height=150)
             
-            # Area di modifica con versione dinamica per aggiornamento forzato
             testo_input = st.text_area("Testo attuale da modificare:", 
                                       value=st.session_state[k_m], 
                                       height=350, 
                                       key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
             
-            if st.button("🚀 ESEGUI MODIFICA"):
+            if st.button("🚀 ESEGUI MODIFICA CONCRETA"):
                 with st.spinner("L'IA sta rielaborando il testo..."):
                     p_mod = (
                         f"Modifica il seguente testo della sezione {sez_m}.\n"
-                        f"Richiesta: {intervento}. Note: {dettagli}.\n"
-                        f"Mantieni il focus su: {titolo_l}.\n\n"
+                        f"Azione: {intervento}. Dettagli: {dettagli}.\n"
+                        f"Mantieni focus su: {titolo_l}.\n\n"
                         f"Testo:\n{testo_input}"
                     )
                     nuovo_t = chiedi_gpt(p_mod, S_PROMPT + " Revisione Editoriale.")
                     st.session_state[k_m] = nuovo_t
                     st.session_state[f"ver_{k_m}"] += 1
-                    st.success("Testo modificato con successo!")
+                    st.success("Testo modificato!")
                     st.rerun()
         else:
             st.info("Genera prima il contenuto nella scheda 'Scrittura Capitoli'.")
