@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- CSS (UI PULITA E TITOLO VISIBILE) ---
+# --- CSS ---
 st.markdown("""
 <style>
 #MainMenu {visibility: hidden;}
@@ -42,6 +42,19 @@ section[data-testid="stSidebar"] {
     border: 1px solid #e6e9ef;
 }
 
+.preview-box {
+    background-color: white;
+    padding: 40px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    height: 600px;
+    overflow-y: scroll;
+    font-family: 'Georgia', serif;
+    line-height: 1.6;
+    color: #333;
+    box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+}
+
 .stButton>button {
     width: 100%;
     border-radius: 10px;
@@ -50,11 +63,6 @@ section[data-testid="stSidebar"] {
     background-color: #f0f2f6 !important;
     color: #31333F !important;
     border: 1px solid #d3d6db;
-}
-
-.stButton>button:hover {
-    border-color: #ff4b4b;
-    color: #ff4b4b !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -72,9 +80,8 @@ class PDF(FPDF):
             self.ln(10)
 
 # --- FUNZIONI ---
-
 def pulisci_testo_ia(testo):
-    tag_proibiti = ["ecco", "certamente", "spero", "ciao", "inizio", "sviluppo", "fine", "fase", "parte", "here is", "sure"]
+    tag_proibiti = ["ecco", "certamente", "spero", "ciao", "inizio", "sviluppo", "fine", "fase", "parte"]
     linee = testo.split("\n")
     pulito = [l for l in linee if not any(l.lower().startswith(t) for t in tag_proibiti)]
     return "\n".join(pulito).strip()
@@ -106,10 +113,9 @@ def sync_capitoli():
     st.session_state['mappa_capitoli'] = mappa
     st.session_state['lista_capitoli'] = list(mappa.keys())
 
-# --- UI HEADER ---
+# --- UI ---
 st.markdown('<div class="custom-title">AI di Antonino: Crea il tuo Ebook</div>', unsafe_allow_html=True)
 
-# --- SIDEBAR ---
 with st.sidebar:
     st.title("⚙️ Configurazione")
     titolo_l = st.text_input("Titolo Libro")
@@ -122,67 +128,73 @@ with st.sidebar:
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
 
-# --- LOGICA ---
 if titolo_l and trama:
+    # PROMPT AGGIORNATO CON VINCOLO 2000 PAROLE
     S_PROMPT = f"""
 Sei un'autorità mondiale nel settore: {genere}. Scrivi in {lingua}.
 Titolo: "{titolo_l}". Argomento: "{trama}".
-REGOLE: Expertise di massimo livello, fonti attendibili, stile fluido, NO ripetizioni.
+
+REGOLE CRITICHE DI SCRITTURA:
+1. LUNGHEZZA: Ogni capitolo deve essere estremamente prolisso, dettagliato e approfondito. Mira a un minimo di 2000 parole per sezione.
+2. STRUTTURA: Usa sottocapitoli, analisi di casi studio, spiegazioni tecniche e narrazioni estese per espandere il contenuto.
+3. QUALITÀ: Expertise di massimo livello, fonti attendibili rielaborate, stile fluido, NO ripetizioni.
+4. Ogni paragrafo deve essere ricco di informazioni originali e analisi critica.
 """
 
-    tab1, tab2, tab3 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura e Modifica", "📑 3. Esportazione"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura e Modifica", "📖 3. Anteprima Ebook", "📑 4. Esportazione"])
 
     # --- 1. INDICE ---
     with tab1:
         if st.button("Genera Indice Autorevole"):
-            p_ind = f"Crea un indice logico per '{titolo_l}' basato su: {trama}."
-            st.session_state["indice_raw"] = chiedi_gpt(p_ind, "Editor esperto.")
+            st.session_state["indice_raw"] = chiedi_gpt(f"Crea un indice logico per '{titolo_l}' basato su: {trama}.", "Editor esperto.")
             sync_capitoli()
-        
         st.session_state["indice_raw"] = st.text_area("Modifica Indice", value=st.session_state.get("indice_raw", ""), height=300)
-        
         if st.button("Sincronizza Capitoli"):
             sync_capitoli()
             st.rerun()
 
-    # --- 2. SCRITTURA E MODIFICA INTEGRATA ---
+    # --- 2. SCRITTURA E MODIFICA ---
     with tab2:
         if "lista_capitoli" not in st.session_state: sync_capitoli()
         opzioni = ["Prefazione"] + st.session_state.get("lista_capitoli", []) + ["Ringraziamenti"]
-        cap_sel = st.selectbox("Seleziona la sezione su cui lavorare:", opzioni)
+        cap_sel = st.selectbox("Seleziona la sezione:", opzioni)
         key_sez = f"txt_{cap_sel.lower().replace(' ', '_').replace('.', '')}"
 
-        col_generazione, col_rielaborazione = st.columns([1, 1])
-
-        with col_generazione:
-            if st.button(f"✨ Genera da Zero: {cap_sel}"):
-                with st.spinner("L'esperto sta scrivendo..."):
-                    testo_ia = chiedi_gpt(f"Sviluppa la sezione completa: '{cap_sel}'.", S_PROMPT)
+        col_g, col_r = st.columns([1, 1])
+        with col_g:
+            if st.button(f"✨ Genera Sezione Estesa: {cap_sel}"):
+                with st.spinner("L'esperto sta scrivendo un capitolo di oltre 2000 parole..."):
+                    testo_ia = chiedi_gpt(f"Sviluppa la sezione '{cap_sel}' in modo estremamente esaustivo, puntando a 2000 parole.", S_PROMPT)
                     st.session_state[key_sez] = testo_ia
 
-        with col_rielaborazione:
-            istr_mod = st.text_input("Istruzioni per rielaborare (es: 'Rendilo più tecnico')", key=f"istr_{key_sez}")
-            if st.button(f"🚀 Rielabora con IA: {cap_sel}"):
-                if key_sez in st.session_state and st.session_state[key_sez]:
-                    with st.spinner("Rielaborazione in corso..."):
-                        p_riel = f"RISCRIVI COMPLETAMENTE seguendo questa istruzione: {istr_mod}. Testo originale:\n{st.session_state[key_sez]}"
+        with col_r:
+            istr_mod = st.text_input("Istruzioni per espandere o rielaborare", key=f"istr_{key_sez}")
+            if st.button(f"🚀 Rielabora/Espandi con IA"):
+                if key_sez in st.session_state:
+                    with st.spinner("Espansione del testo in corso..."):
+                        p_riel = f"ESPANDI E RISCRIVI seguendo questa istruzione: {istr_mod}. Mantieni lo stile professionale e punta alla massima lunghezza. Testo attuale:\n{st.session_state[key_sez]}"
                         st.session_state[key_sez] = chiedi_gpt(p_riel, S_PROMPT + " Editor Senior.")
                         st.rerun()
-                else:
-                    st.warning("Genera prima il testo per poterlo rielaborare.")
 
-        # Editor Manuale Sempre Visibile
         if key_sez in st.session_state:
-            st.session_state[key_sez] = st.text_area("Editor Testuale (Modifica qui manualmente):", 
-                                                    value=st.session_state[key_sez], 
-                                                    height=450, 
-                                                    key=f"input_{key_sez}")
+            st.session_state[key_sez] = st.text_area("Editor Testuale (Modifica qui):", value=st.session_state[key_sez], height=450, key=f"input_{key_sez}")
 
-    # --- 3. EXPORT ---
+    # --- 3. ANTEPRIMA ---
     with tab3:
-        col1, col2 = st.columns(2)
+        st.subheader("📖 Anteprima di Lettura")
         lista_f = ["txt_prefazione"] + [f"txt_{c.lower().replace(' ', '_').replace('.', '')}" for c in st.session_state.get("lista_capitoli", [])] + ["txt_ringraziamenti"]
-        
+        anteprima_html = f"<div class='preview-box'><h1 style='text-align:center;'>{titolo_l.upper()}</h1>"
+        if autore_l: anteprima_html += f"<h3 style='text-align:center;'>di {autore_l}</h3>"
+        anteprima_html += "<hr><br>"
+        for s in lista_f:
+            if s in st.session_state and st.session_state[s].strip():
+                anteprima_html += f"<h2>{s.replace('txt_', '').upper().replace('_', ' ')}</h2><p>{st.session_state[s].replace('\\n', '<br>')}</p><br>"
+        anteprima_html += "</div>"
+        st.markdown(anteprima_html, unsafe_allow_html=True)
+
+    # --- 4. EXPORT ---
+    with tab4:
+        col1, col2 = st.columns(2)
         with col1:
             if st.button("Download PDF"):
                 pdf = PDF(autore_l)
@@ -191,17 +203,14 @@ REGOLE: Expertise di massimo livello, fonti attendibili, stile fluido, NO ripeti
                 for s in lista_f:
                     if s in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.replace("txt_", "").upper().replace("_", " "), 0, 1)
-                        pdf.ln(10); pdf.set_font("Arial", "", 12)
-                        pdf.multi_cell(0, 8, st.session_state[s].encode('latin-1', 'replace').decode('latin-1'))
+                        pdf.ln(10); pdf.set_font("Arial", "", 12); pdf.multi_cell(0, 8, st.session_state[s].encode('latin-1', 'replace').decode('latin-1'))
                 st.download_button("📥 Scarica PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"{titolo_l}.pdf")
-
         with col2:
             if st.button("Download Word"):
                 doc = Document(); doc.add_heading(titolo_l, 0)
                 if autore_l: doc.add_paragraph(f"Autore: {autore_l}")
                 for s in lista_f:
                     if s in st.session_state:
-                        doc.add_page_break(); doc.add_heading(s.replace("txt_", "").upper().replace("_", " "), level=1)
-                        doc.add_paragraph(st.session_state[s])
+                        doc.add_page_break(); doc.add_heading(s.replace("txt_", "").upper().replace("_", " "), level=1); doc.add_paragraph(st.session_state[s])
                 buf_w = BytesIO(); doc.save(buf_w); buf_w.seek(0)
                 st.download_button("📥 Scarica Word", buf_w, file_name=f"{titolo_l}.docx")
