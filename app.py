@@ -6,7 +6,7 @@ from openai import OpenAI
 # 1. Configurazione API
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- NASCONDI ELEMENTI DI SISTEMA (GitHub, Footer, Header) ---
+# --- NASCONDI ELEMENTI DI SISTEMA ---
 st.set_page_config(page_title="AI di Antonino", layout="wide")
 hide_st_style = """
             <style>
@@ -18,7 +18,7 @@ hide_st_style = """
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# CLASSE PDF PROFESSIONALE (Solo Autore nell'header)
+# CLASSE PDF PROFESSIONALE
 class PDF(FPDF):
     def __init__(self, autore):
         super().__init__()
@@ -37,10 +37,10 @@ def chiedi_gpt(p, s_p):
     )
     risposta = r.choices[0].message.content
     
-    # --- FILTRO ANTI-COMMENTI POTENZIATO ---
+    # FILTRO ANTI-COMMENTI
     linee = risposta.split('\n')
     linee_pulite = []
-    tag_da_eliminare = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", "perfetto", "fammi sapere", "buona lettura"]
+    tag_da_eliminare = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", "perfetto", "fammi sapere"]
     for l in linee:
         testo_l = l.strip().lower()
         if testo_l and not any(testo_l.startswith(p) for p in tag_da_eliminare):
@@ -78,14 +78,12 @@ if trama:
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta PDF"])
 
-    # --- 1. STRUTTURA ---
     with tab1:
         if st.button("Genera Indice"):
             st.session_state['indice'] = chiedi_gpt(f"Crea l'indice per il libro '{titolo}'. Trama: {trama}", S_P)
         if 'indice' in st.session_state:
             st.text_area("Indice generato", st.session_state['indice'], height=250)
 
-    # --- 2. COPERTINA ---
     with tab2:
         st.subheader("Generatore di Copertina Artistica")
         if st.button("Genera Immagine Copertina"):
@@ -99,7 +97,6 @@ if trama:
         if 'cover_url' in st.session_state:
             st.image(st.session_state['cover_url'], caption="Anteprima Copertina", width=350)
 
-    # --- 3. SCRITTURA ---
     with tab3:
         scelta = st.selectbox("Cosa scriviamo?", ["Prefazione", "Capitolo", "Ringraziamenti"])
         n_cap = st.number_input("Numero (se capitolo)", 1, 30) if scelta == "Capitolo" else 0
@@ -116,29 +113,30 @@ if trama:
         if key_attuale in st.session_state:
             st.text_area("Contenuto", st.session_state[key_attuale], height=400, key=f"view_{key_attuale}")
 
-    # --- 4. MODIFICA (FIXED) ---
+    # --- 4. MODIFICA STRUTTURANTE (MIGLIORATA) ---
     with tab4:
-        st.subheader("Revisione e Modifica Testi")
+        st.subheader("Editor Professionale: Modifica Strutturante")
         sezione_mod = st.selectbox("Seleziona sezione da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         chiave_mod = sezione_mod.lower().replace(" ", "_")
         
         if chiave_mod in st.session_state:
-            # Sincronizzazione immediata tra area di testo e memoria
             testo_input = st.text_area("Testo attuale", st.session_state[chiave_mod], height=300)
             st.session_state[chiave_mod] = testo_input
             
-            istruzione = st.text_input("Istruzione per l'IA (es: 'Cambia il finale', 'Rendi più tecnico')")
+            istruzione = st.text_input("Quale modifica strutturale desideri? (es: 'Riscrivi con uno stile più cupo', 'Espandi i dialoghi', 'Approfondisci la psicologia')")
             
-            if st.button("Applica Modifica con IA"):
-                with st.spinner("L'IA sta rielaborando..."):
-                    prompt_modifica = f"Testo attuale:\n{st.session_state[chiave_mod]}\n\nModifica richiesta: {istruzione}"
-                    st.session_state[chiave_mod] = chiedi_gpt(prompt_modifica, S_P)
-                    st.success("Testo aggiornato!")
+            if st.button("Applica Ristrutturazione"):
+                with st.spinner("L'IA sta ristrutturando il testo profondamente..."):
+                    # Prompt potenziato per modifiche strutturali
+                    S_P_MOD = S_P + " Agisci come un Senior Editor. Riorganizza il testo, migliora il ritmo e la profondità in base alla richiesta, mantenendo la coerenza ma trasformando la struttura se necessario."
+                    prompt_modifica = f"Testo originale da ristrutturare:\n{st.session_state[chiave_mod]}\n\nRICHIESTA DI RISTRUTTURAZIONE: {istruzione}"
+                    
+                    st.session_state[chiave_mod] = chiedi_gpt(prompt_modifica, S_P_MOD)
+                    st.success("Testo ristrutturato con successo!")
                     st.rerun()
         else:
             st.info("Genera prima questa sezione nella scheda 'Scrittura'.")
 
-    # --- 5. PDF ---
     with tab5:
         if st.button("Genera EBook Finale (PDF)"):
             nome_da_stampare = autore if autore else "Autore"
