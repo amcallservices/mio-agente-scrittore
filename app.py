@@ -10,12 +10,12 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # --- CONFIGURAZIONE PAGINA E SIDEBAR ---
 st.set_page_config(
-    page_title="AI di Antonino - Scrittore Professionale", 
+    page_title="AI di Antonino: Crea il tuo Ebook", 
     layout="wide", 
     initial_sidebar_state="expanded"
 )
 
-# --- BLOCCO CSS (COLORI ORIGINALI E SIDEBAR FISSA) ---
+# --- BLOCCO CSS (COLORI ORIGINALI, SIDEBAR FISSA E TITOLO) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -32,26 +32,35 @@ st.markdown("""
     }
 
     /* Contenitore principale */
-    .block-container { padding-top: 0rem; padding-bottom: 0rem; }
+    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
 
-    /* --- RIPRISTINO COLORI ORIGINALI --- */
+    /* Titolo Grande e Visibile */
+    .main-title {
+        font-size: 42px;
+        font-weight: bold;
+        color: #31333F;
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #f0f2f6;
+        padding-bottom: 10px;
+    }
+
+    /* Pulsanti Originali */
     .stButton>button {
         width: 100%;
         border-radius: 10px;
         height: 3.5em;
         font-weight: bold;
-        background-color: #f0f2f6 !important; /* Grigio chiaro originale */
-        color: #31333F !important; /* Testo scuro originale */
+        background-color: #f0f2f6 !important;
+        color: #31333F !important;
         border: 1px solid #d3d6db;
-        transition: all 0.2s ease;
     }
     
     .stButton>button:hover {
-        border-color: #ff4b4b; /* Rosso Streamlit al passaggio */
+        border-color: #ff4b4b;
         color: #ff4b4b !important;
     }
 
-    /* Stile aree di testo */
     .stTextArea textarea { 
         font-size: 16px !important; 
         line-height: 1.6 !important;
@@ -80,8 +89,8 @@ def pulisci_testo_ia(testo):
         if r_low and not any(r_low.startswith(tag) for tag in tag_proibiti):
             if not (r_low.startswith("capitolo") and len(r_low) < 60):
                 linee_pulite.append(riga)
-    testo_finale = '\n'.join(linee_pulite).strip()
-    return re.sub(r"(?i)(spero che|fammi sapere|ecco il|buona scrittura|spero ti piaccia).*$", "", testo_finale).strip()
+    testo_pulito = '\n'.join(linee_pulite).strip()
+    return re.sub(r"(?i)(spero che|fammi sapere|ecco il|buona scrittura|spero ti piaccia).*$", "", testo_pulito).strip()
 
 def chiedi_gpt(prompt, system_prompt):
     try:
@@ -117,10 +126,13 @@ def reset_app():
         del st.session_state[key]
     st.rerun()
 
-# --- SIDEBAR (CONFIGURAZIONE) ---
+# --- TITOLO VISIBILE ---
+st.markdown('<div class="main-title">AI di Antonino: Crea il tuo Ebook</div>', unsafe_allow_html=True)
+
+# --- SIDEBAR ---
 with st.sidebar:
-    st.title("✍️ AI Studio Antonino")
-    titolo_l = st.text_input("Titolo del Libro")
+    st.title("⚙️ Configurazione")
+    titolo_l = st.text_input("Titolo dell'opera")
     nome_autore = st.text_input("Nome Autore")
     lingua_l = st.selectbox("Lingua / Language", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
     genere_l = st.selectbox("Genere / Tipologia", ["Manuale Tecnico (Pratico/Divulgativo)", "Manuale Psicologico", "Thriller Psicologico", "Saggio", "Motivazionale", "Noir", "Thriller", "Fantasy", "Romanzo Storico", "Romanzo Rosa"])
@@ -130,87 +142,91 @@ with st.sidebar:
         reset_app()
 
 if trama_l:
-    S_PROMPT = f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}. REGOLE: Attieniti rigorosamente all'argomento del capitolo."
+    S_PROMPT = f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}. REGOLE: Attieniti all'argomento del capitolo fornito."
 
     tab_ind, tab_scr, tab_mod, tab_esp = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura", "📝 3. Modifica", "📑 4. Esporta"])
 
     # --- TAB 1: INDICE ---
     with tab_ind:
-        st.subheader("Pianificazione Struttura")
         if st.button("Genera Indice Professionale"):
-            p_ind = f"Crea un indice dettagliato per '{titolo_l}'. Trama: {trama_l}. Usa 'Capitolo X: Titolo - Descrizione'."
-            st.session_state['indice'] = chiedi_gpt(p_ind, "Sei un Editor esperto.")
+            p_ind = f"Crea un indice per '{titolo_l}'. Trama: {trama_l}. Usa 'Capitolo X: Titolo'."
+            st.session_state['indice'] = chiedi_gpt(p_ind, "Editor Senior.")
             sync_capitoli_dettagliati()
 
-        if 'indice' not in st.session_state:
-            st.session_state['indice'] = "Capitolo 1: Introduzione"
+        if 'indice' not in st.session_state: st.session_state['indice'] = "Capitolo 1: Introduzione"
         
-        st.session_state['indice'] = st.text_area("Modifica Indice (Sincronizza i capitoli con la scrittura):", value=st.session_state['indice'], height=300)
+        st.session_state['indice'] = st.text_area("Modifica Indice:", value=st.session_state['indice'], height=300)
         
-        if st.button("🔄 Aggiorna e Sincronizza Argomenti"):
+        if st.button("🔄 Sincronizza Capitoli"):
             sync_capitoli_dettagliati()
             st.rerun()
 
-    if 'lista_capitoli' not in st.session_state:
-        sync_capitoli_dettagliati()
+    if 'lista_capitoli' not in st.session_state: sync_capitoli_dettagliati()
 
     # --- TAB 2: SCRITTURA ---
     with tab_scr:
-        st.subheader("Scrittura Capitoli")
         opzioni_s = ["Prefazione"] + st.session_state['lista_capitoli'] + ["Ringraziamenti"]
-        sezione_s = st.selectbox("Cosa vuoi scrivere?", opzioni_s)
-        chiave_s = sezione_s.lower().replace(" ", "_")
-        argomento_specifico = st.session_state.get('mappa_capitoli', {}).get(sezione_s, "")
+        sez_scelta = st.selectbox("Cosa vuoi scrivere?", opzioni_s)
+        chiave_s = sez_scelta.lower().replace(" ", "_")
+        arg_sp = st.session_state.get('mappa_capitoli', {}).get(sez_scelta, "")
 
-        if st.button(f"Scrivi {sezione_s}"):
-            with st.spinner(f"Scrittura in corso basata sull'indice..."):
-                testo_sez = ""
+        if st.button(f"Genera {sez_scelta}"):
+            with st.spinner("Scrittura in corso..."):
+                t_sez = ""
                 for fase in ["Inizio", "Sviluppo", "Fine"]:
-                    p_scr = f"Trama: {trama_l}\nArgomento Specifico: {argomento_specifico}\n\nScrivi {sezione_s} ({fase})."
-                    testo_sez += chiedi_gpt(p_scr, S_PROMPT) + "\n\n"
-                st.session_state[chiave_s] = testo_sez
+                    p_scr = f"Argomento: {arg_sp}\nScrivi {sez_scelta} ({fase})."
+                    t_sez += chiedi_gpt(p_scr, S_PROMPT) + "\n\n"
+                st.session_state[chiave_s] = t_sez
         
         if chiave_s in st.session_state:
-            st.session_state[chiave_s] = st.text_area("Contenuto Generato:", value=st.session_state[chiave_s], height=450, key=f"txt_{chiave_s}")
+            st.session_state[chiave_s] = st.text_area("Contenuto:", value=st.session_state[chiave_s], height=400, key=f"v_{chiave_s}")
 
-    # --- TAB 3: MODIFICA ---
+    # --- TAB 3: MODIFICA (STABILIZZATA) ---
     with tab_mod:
-        st.subheader("Editor Assistito")
-        sezione_m = st.selectbox("Seleziona da migliorare:", opzioni_s)
-        chiave_m = sezione_m.lower().replace(" ", "_")
-        if chiave_m in st.session_state:
-            testo_attuale = st.text_area("Testo attuale:", value=st.session_state[chiave_m], height=350, key=f"mod_{chiave_m}")
-            istruzione_m = st.text_input("Quale modifica vuoi fare?")
-            if st.button("Applica Modifica"):
-                st.session_state[chiave_m] = testo_attuale
-                nuovo_t = chiedi_gpt(f"Modifica: {istruzione_m}\nTesto:\n{testo_attuale}", S_PROMPT + " Editor Senior.")
-                st.session_state[chiave_m] = nuovo_t
-                st.rerun()
-        else: st.info("Genera prima il testo.")
+        sez_mod = st.selectbox("Seleziona da migliorare:", opzioni_s)
+        k_mod = sez_mod.lower().replace(" ", "_")
+        
+        if k_mod in st.session_state:
+            # Buffer per stabilità
+            if f"buf_{k_mod}" not in st.session_state:
+                st.session_state[f"buf_{k_mod}"] = st.session_state[k_mod]
+
+            t_area = st.text_area("Testo attuale:", value=st.session_state[k_mod], height=350, key=f"area_{k_mod}")
+            istr_m = st.text_input("Cosa vuoi cambiare?")
+            
+            if st.button("Applica Modifica con IA"):
+                with st.spinner("Modifica in corso..."):
+                    # 1. Aggiorna lo stato col testo nell'area
+                    st.session_state[k_mod] = t_area
+                    # 2. Richiesta IA
+                    nuovo_t = chiedi_gpt(f"Modifica: {istr_m}\nTesto:\n{t_area}", S_PROMPT + " Editor Senior.")
+                    # 3. Sovrascrittura forzata
+                    st.session_state[k_mod] = nuovo_t
+                    st.success("Testo modificato!")
+                    st.rerun()
+        else: st.info("Genera prima la sezione.")
 
     # --- TAB 4: ESPORTAZIONE ---
     with tab_esp:
-        st.subheader("Download Finale")
         lista_f = ["prefazione"] + [c.lower().replace(" ", "_") for c in st.session_state['lista_capitoli']] + ["ringraziamenti"]
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Esporta PDF"):
-                pdf = PDF(nome_autore if nome_autore else "Autore"); pdf.set_auto_page_break(True, 15); pdf.add_page()
-                pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo_l.upper() if titolo_l else "TITOLO", 0, 1, "C")
-                pdf.set_font("Arial", "", 20); pdf.cell(0, 20, f"di {nome_autore}", 0, 1, "C")
+                pdf = PDF(nome_autore); pdf.set_auto_page_break(True, 15); pdf.add_page()
+                pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo_l.upper() if titolo_l else "LIBRO", 0, 1, "C")
                 for sez in lista_f:
                     if sez in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, sez.upper().replace("_", " "), 0, 1, "L")
                         pdf.ln(10); pdf.set_font("Arial", "", 12)
-                        txt_pdf = st.session_state[sez].encode('latin-1', 'replace').decode('latin-1')
-                        pdf.multi_cell(0, 8, txt_pdf)
-                st.download_button("📥 Scarica PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"{titolo_l}.pdf")
+                        txt_p = st.session_state[sez].encode('latin-1', 'replace').decode('latin-1')
+                        pdf.multi_cell(0, 8, txt_p)
+                st.download_button("📥 PDF", pdf.output(dest='S').encode('latin-1'), file_name=f"{titolo_l}.pdf")
         with c2:
             if st.button("Esporta WORD"):
-                doc = Document(); doc.add_heading(titolo_l if titolo_l else "Libro", 0); doc.add_paragraph(f"Autore: {nome_autore}")
+                doc = Document(); doc.add_heading(titolo_l if titolo_l else "Libro", 0)
                 for sez in lista_f:
                     if sez in st.session_state:
                         doc.add_page_break(); doc.add_heading(sez.upper().replace("_", " "), level=1)
                         doc.add_paragraph(st.session_state[sez])
                 buf_w = BytesIO(); doc.save(buf_w); buf_w.seek(0)
-                st.download_button("📥 Scarica WORD", buf_w, file_name=f"{titolo_l}.docx")
+                st.download_button("📥 WORD", buf_w, file_name=f"{titolo_l}.docx")
