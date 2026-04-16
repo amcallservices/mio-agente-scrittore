@@ -8,7 +8,7 @@ from io import BytesIO
 # 1. Connessione API
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# --- CONFIGURAZIONE PAGINA ---
+# --- CONFIGURAZIONE PAGINA E SIDEBAR FISSA ---
 st.set_page_config(
     page_title="AI di Antonino", 
     layout="wide", 
@@ -63,14 +63,25 @@ def chiedi_gpt(p, s_p):
         temperature=0.7
     )
     risposta = r.choices[0].message.content
+    
+    # FILTRO ANTI-COMMENTI ULTRA-RIGIDO
     linee = risposta.split('\n')
     linee_pulite = []
-    tag_da_eliminare = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "here is", "sure", "voilà", "aquí está", "hier ist", "iată", "вот", "这里是"]
+    # Lista estesa di frasi da killer
+    tag_da_eliminare = [
+        "ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", 
+        "here is", "sure", "i hope", "voilà", "aquí está", "hier ist", "iată", "вот", "这里是",
+        "proseguiamo", "abbiamo scritto", "fammi sapere", "buona lettura"
+    ]
     for l in linee:
         testo_l = l.strip().lower()
         if testo_l and not any(testo_l.startswith(p) for p in tag_da_eliminare):
             linee_pulite.append(l)
-    return '\n'.join(linee_pulite).strip()
+    
+    testo_finale = '\n'.join(linee_pulite).strip()
+    # Rimuove frasi di cortesia finali con RegEx
+    testo_finale = re.sub(r"(?i)(spero che|fammi sapere|ecco il|buona scrittura|fammi sapere cosa|spero sia di aiuto|spero ti piaccia).*$", "", testo_finale).strip()
+    return testo_finale
 
 def reset_app():
     for key in list(st.session_state.keys()):
@@ -102,17 +113,16 @@ with st.sidebar:
         reset_app()
 
 if trama:
-    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi in {lingua}. REGOLE: Solo testo finale, no saluti. Mantieni coerenza assoluta."
-    
-    contesto_evolutivo = f"Titolo: {titolo}. Trama: {trama}. \n"
-    if 'indice' in st.session_state:
-        contesto_evolutivo += f"Struttura indice: {st.session_state['indice']}\n"
+    # PROMPT DI SISTEMA PER COERENZA E NARRATIVA PURA
+    S_P = f"Sei un Ghostwriter professionista esperto in {modalita}. Scrivi in {lingua}. "
+    S_P += "REGOLE MANDATORIE: Scrivi SOLO il testo del libro. NON salutare, NON commentare, NON spiegare nulla. "
+    S_P += "LOGICA: Assicura una concatenazione perfetta tra i capitoli. Mantieni coerenza con quanto scritto prima."
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina", "✍️ Scrittura", "📝 Modifica", "📑 Esporta"])
 
     with tab1:
         if st.button("Genera Indice"):
-            st.session_state['indice'] = chiedi_gpt(f"Crea indice in {lingua} per: {titolo}. Trama: {trama}", S_P)
+            st.session_state['indice'] = chiedi_gpt(f"Crea un indice logico in {lingua} per: {titolo}. Trama: {trama}", S_P)
         if 'indice' in st.session_state:
             st.text_area("Indice", st.session_state['indice'], height=200)
 
@@ -133,44 +143,44 @@ if trama:
         chiave = f"{tipo.lower()}_{n}" if n > 0 else tipo.lower()
         
         if st.button("Scrivi Sezione"):
-            with st.spinner(f"Scrittura..."):
-                memoria = "\n".join([st.session_state[k][:400] for k in st.session_state if "capitolo" in k or "prefazione" in k])
+            with st.spinner(f"Scrittura in corso..."):
+                # RECUPERO MEMORIA DI TUTTI I CAPITOLI PRECEDENTI PER COERENZA
+                memoria_completa = ""
+                sezioni_scritte = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)]
+                for s in sezioni_ordine: # definita sotto ma usabile
+                    if s in st.session_state:
+                        memoria_completa += f"--- {s.upper()} ---\n{st.session_state[s][:600]}\n\n"
+                
+                contesto_per_ia = f"Titolo: {titolo}\nTrama: {trama}\n\nCOERENZA CON TESTI PRECEDENTI:\n{memoria_completa}"
+                
                 testo_sez = ""
                 for parte in ["Inizio", "Sviluppo", "Fine"]:
-                    testo_sez += chiedi_gpt(f"{contesto_evolutivo}\nMemoria: {memoria}\nScrivi {tipo} {n if n>0 else ''} ({parte})", S_P) + "\n\n"
+                    testo_sez += chiedi_gpt(f"{contesto_per_ia}\n\nScrivi ora {tipo} {n if n>0 else ''} (Parte: {parte}). Continua logicamente la storia.", S_P) + "\n\n"
                 st.session_state[chiave] = testo_sez
+        
         if chiave in st.session_state:
             st.text_area("Contenuto", st.session_state[chiave], height=350)
 
-    # --- TAB MODIFICA CORRETTA ---
     with tab4:
         st.subheader("Editor Professionale")
-        s_mod = st.selectbox("Cosa modifichiamo?", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
+        s_mod = st.selectbox("Seleziona sezione da modificare", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         k_mod = s_mod.lower().replace(" ", "_")
         
         if k_mod in st.session_state:
-            # Recuperiamo il testo attuale e permettiamo all'utente di vederlo
-            testo_da_cambiare = st.session_state[k_mod]
-            t_or = st.text_area("Testo attuale", testo_da_cambiare, height=250)
-            
-            istr = st.text_input("Istruzioni per la ristrutturazione (IA)")
-            
-            if st.button("Riscrivi con IA"):
-                with st.spinner("Ristrutturazione in corso..."):
-                    # Salviamo prima il testo nell'area (per modifiche manuali)
-                    st.session_state[k_mod] = t_or
-                    # Chiediamo la modifica
-                    nuovo_testo = chiedi_gpt(f"Riscrivi integralmente questo testo seguendo: {istr}\n\nTesto:\n{t_or}", S_P + " Agisci come Senior Editor.")
-                    # Applichiamo e forziamo il refresh
-                    st.session_state[k_mod] = nuovo_testo
+            t_or = st.text_area("Testo attuale", st.session_state[k_mod], height=250)
+            istr = st.text_input("Istruzione per la ristrutturazione")
+            if st.button("Applica Ristrutturazione"):
+                with st.spinner("Rielaborazione..."):
+                    st.session_state[k_mod] = t_or # Salvataggio manuale preventivo
+                    nuovo = chiedi_gpt(f"Riorganizza e ristruttura profondamente seguendo: {istr}\n\nTesto:\n{t_or}", S_P + " Agisci come Senior Editor.")
+                    st.session_state[k_mod] = nuovo
                     st.success("Modifica applicata!")
                     st.rerun()
-        else:
-            st.info("Genera prima la sezione nella scheda 'Scrittura'.")
+        else: st.info("Genera prima la sezione.")
 
     with tab5:
         nome_a = autore if autore else "Autore"
-        sez_f = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
+        sezioni_ordine = ["prefazione"] + [f"capitolo_{i}" for i in range(1, 31)] + ["ringraziamenti"]
         c1, c2 = st.columns(2)
         with c1:
             if st.button("Genera PDF"):
@@ -184,7 +194,7 @@ if trama:
                     except: pdf.cell(0, 10, titolo)
                 else: 
                     pdf.set_font("Arial", "B", 30); pdf.ln(80); pdf.cell(0, 20, titolo.upper(), 0, 1, "C")
-                for s in sez_f:
+                for s in sezioni_ordine:
                     if s in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.upper(), 0, 1, "L")
                         pdf.ln(10); pdf.set_font("Arial", "", 11)
@@ -192,11 +202,11 @@ if trama:
                 pdf.output("libro.pdf")
                 with open("libro.pdf", "rb") as f: st.download_button("📥 PDF", f, file_name=f"{titolo}.pdf")
         
-        with c2:
+        with col2 if 'col2' in locals() else c2:
             if st.button("Genera WORD"):
                 doc = Document()
                 doc.add_heading(titolo, 0)
-                for s in sez_f:
+                for s in sezioni_ordine:
                     if s in st.session_state:
                         doc.add_page_break(); doc.add_heading(s.upper(), level=1)
                         doc.add_paragraph(st.session_state[s])
