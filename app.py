@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- BLOCCO CSS (UI PROFESSIONALE & ANTEPRIMA) ---
+# --- BLOCCO CSS (PULSANTI BLU E ANTEPRIMA) ---
 st.markdown("""
 <style>
 #MainMenu, footer, header, [data-testid="stHeader"] {visibility: hidden;}
@@ -60,6 +60,8 @@ section[data-testid="stSidebar"] {
     background-color: #007BFF !important;
     color: white !important;
     transition: all 0.3s;
+    border: none;
+    font-size: 16px;
 }
 
 .stButton>button:hover {
@@ -82,7 +84,7 @@ class PDF(FPDF):
 
 # --- FUNZIONI ---
 def pulisci_testo_ia(testo):
-    tag_proibiti = ["ecco", "certamente", "spero", "ciao", "fase", "parte", "here is", "sure", "voilà"]
+    tag_proibiti = ["ecco", "certamente", "spero", "ciao", "fase", "parte", "here is", "sure"]
     linee = testo.split("\n")
     pulito = [l for l in linee if not any(l.lower().startswith(t) for t in tag_proibiti)]
     return "\n".join(pulito).strip()
@@ -91,10 +93,7 @@ def chiedi_gpt(prompt, system_prompt):
     try:
         response = client.chat.completions.create(
             model="gpt-4o", 
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
+            messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             temperature=0.75
         )
         return pulisci_testo_ia(response.choices[0].message.content)
@@ -106,7 +105,7 @@ def sync_capitoli():
     mappa = {}
     linee = testo.split('\n')
     for l in linee:
-        match = re.search(r'(?i)(Capitolo\s*\d+|Cap\.\s*\d+|\d+\.|Chapter\s*\d+|Capítulo\s*\d+)', l)
+        match = re.search(r'(?i)(Capitolo\s*\d+|Cap\.\s*\d+|\d+\.|Chapter\s*\d+)', l)
         if match:
             cap_key = match.group(0).strip().title()
             descr = l.replace(match.group(0), "").strip(": -")
@@ -122,7 +121,16 @@ with st.sidebar:
     titolo_l = st.text_input("Titolo del Libro")
     autore_l = st.text_input("Nome Autore", value="")
     lingua = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
-    genere = st.selectbox("Genere", ["Manuale Tecnico", "Saggio Scientifico", "Manuale Psicologico", "Business", "Motivazionale", "Thriller", "Fantasy"])
+    
+    # LISTA GENERI COMPLETA
+    genere = st.selectbox("Genere", [
+        "Manuale Tecnico", "Saggio Scientifico", "Manuale Psicologico", 
+        "Business & Marketing", "Motivazionale / Self-Help", "Biografia / Autobiografia",
+        "Saggio Breve", "Romanzo Storico", "Thriller", "Noir", "Fantasy", "Fantascienza", "Romanzo Rosa"
+    ])
+    
+    modalita = st.selectbox("Tipologia di Scrittura", ["Standard", "Professionale (Accademica/Tecnica)"])
+    
     trama = st.text_area("Trama o Argomento", height=150)
     
     if st.button("🔄 RESET PROGETTO"):
@@ -130,7 +138,8 @@ with st.sidebar:
         st.rerun()
 
 if titolo_l and trama:
-    # MAPPATURA LINGUISTICA PER GENERAZIONE A 3 FASI
+    livello = "estremamente dettagliato, tecnico e professionale" if modalita == "Professionale (Accademica/Tecnica)" else "chiaro, fluido e semplice"
+    
     lingua_map = {
         "Italiano": ["Inizio", "Sviluppo", "Conclusione"],
         "English": ["Beginning", "Deep Development", "Conclusion"],
@@ -143,12 +152,12 @@ if titolo_l and trama:
     S_PROMPT = f"""
 Sei un'autorità mondiale nel settore: {genere}. Scrivi esclusivamente in {lingua}.
 Titolo: "{titolo_l}". Argomento: "{trama}".
+STILE: {livello}.
 REGOLE: Scrittura autoritaria, 2000+ parole per capitolo, fonti attendibili rielaborate, NO ripetizioni.
 """
 
     tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura & Modifica", "📖 3. Anteprima", "📑 4. Esporta"])
 
-    # --- 1. INDICE ---
     with tab1:
         if st.button(f"Genera Indice in {lingua}"):
             st.session_state["indice_raw"] = chiedi_gpt(f"Crea un indice professionale e lungo per '{titolo_l}' in {lingua}.", f"Editor esperto.")
@@ -157,7 +166,6 @@ REGOLE: Scrittura autoritaria, 2000+ parole per capitolo, fonti attendibili riel
         if st.button("Sincronizza Capitoli"):
             sync_capitoli(); st.rerun()
 
-    # --- 2. SCRITTURA & MODIFICA ---
     with tab2:
         if "lista_capitoli" not in st.session_state: sync_capitoli()
         opzioni = ["Prefazione"] + st.session_state.get("lista_capitoli", []) + ["Ringraziamenti"]
@@ -167,25 +175,24 @@ REGOLE: Scrittura autoritaria, 2000+ parole per capitolo, fonti attendibili riel
         c_gen, c_edit = st.columns(2)
         with c_gen:
             if st.button(f"✨ SCRIVI: {cap_sel}"):
-                with st.spinner(f"L'esperto sta scrivendo (Target 2000+ parole)..."):
+                with st.spinner(f"Scrittura in corso ({modalita})..."):
                     testo_ia = ""
                     for f in fasi:
-                        testo_ia += chiedi_gpt(f"Scrivi la parte '{f}' della sezione '{cap_sel}'. Sii estremamente prolisso e tecnico.", S_PROMPT) + "\n\n"
+                        testo_ia += chiedi_gpt(f"Scrivi la parte '{f}' di '{cap_sel}'. Sii estremamente dettagliato.", S_PROMPT) + "\n\n"
                     st.session_state[key_sez] = testo_ia
 
         with c_edit:
             istr_mod = st.text_input("Istruzione modifica IA", key=f"istr_{key_sez}")
             if st.button(f"🚀 RIELABORA SEZIONE"):
                 if key_sez in st.session_state:
-                    with st.spinner("Rielaborazione in corso..."):
-                        p_riel = f"RISCRIVI E ESPANDI seguendo: {istr_mod}. Mantieni il target delle 2000 parole. Testo attuale:\n{st.session_state[key_sez]}"
+                    with st.spinner("Rielaborazione..."):
+                        p_riel = f"RISCRIVI E ESPANDI seguendo: {istr_mod}. Testo attuale:\n{st.session_state[key_sez]}"
                         st.session_state[key_sez] = chiedi_gpt(p_riel, S_PROMPT)
                         st.rerun()
 
         if key_sez in st.session_state:
-            st.session_state[key_sez] = st.text_area("Editor Testuale:", value=st.session_state[key_sez], height=450, key=f"input_{key_sez}")
+            st.session_state[key_sez] = st.text_area("Editor:", value=st.session_state[key_sez], height=450, key=f"input_{key_sez}")
 
-    # --- 3. ANTEPRIMA ---
     with tab3:
         st.subheader("📖 Vista Lettura")
         lista_f = ["txt_prefazione"] + [f"txt_{c.lower().replace(' ', '_').replace('.', '')}" for c in st.session_state.get("lista_capitoli", [])] + ["txt_ringraziamenti"]
@@ -197,7 +204,6 @@ REGOLE: Scrittura autoritaria, 2000+ parole per capitolo, fonti attendibili riel
                 p_html += f"<h2>{s.replace('txt_', '').upper().replace('_', ' ')}</h2><p>{st.session_state[s].replace('\\n', '<br>')}</p><br>"
         st.markdown(p_html + "</div>", unsafe_allow_html=True)
 
-    # --- 4. EXPORT ---
     with tab4:
         col1, col2 = st.columns(2)
         with col1:
