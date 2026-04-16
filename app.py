@@ -15,7 +15,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- BLOCCO CSS (SIDEBAR BLOCCATA, TITOLO E PULSANTI) ---
+# --- BLOCCO CSS (UI PULITA, SIDEBAR BLOCCATA E TITOLO VISIBILE) ---
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -89,19 +89,17 @@ def chiedi_gpt(prompt, system_prompt):
         response = client.chat.completions.create(
             model="gpt-4o", 
             messages=[{"role":"system","content":system_prompt},{"role":"user","content":prompt}],
-            temperature=0.7
+            temperature=0.8 # Leggermente più alta per favorire rielaborazioni creative
         )
         return pulisci_testo_ia(response.choices[0].message.content)
     except Exception as e:
         return f"Errore: {str(e)}"
 
 def aggiorna_lista_capitoli():
-    """Analisi dell'indice per sincronizzare i menu di scrittura."""
     testo_indice = st.session_state.get('indice', '')
     mappa = {}
     linee = testo_indice.split('\n')
     for l in linee:
-        # Cerca pattern come "Capitolo 1", "Cap. 2", "1."
         match = re.search(r'(?i)(Capitolo\s*\d+|Cap\.\s*\d+|\d+\.)', l)
         if match:
             cap_key = match.group(0).strip().title()
@@ -120,8 +118,8 @@ st.markdown('<div class="custom-title">AI di Antonino: Crea il tuo Ebook</div>',
 
 with st.sidebar:
     st.title("⚙️ Configurazione")
-    titolo_l = st.text_input("Titolo del Libro", placeholder="Titolo...")
-    nome_autore = st.text_input("Nome Autore", value="") # Vuoto come richiesto
+    titolo_l = st.text_input("Titolo del Libro", placeholder="Inserisci il titolo...")
+    nome_autore = st.text_input("Nome Autore", value="")
     lingua_l = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
     genere_l = st.selectbox("Genere", ["Manuale Tecnico", "Manuale Psicologico", "Saggio", "Motivazionale", "Thriller", "Noir", "Fantasy", "Romanzo Rosa"])
     trama_l = st.text_area("Trama e Argomento Centrale", height=180)
@@ -133,23 +131,23 @@ with st.sidebar:
 if titolo_l and trama_l:
     S_PROMPT = (
         f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}.\n"
-        f"FOCUS: Titolo '{titolo_l}', Trama '{trama_l}'.\n"
-        "REGOLE: Evita ripetizioni, coerenza logica, solo testo del libro."
+        f"L'ebook si intitola '{titolo_l}' e la trama è: '{trama_l}'.\n"
+        "REGOLE: Sii creativo ma coerente. Evita ogni forma di ripetizione. "
+        "Usa uno stile fluido, professionale e coinvolgente."
     )
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura", "📝 3. Rielaborazione", "📑 4. Esporta"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Struttura Indice", "✍️ 2. Scrittura Capitoli", "📝 3. Modifica & Rielaborazione", "📑 4. Esportazione"])
 
     # --- TAB 1: INDICE ---
     with tab1:
         if st.button("GENERA INDICE AUTOMATICO"):
-            p_ind = f"Crea un indice per '{titolo_l}' basato sulla trama '{trama_l}'. Usa 'Capitolo X: Titolo'."
+            p_ind = f"In base al titolo '{titolo_l}' e alla trama '{trama_l}', crea un indice logico. Usa 'Capitolo X: Titolo'."
             st.session_state['indice'] = chiedi_gpt(p_ind, "Editor esperto.")
             aggiorna_lista_capitoli()
 
         if 'indice' not in st.session_state: st.session_state['indice'] = "Capitolo 1: Introduzione"
         
-        # L'indice viene salvato e aggiorna la lista capitoli ad ogni modifica
-        st.session_state['indice'] = st.text_area("Modifica Indice (Usa 'Capitolo X:' per definire le sezioni):", 
+        st.session_state['indice'] = st.text_area("Modifica Indice (Usa 'Capitolo X:' per ogni nuova riga):", 
                                                 value=st.session_state['indice'], 
                                                 height=300,
                                                 on_change=aggiorna_lista_capitoli)
@@ -158,50 +156,62 @@ if titolo_l and trama_l:
             aggiorna_lista_capitoli()
             st.rerun()
 
-    # Inizializzazione di sicurezza
     if 'lista_capitoli' not in st.session_state: aggiorna_lista_capitoli()
 
     # --- TAB 2: SCRITTURA ---
     with tab2:
-        # Il menu a tendina ora legge la lista sincronizzata in tempo reale
         opzioni = ["Prefazione"] + st.session_state['lista_capitoli'] + ["Ringraziamenti"]
         sez_s = st.selectbox("Seleziona sezione da scrivere:", opzioni)
         k_s = sez_s.lower().replace(" ", "_").replace(".", "")
         arg_cap = st.session_state.get('mappa_capitoli', {}).get(sez_s, "")
 
         if st.button(f"GENERA TESTO {sez_s.upper()}"):
-            with st.spinner(f"Scrittura capitolo '{sez_s}'..."):
+            with st.spinner(f"Scrittura in corso..."):
                 testo_cap = ""
-                for fase in ["Inizio", "Sviluppo centrale", "Fine"]:
-                    testo_cap += chiedi_gpt(f"Argomento specifico: {arg_cap}. Scrivi {sez_s} ({fase}).", S_PROMPT) + "\n\n"
+                for fase in ["Inizio", "Sviluppo centrale", "Conclusione"]:
+                    p_scr = f"Scrivi la sezione {sez_s} (Fase: {fase}). Argomento specifico: {arg_cap}. Deve essere coerente con il libro '{titolo_l}'."
+                    testo_cap += chiedi_gpt(p_scr, S_PROMPT) + "\n\n"
                 st.session_state[k_s] = testo_cap
         
         if k_s in st.session_state:
-            st.session_state[k_s] = st.text_area("Testo:", value=st.session_state[k_s], height=400, key=f"v_{k_s}")
+            st.session_state[k_s] = st.text_area("Testo Generato:", value=st.session_state[k_s], height=400, key=f"v_{k_s}")
 
-    # --- TAB 3: MODIFICA / RIELABORAZIONE ---
+    # --- TAB 3: MODIFICA / RIELABORAZIONE POTENZIATA ---
     with tab3:
-        st.subheader("🛠️ Rielaborazione Totale")
-        sez_m = st.selectbox("Seleziona sezione da rielaborare:", opzioni)
+        st.subheader("🛠️ Rielaborazione Testuale Coerente")
+        sez_m = st.selectbox("Seleziona la parte da rielaborare:", opzioni)
         k_m = sez_m.lower().replace(" ", "_").replace(".", "")
         
         if k_m in st.session_state:
             if f"ver_{k_m}" not in st.session_state: st.session_state[f"ver_{k_m}"] = 0
             
-            istr_mod = st.text_area("Come vuoi rielaborare il testo?", 
-                                   placeholder="Esempio: 'Riscrivi da zero in modo più tecnico', 'Rendi il contenuto originale ma mantieni lo schema'.")
+            istr_mod = st.text_area("Quali miglioramenti o cambiamenti vuoi apportare?", 
+                                   placeholder="Esempio: 'Riscrivi il capitolo in modo più coinvolgente', 'Cambia il finale rendendolo più tecnico', 'Rielabora il testo mantenendo il focus sulla trama originale'.")
             
-            testo_vecchio = st.text_area("Testo attuale:", value=st.session_state[k_m], height=300, key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
+            testo_attuale = st.text_area("Testo corrente (puoi anche editarlo a mano):", 
+                                        value=st.session_state[k_m], 
+                                        height=300, 
+                                        key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
             
-            if st.button("🚀 APPLICA RIELABORAZIONE"):
-                with st.spinner("Sostituzione in corso..."):
-                    nuovo_t = chiedi_gpt(f"RIELABORA COMPLETAMENTE: {istr_mod}. Testo originale:\n{testo_vecchio}", S_PROMPT + " Editor Senior.")
+            if st.button("🚀 APPLICA NUOVA RIELABORAZIONE"):
+                with st.spinner("Rielaborazione in corso basata sulla trama dell'ebook..."):
+                    # Prompt che impone coerenza assoluta con il libro
+                    p_rielabora = (
+                        f"RIELABORA IL TESTO SEGUENTE IN MANIERA NUOVA E COERENTE.\n"
+                        f"LIBRO: '{titolo_l}' | TRAMA: '{trama_l}'\n"
+                        f"RICHIESTA UTENTE: {istr_mod}\n\n"
+                        f"TESTO ORIGINALE:\n{testo_attuale}\n\n"
+                        f"ISTRUZIONE: Riscrivi il testo in modo originale, eliminando ripetizioni e migliorando il flusso logico."
+                    )
+                    nuovo_t = chiedi_gpt(p_rielabora, S_PROMPT + " Editor Senior di alto livello.")
+                    
+                    # Salvataggio e refresh forzato
                     st.session_state[k_m] = nuovo_t
                     st.session_state[f"ver_{k_m}"] += 1
-                    st.success("Testo sostituito!")
+                    st.success("Testo rielaborato con successo!")
                     st.rerun()
         else:
-            st.info("Genera prima il testo nella scheda 'Scrittura'.")
+            st.info("Genera prima il testo nella scheda 'Scrittura' per poterlo rielaborare qui.")
 
     # --- TAB 4: ESPORTAZIONE ---
     with tab4:
@@ -229,4 +239,4 @@ if titolo_l and trama_l:
                 buf_w = BytesIO(); doc.save(buf_w); buf_w.seek(0)
                 st.download_button("📥 WORD", buf_w, file_name=f"{titolo_l}.docx")
 else:
-    st.info("👋 Inserisci Titolo e Trama a sinistra per sbloccare lo Studio Editoriale.")
+    st.info("👋 Inserisci Titolo e Trama a sinistra per iniziare la creazione dell'ebook.")
