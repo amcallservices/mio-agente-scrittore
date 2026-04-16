@@ -89,7 +89,7 @@ def chiedi_gpt(prompt, system_prompt):
         response = client.chat.completions.create(
             model="gpt-4o", 
             messages=[{"role":"system","content":system_prompt},{"role":"user","content":prompt}],
-            temperature=0.8
+            temperature=0.85 # Aumentata per favorire una riscrittura più creativa e meno ripetitiva
         )
         return pulisci_testo_ia(response.choices[0].message.content)
     except Exception as e:
@@ -117,7 +117,7 @@ st.markdown('<div class="custom-title">AI di Antonino: Crea il tuo Ebook</div>',
 
 with st.sidebar:
     st.title("⚙️ Configurazione")
-    titolo_l = st.text_input("Titolo del Libro")
+    titolo_l = st.text_input("Titolo del Libro", placeholder="Inserisci il titolo...")
     nome_autore = st.text_input("Nome Autore", value="")
     lingua_l = st.selectbox("Lingua", ["Italiano", "English", "Deutsch", "Français", "Español", "Română", "Русский", "中文"])
     genere_l = st.selectbox("Genere", ["Manuale Tecnico", "Manuale Psicologico", "Saggio", "Motivazionale", "Thriller", "Noir", "Fantasy", "Romanzo Rosa"])
@@ -130,11 +130,12 @@ with st.sidebar:
 if titolo_l and trama_l:
     S_PROMPT = (
         f"Sei un Ghostwriter esperto in {genere_l}. Scrivi in {lingua_l}.\n"
-        f"RIFERIMENTO FISSO: Il libro si intitola '{titolo_l}' e tratta di: '{trama_l}'.\n"
-        "REGOLE: Evita ripetizioni, coerenza logica ferrea, solo testo del libro."
+        f"Il libro è '{titolo_l}' e parla di '{trama_l}'.\n"
+        "REGOLE: Sostituisci concetti ripetitivi con nuove prospettive. "
+        "Mantieni un'eleganza stilistica costante e una logica ferrea tra i paragrafi."
     )
 
-    tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Indice", "✍️ 2. Scrittura", "📝 3. Rielaborazione & Modifica", "📑 4. Esporta"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 1. Struttura Indice", "✍️ 2. Scrittura Capitoli", "📝 3. Rielaborazione Totale", "📑 4. Esporta"])
 
     with tab1:
         if st.button("GENERA INDICE LOGICO"):
@@ -159,48 +160,44 @@ if titolo_l and trama_l:
             with st.spinner("Scrittura in corso..."):
                 testo_cap = ""
                 for fase in ["Inizio", "Sviluppo centrale", "Fine"]:
-                    testo_cap += chiedi_gpt(f"Argomento: {arg_cap}. Scrivi {sez_s} ({fase}).", S_PROMPT) + "\n\n"
+                    testo_cap += chiedi_gpt(f"Scrivi {sez_s} ({fase}) su: {arg_cap}.", S_PROMPT) + "\n\n"
                 st.session_state[k_s] = testo_cap
         
         if k_s in st.session_state:
             st.session_state[k_s] = st.text_area("Contenuto:", value=st.session_state[k_s], height=400, key=f"v_{k_s}")
 
     with tab3:
-        st.subheader("🛠️ Rielaborazione Integrale del Testo")
-        sez_m = st.selectbox("Seleziona sezione da rielaborare:", opzioni)
+        st.subheader("🛠️ Rielaborazione Totale e Sostituzione")
+        sez_m = st.selectbox("Seleziona sezione da rifare:", opzioni)
         k_m = sez_m.lower().replace(" ", "_").replace(".", "")
         
         if k_m in st.session_state:
             if f"ver_{k_m}" not in st.session_state: st.session_state[f"ver_{k_m}"] = 0
             
-            istr_mod = st.text_area("Istruzioni facoltative (es. 'Passa dal Voi al Tu'):", 
-                                   placeholder="Se lasci vuoto, l'IA riscriverà comunque il testo in modo nuovo e originale.")
+            istr_mod = st.text_area("Istruzioni per l'IA (Es. 'Cambia persona', 'Usa un tono diverso'):", 
+                                   placeholder="Se non scrivi nulla, l'IA riscriverà comunque il testo da zero in modo nuovo.")
             
-            testo_vecchio = st.text_area("Testo attuale:", 
-                                        value=st.session_state[k_m], 
-                                        height=300, 
-                                        key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
+            testo_vecchio = st.text_area("Testo attuale:", value=st.session_state[k_m], height=300, key=f"area_{k_m}_{st.session_state[f'ver_{k_m}']}")
             
-            if st.button("🚀 APPLICA RIELABORAZIONE TOTALE"):
-                with st.spinner("L'IA sta riscrivendo interamente la sezione..."):
-                    # PROMPT MANDATORIO: L'IA DEVE RISCRIVERE TUTTO ANCHE SENZA ISTRUZIONI
-                    istruzioni_finali = istr_mod if istr_mod else "Riscrivi l'intero testo in modo nuovo, originale e fluido, mantenendo lo stesso significato ma cambiando la forma."
-                    
+            if st.button("🚀 AVVIA RIELABORAZIONE TOTALE"):
+                with st.spinner("Riscrivendo interamente la sezione..."):
+                    # ISTRUZIONE DI RISCRITTURA "DESTRUTTIVA"
                     p_rielabora = (
-                        f"ORDINE PRIORITARIO: Riscrivi interamente il testo seguente.\n"
-                        f"REQUISITO: Anche se non specificato, cambia la struttura delle frasi e il lessico.\n"
-                        f"ISTRUZIONE UTENTE: {istruzioni_finali}\n\n"
-                        f"CONTESTO EBOOK: '{titolo_l}' - '{trama_l}'\n\n"
-                        f"TESTO DA SOSTITUIRE:\n{testo_vecchio}"
+                        f"ORDINE: Riscrivi COMPLETAMENTE il testo che segue.\n"
+                        f"REQUISITO: Non limitarti a correggere. Cambia le parole, la struttura delle frasi e il ritmo.\n"
+                        f"ISTRUZIONE AGGIUNTIVA: {istr_mod if istr_mod else 'Riscrivi in modo totalmente originale e fluido.'}\n\n"
+                        f"FOCUS EBOOK: '{titolo_l}' - '{trama_l}'\n\n"
+                        f"TESTO DA CANCELLARE E SOSTITUIRE:\n{testo_vecchio}"
                     )
-                    nuovo_testo = chiedi_gpt(p_rielabora, S_PROMPT + " Editor Senior: Esegui Rewrite Totale e Originale.")
+                    # Usiamo un system prompt ancora più autoritario per la Tab 3
+                    nuovo_testo = chiedi_gpt(p_rielabora, "Sei un Senior Editor specializzato in Ghostwriting. Il tuo compito è distruggere il testo precedente e crearne uno nuovo, migliore e coerente.")
                     
                     st.session_state[k_m] = nuovo_testo
                     st.session_state[f"ver_{k_m}"] += 1
-                    st.success("Testo rielaborato con successo!")
+                    st.success("Il testo è stato completamente rielaborato!")
                     st.rerun()
         else:
-            st.info("Genera prima il testo nella sezione 'Scrittura'.")
+            st.info("Genera prima il testo nella scheda 'Scrittura' per poterlo rielaborare qui.")
 
     with tab4:
         l_f = ["prefazione"] + [c.lower().replace(" ", "_").replace(".", "") for c in st.session_state['lista_capitoli']] + ["ringraziamenti"]
