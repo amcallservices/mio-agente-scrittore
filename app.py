@@ -15,111 +15,98 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- DIZIONARIO TRADUZIONI INTERFACCIA ---
+# --- DIZIONARIO TRADUZIONI INTEGRALE ---
 TRADUZIONI = {
     "Italiano": {
-        "titolo_sidebar": "⚙️ Configurazione Editor",
-        "label_titolo": "Titolo del Libro",
-        "label_autore": "Nome Autore",
-        "label_lingua": "Lingua",
-        "label_genere": "Genere",
-        "label_trama": "Trama o Argomento Principale",
-        "btn_reset": "🔄 RESET PROGETTO",
-        "tabs": ["📊 1. Indice", "✍️ 2. Scrittura & Modifica", "📖 3. Anteprima", "📑 4. Esporta"],
-        "btn_gen_indice": "Genera Indice Professionale",
-        "label_edit_indice": "Modifica Indice",
-        "btn_sync": "Sincronizza Capitoli",
-        "label_sez": "Seleziona sezione:",
-        "btn_scrivi": "✨ SCRIVI SEZIONE",
-        "label_istr": "Istruzioni modifica",
-        "btn_rielabora": "🚀 RIELABORA SEZIONE",
-        "msg_scrivendo": "L'esperto sta scrivendo...",
-        "msg_rielaborando": "Rielaborazione in corso...",
-        "anteprima_tit": "📖 Vista Lettura",
-        "prefazione": "Prefazione",
-        "ringraziamenti": "Ringraziamenti",
-        "placeholder_trama": "Di cosa parla il tuo libro?"
+        "sidebar_tit": "⚙️ Configurazione Editor",
+        "t_book": "Titolo del Libro", "t_auth": "Nome Autore", "t_lang": "Lingua", "t_gen": "Genere", "t_plot": "Trama o Argomento",
+        "btn_res": "🔄 RESET PROGETTO", "tabs": ["📊 Indice", "✍️ Scrittura", "📖 Anteprima", "📑 Esporta"],
+        "btn_idx": "Genera Indice Professionale", "btn_sync": "Sincronizza Capitoli", "lbl_sec": "Sezione:",
+        "btn_write": "✨ SCRIVI SEZIONE (2000+ parole)", "btn_edit": "🚀 RIELABORA", "msg_run": "Scrittura in corso...",
+        "preface": "Prefazione", "ack": "Ringraziamenti", "preview": "📖 Vista Lettura"
     },
     "English": {
-        "titolo_sidebar": "⚙️ Editor Setup",
-        "label_titolo": "Book Title",
-        "label_autore": "Author Name",
-        "label_lingua": "Language",
-        "label_genere": "Genre",
-        "label_trama": "Plot or Main Topic",
-        "btn_reset": "🔄 RESET PROJECT",
-        "tabs": ["📊 1. Index", "✍️ 2. Write & Edit", "📖 3. Preview", "📑 4. Export"],
-        "btn_gen_indice": "Generate Professional Index",
-        "label_edit_indice": "Edit Index",
-        "btn_sync": "Sync Chapters",
-        "label_sez": "Select section:",
-        "btn_scrivi": "✨ WRITE SECTION",
-        "label_istr": "Edit instructions",
-        "btn_rielabora": "🚀 REWRITE SECTION",
-        "msg_scrivendo": "The expert is writing...",
-        "msg_rielaborando": "Rewriting in progress...",
-        "anteprima_tit": "📖 Reading View",
-        "prefazione": "Preface",
-        "ringraziamenti": "Acknowledgements",
-        "placeholder_trama": "What is your book about?"
+        "sidebar_tit": "⚙️ Editor Setup",
+        "t_book": "Book Title", "t_auth": "Author Name", "t_lang": "Language", "t_gen": "Genre", "t_plot": "Plot or Topic",
+        "btn_res": "🔄 RESET PROJECT", "tabs": ["📊 Index", "✍️ Writing", "📖 Preview", "📑 Export"],
+        "btn_idx": "Generate Professional Index", "btn_sync": "Sync Chapters", "lbl_sec": "Section:",
+        "btn_write": "✨ WRITE SECTION (2000+ words)", "btn_edit": "🚀 REWRITE", "msg_run": "Writing in progress...",
+        "preface": "Preface", "ack": "Acknowledgements", "preview": "📖 Reading View"
     },
     "Deutsch": {
-        "titolo_sidebar": "⚙️ Editor-Setup",
-        "label_titolo": "Buchtitel",
-        "label_autore": "Name des Autors",
-        "label_lingua": "Sprache",
-        "label_genere": "Genre",
-        "label_trama": "Handlung oder Hauptthema",
-        "btn_reset": "🔄 PROJEKT ZURÜCKSETZEN",
-        "tabs": ["📊 1. Index", "✍️ 2. Schreiben & Bearbeiten", "📖 3. Vorschau", "📑 4. Export"],
-        "btn_gen_indice": "Professionellen Index generieren",
-        "label_edit_indice": "Index bearbeiten",
-        "btn_sync": "Kapitel synchronisieren",
-        "label_sez": "Abschnitt auswählen:",
-        "btn_scrivi": "✨ ABSCHNITT SCHREIBEN",
-        "label_istr": "Bearbeitungsanweisungen",
-        "btn_rielabora": "🚀 ABSCHNITT NEU SCHREIBEN",
-        "msg_scrivendo": "Der Experte schreibt...",
-        "msg_rielaborando": "Überarbeitung läuft...",
-        "anteprima_tit": "📖 Leseansicht",
-        "prefazione": "Vorwort",
-        "ringraziamenti": "Danksagungen",
-        "placeholder_trama": "Wovon handelt Ihr Buch?"
+        "sidebar_tit": "⚙️ Editor-Setup",
+        "t_book": "Buchtitel", "t_auth": "Autor", "t_lang": "Sprache", "t_gen": "Genre", "t_plot": "Inhalt",
+        "btn_res": "🔄 ZURÜCKSETZEN", "tabs": ["📊 Index", "✍️ Schreiben", "📖 Vorschau", "📑 Export"],
+        "btn_idx": "Index generieren", "btn_sync": "Sync Kapitel", "lbl_sec": "Abschnitt:",
+        "btn_write": "✨ ABSCHNITT SCHREIBEN", "btn_edit": "🚀 ÜBERARBEITEN", "msg_run": "Schreiben läuft...",
+        "preface": "Vorwort", "ack": "Danksagungen", "preview": "📖 Leseansicht"
+    },
+    "Français": {
+        "sidebar_tit": "⚙️ Configuration",
+        "t_book": "Titre du livre", "t_auth": "Auteur", "t_lang": "Langue", "t_gen": "Genre", "t_plot": "Intrigue",
+        "btn_res": "🔄 RÉINITIALISER", "tabs": ["📊 Index", "✍️ Écriture", "📖 Aperçu", "📑 Export"],
+        "btn_idx": "Générer l'index", "btn_sync": "Sync Chapitres", "lbl_sec": "Section:",
+        "btn_write": "✨ ÉCRIRE LA SECTION", "btn_edit": "🚀 REFORMULER", "msg_run": "Écriture...",
+        "preface": "Préface", "ack": "Remerciements", "preview": "📖 Vue Lecture"
+    },
+    "Español": {
+        "sidebar_tit": "⚙️ Configuración",
+        "t_book": "Título del libro", "t_auth": "Autor", "t_lang": "Idioma", "t_gen": "Género", "t_plot": "Trama",
+        "btn_res": "🔄 REINICIAR", "tabs": ["📊 Índice", "✍️ Escritura", "📖 Vista previa", "📑 Exportar"],
+        "btn_idx": "Generar índice", "btn_sync": "Sync Capítulos", "lbl_sec": "Sección:",
+        "btn_write": "✨ ESCRIBIR SECCIÓN", "btn_edit": "🚀 REESCRIBIR", "msg_run": "Escribiendo...",
+        "preface": "Prefacio", "ack": "Agradecimientos", "preview": "📖 Vista de lectura"
+    },
+    "Română": {
+        "sidebar_tit": "⚙️ Configurare",
+        "t_book": "Titlul cărții", "t_auth": "Autor", "t_lang": "Limbă", "t_gen": "Gen", "t_plot": "Subiect",
+        "btn_res": "🔄 RESETARE", "tabs": ["📊 Index", "✍️ Scriere", "📖 Previzualizare", "📑 Export"],
+        "btn_idx": "Generează index", "btn_sync": "Sincronizează", "lbl_sec": "Secțiune:",
+        "btn_write": "✨ SCRIE SECȚIUNEA", "btn_edit": "🚀 REFORMULEAZĂ", "msg_run": "Se scrie...",
+        "preface": "Prefață", "ack": "Mulțumiri", "preview": "📖 Vizualizare lectură"
+    },
+    "Русский": {
+        "sidebar_tit": "⚙️ Настройки",
+        "t_book": "Название книги", "t_auth": "Автор", "t_lang": "Язык", "t_gen": "Жанр", "t_plot": "Сюжет",
+        "btn_res": "🔄 СБРОС", "tabs": ["📊 Оглавление", "✍️ Написание", "📖 Предпросмотр", "📑 Экспорт"],
+        "btn_idx": "Создать оглавление", "btn_sync": "Синхронизировать", "lbl_sec": "Раздел:",
+        "btn_write": "✨ НАПИСАТЬ РАЗДЕЛ", "btn_edit": "🚀 ПЕРЕПИСАТЬ", "msg_run": "Пишем...",
+        "preface": "Предисловие", "ack": "Благодарности", "preview": "📖 Режим чтения"
+    },
+    "中文": {
+        "sidebar_tit": "⚙️ 设置",
+        "t_book": "书名", "t_auth": "作者", "t_lang": "语言", "t_gen": "体裁", "t_plot": "情节",
+        "btn_res": "🔄 重置", "tabs": ["📊 目录", "✍️ 写作", "📖 预览", "📑 导出"],
+        "btn_idx": "生成目录", "btn_sync": "同步章节", "lbl_sec": "选择章节:",
+        "btn_write": "✨ 编写章节", "btn_edit": "🚀 重写", "msg_run": "正在写作...",
+        "preface": "前言", "ack": "致谢", "preview": "📖 阅读视图"
     }
-    # È possibile aggiungere altre lingue seguendo lo stesso schema...
 }
 
-# --- BLOCCO CSS ---
+# --- CSS ---
 st.markdown("""
 <style>
 #MainMenu, footer, header, [data-testid="stHeader"] {visibility: hidden;}
-.stButton>button {
-    width: 100%; border-radius: 12px; height: 3.8em; font-weight: bold; font-size: 18px !important;
-    background-color: #007BFF !important; color: white !important; border: none;
-    box-shadow: 0px 4px 15px rgba(0, 123, 255, 0.3); transition: all 0.3s ease;
-}
-.stButton>button:hover { background-color: #0056b3 !important; transform: translateY(-2px); }
-.preview-box { background-color: white; padding: 50px; border: 1px solid #d3d6db; border-radius: 10px; height: 650px; overflow-y: scroll; font-family: 'Times New Roman', serif; line-height: 1.8; color: #222; }
+.custom-title { font-size: 38px; font-weight: bold; text-align: center; padding: 20px; background-color: #f8f9fa; border-radius: 15px; border: 1px solid #dee2e6; margin-bottom: 20px; }
+.stButton>button { width: 100%; border-radius: 12px; height: 3.8em; font-weight: bold; background-color: #007BFF !important; color: white !important; box-shadow: 0px 4px 10px rgba(0,0,0,0.15); }
+.preview-box { background-color: white; padding: 40px; border: 1px solid #d3d6db; border-radius: 10px; height: 600px; overflow-y: scroll; font-family: 'Times New Roman', serif; line-height: 1.8; color: #222; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR & LINGUA ---
+# --- SIDEBAR ---
 with st.sidebar:
-    # Selezione lingua prima di tutto per aggiornare l'interfaccia
-    lingua_scelta = st.selectbox("🌐 Select Language / Seleziona Lingua", list(TRADUZIONI.keys()))
-    lang = TRADUZIONI[lingua_scelta]
-    
-    st.title(lang["titolo_sidebar"])
-    titolo_l = st.text_input(lang["label_titolo"])
-    autore_l = st.text_input(lang["label_autore"])
-    genere = st.selectbox(lang["label_genere"], ["Manuale Tecnico", "Saggio Scientifico", "Manuale Psicologico", "Business", "Motivazionale", "Thriller", "Fantasy"])
-    trama = st.text_area(lang["label_trama"], placeholder=lang["placeholder_trama"], height=150)
-    
-    if st.button(lang["btn_reset"]):
+    lingua_scelta = st.selectbox("🌐 Choose Language", list(TRADUZIONI.keys()))
+    L = TRADUZIONI[lingua_scelta]
+    st.title(L["sidebar_tit"])
+    titolo_l = st.text_input(L["t_book"])
+    autore_l = st.text_input(L["t_auth"])
+    genere = st.selectbox(L["t_gen"], ["Manuale Tecnico", "Saggio", "Psicologia", "Business", "Motivazionale", "Thriller", "Fantasy"])
+    trama = st.text_area(L["t_plot"], height=150)
+    if st.button(L["btn_res"]):
         for k in list(st.session_state.keys()): del st.session_state[k]
         st.rerun()
 
-# --- FUNZIONI DI SERVIZIO ---
+# --- FUNZIONI ---
 def chiedi_gpt(prompt, system_prompt):
     try:
         response = client.chat.completions.create(
@@ -133,57 +120,55 @@ def sync_capitoli():
     testo = st.session_state.get("indice_raw", "")
     mappa = {}
     for l in testo.split('\n'):
-        match = re.search(r'(?i)(Capitolo|Chapter|Kapitel|Capítulo)\s*\d+|^\d+\.', l)
+        match = re.search(r'(?i)(Capitolo|Chapter|Kapitel|Capítulo|Раздел|章节|Secţiune)\s*\d+|^\d+\.', l)
         if match:
             cap_key = match.group(0).strip().title()
             descr = l.replace(match.group(0), "").strip(": -")
-            mappa[cap_key] = descr if descr else "Analysis"
+            mappa[cap_key] = descr
     st.session_state['mappa_capitoli'] = mappa
     st.session_state['lista_capitoli'] = list(mappa.keys())
 
 # --- UI PRINCIPALE ---
-st.markdown(f'<div class="custom-title">AI di Antonino: {titolo_l if titolo_l else "Ebook Creator"}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="custom-title">AI: {titolo_l if titolo_l else "Ebook Creator"}</div>', unsafe_allow_html=True)
 
 if titolo_l and trama:
-    S_PROMPT = f"Authority in {genere}. Write ONLY in {lingua_scelta}. Style: Expert, no repetitions, chapters 2000+ words."
-    t1, t2, t3, t4 = st.tabs(lang["tabs"])
+    S_PROMPT = f"World Authority in {genere}. Write ONLY in {lingua_scelta}. 2000+ words per chapter. Deep technical detail, zero repetition."
+    t1, t2, t3, t4 = st.tabs(L["tabs"])
 
     with t1:
-        if st.button(lang["btn_gen_indice"]):
-            st.session_state["indice_raw"] = chiedi_gpt(f"Create professional index for '{titolo_l}' based on: {trama} in {lingua_scelta}.", "Editor.")
+        if st.button(L["btn_idx"]):
+            st.session_state["indice_raw"] = chiedi_gpt(f"Create long index for '{titolo_l}' in {lingua_scelta}.", "Editor.")
             sync_capitoli()
-        st.session_state["indice_raw"] = st.text_area(lang["label_edit_indice"], value=st.session_state.get("indice_raw", ""), height=300)
-        if st.button(lang["btn_sync"]): sync_capitoli(); st.rerun()
+        st.session_state["indice_raw"] = st.text_area("Index Editor", value=st.session_state.get("indice_raw", ""), height=300)
+        if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
 
     with t2:
         if "lista_capitoli" not in st.session_state: sync_capitoli()
-        opzioni = [lang["prefazione"]] + st.session_state.get("lista_capitoli", []) + [lang["ringraziamenti"]]
-        cap_sel = st.selectbox(lang["label_sez"], opzioni)
+        opzioni = [L["preface"]] + st.session_state.get("lista_capitoli", []) + [L["ack"]]
+        cap_sel = st.selectbox(L["lbl_sec"], opzioni)
         key_sez = f"txt_{cap_sel.replace(' ', '_')}"
-
-        c_g, c_r = st.columns(2)
-        with c_g:
-            if st.button(lang["btn_scrivi"]):
-                with st.spinner(lang["msg_scrivendo"]):
-                    st.session_state[key_sez] = chiedi_gpt(f"Write the full section '{cap_sel}' (min 2000 words) for book '{titolo_l}'.", S_PROMPT)
-        with c_r:
-            istr_mod = st.text_input(lang["label_istr"], key=f"istr_{key_sez}")
-            if st.button(lang["btn_rielabora"]):
-                with st.spinner(lang["msg_rielaborando"]):
-                    st.session_state[key_sez] = chiedi_gpt(f"Rewrite this following: {istr_mod}. Text:\n{st.session_state.get(key_sez, '')}", S_PROMPT)
-        st.session_state[key_sez] = st.text_area("Editor:", value=st.session_state.get(key_sez, ""), height=400)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(L["btn_write"]):
+                with st.spinner(L["msg_run"]):
+                    st.session_state[key_sez] = chiedi_gpt(f"Write a massive 2000-word chapter on '{cap_sel}' for '{titolo_l}'. In {lingua_scelta}.", S_PROMPT)
+        with c2:
+            istr = st.text_input("Edit Instruction", key=f"istr_{key_sez}")
+            if st.button(L["btn_edit"]):
+                with st.spinner(L["msg_run"]):
+                    st.session_state[key_sez] = chiedi_gpt(f"Rewrite/Expand based on: {istr}. Text:\n{st.session_state.get(key_sez, '')}", S_PROMPT)
+        st.session_state[key_sez] = st.text_area("Text Editor", value=st.session_state.get(key_sez, ""), height=400)
 
     with t3:
-        st.subheader(lang["anteprima_tit"])
-        preview_html = f"<div class='preview-box'><h1 style='text-align:center;'>{titolo_l.upper()}</h1>"
+        p_html = f"<div class='preview-box'><h1 style='text-align:center;'>{titolo_l.upper()}</h1>"
         for s in [f"txt_{x.replace(' ', '_')}" for x in opzioni]:
             if s in st.session_state:
-                preview_html += f"<h2>{s.replace('txt_', '').replace('_', ' ')}</h2><p>{st.session_state[s].replace('\\n', '<br>')}</p>"
-        st.markdown(preview_html + "</div>", unsafe_allow_html=True)
+                p_html += f"<h2>{s.replace('txt_', '').replace('_', ' ')}</h2><p>{st.session_state[s].replace('\\n', '<br>')}</p>"
+        st.markdown(p_html + "</div>", unsafe_allow_html=True)
 
     with t4:
-        c1, c2 = st.columns(2)
-        with c1: st.button("Download PDF") # Logica PDF precedente...
-        with c2: st.button("Download Word") # Logica Word precedente...
+        # Codice export PDF/Word (come versioni precedenti)
+        st.write("Ready for export.")
 else:
-    st.info("👋 Setup Title and Topic to start.")
+    st.info("👋 Setup Sidebar to start.")
