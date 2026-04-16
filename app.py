@@ -48,15 +48,16 @@ def chiedi_gpt(p, s_p):
         temperature=0.7
     )
     risposta = r.choices[0].message.content
+    
+    # Filtro anti-commenti IA
     linee = risposta.split('\n')
     linee_pulite = []
-    tag_da_eliminare = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", "perfetto", "fammi sapere"]
+    tag_da_eliminare = ["ecco", "certamente", "spero", "di seguito", "questo è", "il capitolo", "ciao", "va bene", "perfetto", "fammi sapere", "here is", "sure"]
     for l in linee:
         testo_l = l.strip().lower()
         if testo_l and not any(testo_l.startswith(p) for p in tag_da_eliminare):
             linee_pulite.append(l)
     testo_finale = '\n'.join(linee_pulite).strip()
-    testo_finale = re.sub(r"(?i)(spero che|fammi sapere se|ecco il testo|buona scrittura|fammi sapere cosa|spero sia utile).*$", "", testo_finale).strip()
     return testo_finale
 
 def reset_app():
@@ -70,7 +71,10 @@ st.title("AI di Antonino: \"Crea il tuo EBook\"")
 with st.sidebar:
     st.header("Configurazione Libro")
     titolo = st.text_input("Titolo Libro", "")
-    autore = st.text_input("Inserisci il tuo nome (Autore)", "")
+    autore = st.text_input("Nome Autore", "")
+    
+    # NUOVA FUNZIONE: SCELTA LINGUA
+    lingua = st.selectbox("Lingua di stesura", ["Italiano", "English"])
     
     modalita = st.selectbox("Modalità di scrittura", [
         "Manuale Psicologico (Guida pratica e clinica)",
@@ -84,20 +88,28 @@ with st.sidebar:
         "Romanzo Storico",
         "Romanzo Rosa"
     ])
-    trama = st.text_area("Trama del libro")
+    trama = st.text_area("Trama/Argomento principale")
     st.markdown("---")
     if st.button("🔄 RICOMINCIA NUOVO EBOOK"):
         reset_app()
 
 if trama:
-    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi per l'autore {autore if autore else 'utente'}. "
-    S_P += "REGOLE: Produci SOLO testo narrativo. NON aggiungere introduzioni o saluti finali."
+    # SYSTEM PROMPT POTENZIATO PER COERENZA E LINGUA
+    S_P = f"Sei un Ghostwriter esperto in {modalita}. Scrivi in lingua {lingua}. "
+    S_P += f"Autore di riferimento: {autore if autore else 'utente'}. "
+    S_P += "REGOLE: Produci SOLO testo narrativo/tecnico. NO saluti, NO introduzioni. "
+    S_P += "MANTENERE COERENZA: Rispetta lo stile e l'evoluzione della trama/argomenti stabiliti nei capitoli precedenti."
+
+    # Costruiamo il contesto della storia per l'IA
+    contesto_storia = f"Titolo: {titolo}. Trama: {trama}. \n"
+    if 'indice' in st.session_state:
+        contesto_storia += f"Indice: {st.session_state['indice']}\n"
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📊 Struttura", "🎨 Copertina AI", "✍️ Scrittura", "📝 Modifica", "📑 Esporta"])
 
     with tab1:
         if st.button("Genera Indice"):
-            st.session_state['indice'] = chiedi_gpt(f"Crea l'indice per il libro '{titolo}'. Trama: {trama}", S_P)
+            st.session_state['indice'] = chiedi_gpt(f"Crea l'indice dettagliato in {lingua} per: {titolo}. Trama: {trama}", S_P)
         if 'indice' in st.session_state:
             st.text_area("Indice", st.session_state['indice'], height=250)
 
@@ -105,7 +117,7 @@ if trama:
         if st.button("Genera Copertina"):
             with st.spinner("Creazione immagine..."):
                 try:
-                    prompt_img = f"Professional book cover for '{titolo}', genre: {modalita}, theme: {trama[:100]}. High resolution, cinematic, no text."
+                    prompt_img = f"Professional book cover for '{titolo}', genre: {modalita}, theme: {trama[:100]}. Cinematic, no text."
                     res_img = client.images.generate(model="dall-e-3", prompt=prompt_img, n=1, size="1024x1792")
                     st.session_state['cover_url'] = res_img.data[0].url
                 except Exception as e:
@@ -114,29 +126,36 @@ if trama:
             st.image(st.session_state['cover_url'], use_container_width=True)
 
     with tab3:
-        scelta = st.selectbox("Sezione", ["Prefazione", "Capitolo", "Ringraziamenti"])
-        n_cap = st.number_input("N°", 1, 30) if scelta == "Capitolo" else 0
+        scelta = st.selectbox("Cosa scrivere?", ["Prefazione", "Capitolo", "Ringraziamenti"])
+        n_cap = st.number_input("Numero", 1, 30) if scelta == "Capitolo" else 0
         key_attuale = f"{scelta.lower()}_{n_cap}" if n_cap > 0 else scelta.lower()
+        
         if st.button("Avvia Scrittura"):
-            with st.spinner("Scrittura profonda..."):
+            with st.spinner("Scrittura in corso con memoria dei capitoli precedenti..."):
+                # Passiamo i testi precedenti per la coerenza
+                testi_precedenti = "\n".join([st.session_state[k][:500] for k in st.session_state if "capitolo" in k])
+                prompt_scrit = f"{contesto_storia}\nTesti già scritti (riassunto): {testi_precedenti}\n\n"
+                prompt_scrit += f"Scrivi la sezione: {scelta} {n_cap if n_cap>0 else ''}. Lingua: {lingua}."
+                
                 testo_completo = ""
-                for f in ["Inizio", "Sviluppo", "Fine"]:
-                    testo_completo += chiedi_gpt(f"Scrivi la parte {f} di {scelta} {n_cap if n_cap>0 else ''}.", S_P) + "\n\n"
+                for f in ["Inizio", "Sviluppo", "Conclusione"]:
+                    testo_completo += chiedi_gpt(f"{prompt_scrit} - Focalizzati sulla parte: {f}", S_P) + "\n\n"
                 st.session_state[key_attuale] = testo_completo
+        
         if key_attuale in st.session_state:
             st.text_area("Contenuto", st.session_state[key_attuale], height=350)
 
     with tab4:
         st.subheader("Editor Professionale")
-        sez_mod = st.selectbox("Cosa modificare?", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
+        sez_mod = st.selectbox("Seleziona sezione", ["Prefazione", "Ringraziamenti"] + [f"Capitolo {i}" for i in range(1, 31)])
         k_mod = sez_mod.lower().replace(" ", "_")
         if k_mod in st.session_state:
             t_in = st.text_area("Testo attuale", st.session_state[k_mod], height=250)
             st.session_state[k_mod] = t_in
-            istr = st.text_input("Istruzione Editor (Ristrutturazione profonda)")
+            istr = st.text_input(f"Istruzione in {lingua} per la modifica")
             if st.button("Applica Ristrutturazione"):
                 with st.spinner("Rielaborazione..."):
-                    S_P_MOD = S_P + " Agisci come Senior Editor. Ristruttura profondamente."
+                    S_P_MOD = S_P + " Agisci come Senior Editor. Mantieni coerenza strutturale."
                     st.session_state[k_mod] = chiedi_gpt(f"Testo:\n{t_in}\nRichiesta: {istr}", S_P_MOD)
                     st.rerun()
         else:
@@ -167,7 +186,9 @@ if trama:
                     if s in st.session_state:
                         pdf.add_page(); pdf.set_font("Arial", "B", 18); pdf.cell(0, 10, s.upper(), 0, 1, "L")
                         pdf.ln(10); pdf.set_font("Arial", "", 11)
-                        pdf.multi_cell(0, 7, st.session_state[s].encode('latin-1', 'replace').decode('latin-1'))
+                        # Encode for PDF compatibility
+                        txt = st.session_state[s].encode('latin-1', 'replace').decode('latin-1')
+                        pdf.multi_cell(0, 7, txt)
                 pdf.output("e.pdf")
                 with open("e.pdf", "rb") as f:
                     st.download_button("📥 PDF", f, file_name=f"{titolo}.pdf", use_container_width=True)
