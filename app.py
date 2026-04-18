@@ -106,30 +106,43 @@ div[data-baseweb="select"] > div { background-color: #2b2b2b !important; color: 
 """, unsafe_allow_html=True)
 
 # ======================================================================================================================
-# 4. GESTIONE EXPORT PDF
+# 4. GESTIONE EXPORT PDF (CHIRURGIA: FIX UNICODEENCODEERROR)
 # ======================================================================================================================
 class EbookPDF(FPDF):
     def __init__(self, titolo, autore):
         super().__init__()
-        self.titolo = titolo
-        self.autore = autore
+        self.titolo = self._clean(titolo)
+        self.autore = self._clean(autore)
+        
+    def _clean(self, txt):
+        """Sanitizzazione forzata per FPDF latin-1. Evita crash da smart quotes e unicode."""
+        if not txt: return ""
+        # Sostituzioni tipografiche comuni generate dall'IA
+        replacements = {'“': '"', '”': '"', '‘': "'", '’': "'", '—': '-', '–': '-', '…': '...'}
+        for k, v in replacements.items(): 
+            txt = txt.replace(k, v)
+        # Forza l'encode/decode ignorando emoji o caratteri non mappabili
+        return txt.encode('latin-1', 'replace').decode('latin-1')
+
     def header(self):
         if self.page_no() > 1:
             self.set_font('Arial', 'I', 9); self.set_text_color(150)
             self.cell(0, 10, f"{self.titolo} - {self.autore}", 0, 0, 'R'); self.ln(15)
+            
     def footer(self):
         self.set_y(-20); self.set_font('Arial', 'I', 9)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+        
     def cover_page(self):
         self.add_page(); self.set_font('Arial', 'B', 32); self.ln(100)
         self.multi_cell(0, 15, self.titolo.upper(), 0, 'C'); self.ln(20)
         self.set_font('Arial', 'I', 20); self.cell(0, 10, f"di {self.autore}", 0, 1, 'C')
+        
     def add_content(self, title, content):
         self.add_page(); self.ln(15); self.set_font('Arial', 'B', 22)
-        self.cell(0, 15, title.upper(), 0, 1); self.ln(10); self.set_font('Arial', '', 12)
-        try: clean_text = content.encode('latin-1', 'replace').decode('latin-1')
-        except: clean_text = content
-        self.multi_cell(0, 10, clean_text)
+        # Pulisce titolo e contenuto PRIMA di inviarli a FPDF
+        self.cell(0, 15, self._clean(title).upper(), 0, 1); self.ln(10); self.set_font('Arial', '', 12)
+        self.multi_cell(0, 10, self._clean(content))
 
 # ======================================================================================================================
 # 5. CORE LOGIC GPT-4o & ANALISI QUALITÀ
