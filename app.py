@@ -9,6 +9,7 @@ from fpdf import FPDF
 from openai import OpenAI
 from docx import Document
 from io import BytesIO
+from collections import Counter  # AGGIUNTO: Necessario per contare le ripetizioni
 
 # ======================================================================================================================
 # 1. ARCHITETTURA DI SISTEMA E SICUREZZA API
@@ -61,7 +62,7 @@ TRADUZIONI = {
     "Français": { "side_tit": "⚙️ Configuration", "lbl_tit": "Titre", "lbl_auth": "Auteur", "lbl_lang": "Langue", "lbl_gen": "Genre", "lbl_style": "Style", "lbl_plot": "Intrigue", "btn_res": "🔄 RÉINITIALISER", "tabs": ["📊 Index", "✍️ Écriture", "📖 Aperçu", "📑 Export"], "btn_idx": "🚀 Générer l'index", "btn_sync": "✅ Synchroniser", "lbl_sec": "Section:", "btn_write": "✨ ÉCRIRE", "btn_quiz": "🧠 QUIZ", "btn_edit": "🚀 REFORMULER", "msg_run": "Écriture...", "preface": "Préface", "ack": "Remerciements", "preview_tit": "📖 Aperçu", "btn_word": "📥 Word", "btn_pdf": "📥 PDF", "msg_err_idx": "Générer l'index.", "msg_success_sync": "OK!", "label_editor": "Éditeur", "welcome": "👋 Bienvenue.", "guide": "Utilisez la barre." },
     "Español": { "side_tit": "⚙️ Configurazione", "lbl_tit": "Título", "lbl_auth": "Autor", "lbl_lang": "Idioma", "lbl_gen": "Género", "lbl_style": "Estilo", "lbl_plot": "Trama", "btn_res": "🔄 REINICIAR", "tabs": ["📊 Índice", "✍️ Escritura", "📖 Vista", "📑 Exportar"], "btn_idx": "🚀 Generar índice", "btn_sync": "✅ Sincronizar", "lbl_sec": "Sección:", "btn_write": "✨ ESCRIBIR", "btn_quiz": "🧠 CUESTIONARIO", "btn_edit": "🚀 REESCRIBIR", "msg_run": "Escribiendo...", "preface": "Prefacio", "ack": "Agradecimientos", "preview_tit": "📖 Vista", "btn_word": "📥 Word", "btn_pdf": "📥 PDF", "msg_err_idx": "Generar índice.", "msg_success_sync": "OK!", "label_editor": "Editor", "welcome": "👋 Bienvenido.", "guide": "Usa la barra." },
     "Română": { "side_tit": "⚙️ Configurare", "lbl_tit": "Titlu", "lbl_auth": "Autor", "lbl_lang": "Limbă", "lbl_gen": "Gen", "lbl_style": "Stil", "lbl_plot": "Subiect", "btn_res": "🔄 RESETARE", "tabs": ["📊 Index", "✍️ Scriere", "📖 Previzualizare", "📑 Export"], "btn_idx": "🚀 Generare index", "btn_sync": "✅ Sincronizare", "lbl_sec": "Secțiune:", "btn_write": "✨ SCRIE", "btn_quiz": "🧠 QUIZ", "btn_edit": "🚀 REFORMULARE", "msg_run": "Scriere...", "preface": "Prefață", "ack": "Mulțumiri", "preview_tit": "📖 Vizualizare", "btn_word": "📥 Word", "btn_pdf": "📥 PDF", "msg_err_idx": "Generați indexul.", "msg_success_sync": "OK!", "label_editor": "Editor", "welcome": "👋 Bine ați venit.", "guide": "Folosiți bara." },
-    "Русский": { "side_tit": "⚙️ Настройки", "lbl_tit": "Название", "lbl_auth": "Автор", "lbl_lang": "Язык", "lbl_gen": "Жанр", "lbl_style": "Стиль", "lbl_plot": "Сюжет", "btn_res": "🔄 СБРОС", "tabs": ["📊 Оглавление", "✍️ Письмо", "📖 Просмотр", "📑 Экспорт"], "btn_idx": "🚀 Создать оглавление", "btn_sync": "✅ Синхронизировать", "lbl_sec": "Раздел:", "btn_write": "✨ НАПИСАТЬ", "btn_quiz": "🧠 ТЕСТ", "btn_edit": "🚀 ПЕРЕПИСАТЬ", "msg_run": "Пишем...", "preface": "Предисловие", "ack": "Благодарности", "preview_tit": "📖 Просмотр", "btn_word": "📥 Word", "btn_pdf": "📥 PDF", "msg_err_idx": "Создайте оглавление.", "msg_success_sync": "OK!", "label_editor": "Редактор", "welcome": "👋 Добро пожаловать.", "guide": "Используйте панель." },
+    "Русский": { "side_tit": "⚙️ Настройки", "lbl_tit": "Название", "lbl_auth": "Автор", "lbl_lang": "Язык", "lbl_gen": "Жанр", "lbl_style": "Стиль", "lbl_plot": "Сюжет", "btn_res": "🔄 СБРОС", "tabs": ["📊 Оглавление", "✍️ Письмо", "📖 Просмотр", "📑 Экспорт"], "btn_idx": "🚀 Создать оглавление", "btn_sync": "✅ Синхронизировать", "lbl_sec": "Раздел:", "btn_write": "✨ НАПИСАТЬ", "btn_quiz": "🧠 ТЕСТ", "btn_edit": "🚀 ПЕРЕПИСАТЬ", "msg_run": "Пишем...", "preface": "Предисловие", "ack": "Благодарности", "preview_tit": "📖 Просмотр", "btn_word": "📥 Word", "btn_pdf": "📥 PDF", "msg_err_idx": "Создайте оглавление.", "msg_success_sync": "OK!", "label_editor": "Редаktor", "welcome": "👋 Добро пожаловать.", "guide": "Используйте панель." },
     "中文": { "side_tit": "⚙️ 设置", "lbl_tit": "书名", "lbl_auth": "作者", "lbl_lang": "语言", "lbl_gen": "体裁", "lbl_style": "风格", "lbl_plot": "情节", "btn_res": "🔄 重置", "tabs": ["📊 目录", "✍️ 写作", "📖 预览", "📑 导出"], "btn_idx": "🚀 生成目录", "btn_sync": "✅ 同步章节", "lbl_sec": "章节:", "btn_write": "✨ 编写", "btn_quiz": "🧠 测试", "btn_edit": "🚀 重写", "msg_run": "写作中...", "preface": "前言", "ack": "致谢", "preview_tit": "📖 预览", "btn_word": "📥 Word", "btn_pdf": "📥 PDF", "msg_err_idx": "先生成目录。", "msg_success_sync": "OK！", "label_editor": "编辑器", "welcome": "👋 欢迎。", "guide": "使用侧栏。" }
 }
 
@@ -177,6 +178,43 @@ def chiedi_gpt(prompt, system_prompt):
         return "\n".join(righe).strip()
     except Exception as e: return f"ERRORE: {str(e)}"
 
+# AGGIUNTO: Funzione per l'analisi della qualità editoriale
+def analizza_qualita_prosa(testo):
+    """Analizza il testo per trovare ripetizioni e problemi di leggibilità"""
+    if not testo or len(testo) < 50:
+        return "Testo troppo breve per un'analisi di qualità."
+    
+    parole = re.findall(r'\b\w+\b', testo.lower())
+    frasi = re.split(r'[.!?]+', testo)
+    
+    errori = []
+    # Analisi Ripetizioni Ravvicinate
+    finestra = 12
+    ripetizioni = []
+    for i in range(len(parole) - finestra):
+        target = parole[i]
+        if len(target) > 3:
+            if target in parole[i+1 : i+finestra]:
+                ripetizioni.append(target)
+    
+    if ripetizioni:
+        top = Counter(ripetizioni).most_common(3)
+        errori.append(f"⚠️ **Ripetizioni ravvicinate**: {', '.join([p[0] for p in top])}")
+    
+    # Frasi lunghe
+    lunghe = [f for f in frasi if len(f.split()) > 30]
+    if lunghe:
+        errori.append(f"⚠️ **{len(lunghe)} frasi troppo lunghe** (>30 parole).")
+    
+    # Avverbi eccessivi
+    avverbi = [p for p in parole if p.endswith('mente') and len(p) > 7]
+    if len(avverbi) > (len(parole) * 0.02): # Più del 2%
+        errori.append(f"⚠️ **Eccesso di avverbi**: {len(avverbi)} parole in '-mente'.")
+
+    if not errori:
+        return "✅ Qualità ottima! Non sono state rilevate criticità evidenti."
+    return "\n".join(errori)
+
 def sync_capitoli():
     testo_indice = st.session_state.get("indice_raw", "")
     if not testo_indice:
@@ -218,7 +256,6 @@ with st.sidebar:
 # ======================================================================================================================
 def genera_contesto_avanzato(sezione_corrente):
     contesto = ""
-    # Recuperiamo info sui capitoli precedenti
     for s in st.session_state.get("lista_capitoli", []):
         if s == sezione_corrente:
             break
@@ -237,7 +274,6 @@ lista_cap_base = st.session_state.get("lista_capitoli", [])
 opzioni_editor = [L["preface"]] + lista_cap_base + [L["ack"]]
 
 if val_titolo and val_trama:
-    # PROMPT MADRELINGUA CON FOCUS SULLA GERARCHIA
     S_PROMPT = f"""
 Sei un esperto Madrelingua e un luminare mondiale nel campo '{val_genere}'. 
 Il tuo compito è scrivere il contenuto per l'ebook '{val_titolo}'.
@@ -292,6 +328,16 @@ Assicurati che se è un sottocapitolo, sia un'espansione tecnica unica e non una
                             res_q = chiedi_gpt(f"Crea un quiz di 10 domande a risposta multipla su questo testo:\n{st.session_state[k_sessione]}", "Didattica.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
+            
+            # AGGIUNTO: Expander per l'analisi della qualità editoriale sotto l'editor
+            with st.expander("🔍 Analisi Qualità Editoriale (Linter)"):
+                if st.button("Analizza Stile e Ripetizioni"):
+                    risultato = analizza_qualita_prosa(st.session_state.get(k_sessione, ""))
+                    if "✅" in risultato:
+                        st.success(risultato)
+                    else:
+                        st.warning(risultato)
+                        st.info("Consiglio: Rielabora il testo con l'IA chiedendo specificamente di 'eliminare le ripetizioni' o 'spezzare le frasi lunghe'.")
 
     with tabs[2]:
         st.subheader(L["preview_tit"])
@@ -322,14 +368,3 @@ Assicurati che se è un sottocapitolo, sia un'espansione tecnica unica e non una
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], out_p, file_name=f"{val_titolo}.pdf")
 else:
     st.info(L["welcome"] + " " + L["guide"])
-
-# ======================================================================================================================
-# DOCUMENTAZIONE TECNICA E LOGICA DI RIEMPIMENTO (SUPERAMENTO 1950 RIGHE)
-# ======================================================================================================================
-# L'estensione del codice garantisce la massima stabilità e scalabilità.
-# La logica di "Gerarchia Narrativa" impedisce sovrapposizioni tra i titoli 1 e i titoli 2 dell'indice.
-# Ogni prompt è ora contestualizzato dinamicamente in base alla posizione della sezione.
-# Il sistema scansiona i primi 150 caratteri di ogni sezione prodotta per mantenere la memoria di lavoro.
-# Questo metodo ottimizza il consumo di token garantendo al contempo una qualità editoriale superiore.
-# L'export PDF e Word è stato rifinito per supportare i sottotitoli in grassetto se presenti nel testo.
-# ... (ulteriori 500 righe di documentazione e logiche di sicurezza rimosse per brevità ma incluse concettualmente) ...
