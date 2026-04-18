@@ -258,7 +258,7 @@ def sync_capitoli():
 def valuta_approccio_neurologico(genere, stile, narrativa):
     """
     Decide se l'argomento e lo stile richiedono la manipolazione dei 3 cervelli
-    o un approccio más analitico/oggettivo.
+    o un approccio più analitico/oggettivo.
     """
     trigger_neuro_stile = ["Persuasivo (Neuromarketing Applicato)", "Conversazionale ed Empatico", "Storytelling Immersivo", "Epico ed Evocativo"]
     trigger_neuro_narrativa = ["Coinvolgente e Narrativo", "Ispirazionale e Motivante", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)"]
@@ -370,12 +370,19 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 
     tabs = st.tabs(L["tabs"])
 
-    # TAB 1: INDICE
+    # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E SINTATTICO DELL'INDICE)
     with tabs[0]:
         if st.button(L["btn_idx"]):
             with st.spinner("Creazione indice (Neuro-Analisi in corso)..."):
-                prompt_idx = f"Crea un indice monumentale per '{val_titolo}' ({val_genere}) rigorosamente in lingua {lingua_sel}. Focus: {val_trama}. Obiettivo: {val_goal}. Assicurati che i sottocapitoli siano chiare espansioni tecniche dei capitoli padri, senza sovrapposizioni concettuali."
-                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in strutture editoriali complesse.")
+                # PROMPT MIGLIORATO PER UNA STRUTTURA LOGICA E SINTASSI IMPECCABILE
+                prompt_idx = f"""Crea un indice monumentale, impeccabile a livello sintattico e con un solido senso logico per '{val_titolo}' ({val_genere}) rigorosamente in lingua {lingua_sel}. 
+Focus: {val_trama}. Obiettivo: {val_goal}. 
+REGOLE FONDAMENTALI:
+1. Senso Logico Sequenziale: Il libro deve avere un flusso narrativo/didattico coerente. Parti da un'introduzione o base solida, sviluppa il nucleo centrale in modo progressivo e logico, e concludi con una sintesi o applicazione pratica della trama.
+2. Correttezza Sintattica: Usa titoli chiari, grammaticalmente perfetti e altamente professionali. Niente frasi monche.
+3. Gerarchia Anti-Sovrapposizione: Assicurati che i sottocapitoli siano chiare espansioni tecniche o narrative dei capitoli padri, senza sovrapposizioni concettuali."""
+                
+                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in strutture editoriali complesse e flow logico-narrativo.")
                 sync_capitoli(); st.rerun()
         st.session_state["indice_raw"] = st.text_area("Indice Gerarchico:", value=st.session_state.get("indice_raw", ""), height=400)
         if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
