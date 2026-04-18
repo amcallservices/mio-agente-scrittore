@@ -219,7 +219,7 @@ class EbookPDF(FPDF):
         self.multi_cell(0, 10, self._clean(content))
 
 # ======================================================================================================================
-# 5. CORE LOGIC GPT-4o & ANALISI QUALITÀ E DECISIONE NEURALE
+# 5. CORE LOGIC GPT-4o & ANALISI QUALITÀ (POTENZIATA) E DECISIONE NEURALE
 # ======================================================================================================================
 def chiedi_gpt(prompt, system_prompt):
     try:
@@ -235,15 +235,53 @@ def chiedi_gpt(prompt, system_prompt):
     except Exception as e: return f"ERRORE: {str(e)}"
 
 def analizza_qualita_prosa(testo):
-    if not testo or len(testo) < 50: return "Testo troppo breve."
+    """
+    Motore Linter NLP Potenziato: analizza densità, lunghezza frasi e vocabolario.
+    """
+    if not testo or len(testo) < 50: 
+        return "⚠️ Testo troppo breve per un'analisi sintattica significativa."
+    
+    risultati = ["📊 **REPORT LINTER AVANZATO E ANALISI SINTATTICA**\n"]
+    
+    # 1. Parsing base
     parole = re.findall(r'\b\w+\b', testo.lower())
-    errori = []
+    frasi = [f.strip() for f in re.split(r'[.!?]+', testo) if len(f.strip()) > 5]
+    
+    tot_parole = len(parole)
+    tot_frasi = len(frasi) if len(frasi) > 0 else 1
+    
+    # 2. Diversità Lessicale (Ricchezza del vocabolario)
+    vocabolo_unico = len(set(parole))
+    indice_diversita = (vocabolo_unico / tot_parole) * 100 if tot_parole > 0 else 0
+    if indice_diversita < 35:
+        risultati.append(f"⚠️ **Vocabolario Ripetitivo**: Indice di diversità lessicale basso ({indice_diversita:.1f}%). Valuta di usare più sinonimi.")
+    else:
+        risultati.append(f"✅ **Ricchezza Lessicale**: Ottima diversità ({indice_diversita:.1f}%). Il testo risulta stimolante.")
+
+    # 3. Lunghezza Media delle Frasi (Pacing e Affaticamento Neocorteccia)
+    parole_per_frase = tot_parole / tot_frasi
+    if parole_per_frase > 30:
+        risultati.append(f"⚠️ **Sintassi Pesante**: Le frasi sono troppo lunghe (media {parole_per_frase:.1f} parole/frase). Rischio di affaticamento cognitivo: spezza i periodi.")
+    elif parole_per_frase < 8:
+        risultati.append(f"⚠️ **Ritmo Frammentato**: Frasi molto brevi (media {parole_per_frase:.1f} parole/frase). Il testo potrebbe risultare troppo robotico o telegrafico.")
+    else:
+        risultati.append(f"✅ **Ritmo e Leggibilità**: Lunghezza frasi perfettamente bilanciata (media {parole_per_frase:.1f} parole/frase).")
+
+    # 4. Ripetizioni Ravvicinate Fastidiose (Finestra Mobile)
     ripetizioni = []
-    for i in range(len(parole) - 12):
+    for i in range(len(parole) - 15):
         target = parole[i]
-        if len(target) > 3 and target in parole[i+1 : i+12]: ripetizioni.append(target)
-    if ripetizioni: errori.append(f"⚠️ **Ripetizioni**: {', '.join([p[0] for p in Counter(ripetizioni).most_common(3)])}")
-    return "\n".join(errori) if errori else "✅ Qualità ottima e neuro-ottimizzata!"
+        # Escludiamo congiunzioni e preposizioni comuni basandoci sulla lunghezza della parola
+        if len(target) > 4 and target in parole[i+1 : i+15]: 
+            ripetizioni.append(target)
+            
+    if ripetizioni:
+        comuni = [p[0] for p in Counter(ripetizioni).most_common(5)]
+        risultati.append(f"🔍 **Allerta Ripetizioni Ravvicinate**: Le seguenti parole si ripetono troppo vicine tra loro: *{', '.join(comuni)}*")
+    else:
+        risultati.append("✅ **Fluidità Testuale**: Nessuna ripetizione fastidiosa o eco ravvicinata rilevata.")
+
+    return "\n\n".join(risultati)
 
 def sync_capitoli():
     testo_indice = st.session_state.get("indice_raw", "")
@@ -370,19 +408,25 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 
     tabs = st.tabs(L["tabs"])
 
-    # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E SINTATTICO DELL'INDICE)
+    # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE)
     with tabs[0]:
         if st.button(L["btn_idx"]):
-            with st.spinner("Creazione indice (Neuro-Analisi in corso)..."):
-                # PROMPT MIGLIORATO PER UNA STRUTTURA LOGICA E SINTASSI IMPECCABILE
-                prompt_idx = f"""Crea un indice monumentale, impeccabile a livello sintattico e con un solido senso logico per '{val_titolo}' ({val_genere}) rigorosamente in lingua {lingua_sel}. 
-Focus: {val_trama}. Obiettivo: {val_goal}. 
-REGOLE FONDAMENTALI:
-1. Senso Logico Sequenziale: Il libro deve avere un flusso narrativo/didattico coerente. Parti da un'introduzione o base solida, sviluppa il nucleo centrale in modo progressivo e logico, e concludi con una sintesi o applicazione pratica della trama.
-2. Correttezza Sintattica: Usa titoli chiari, grammaticalmente perfetti e altamente professionali. Niente frasi monche.
-3. Gerarchia Anti-Sovrapposizione: Assicurati che i sottocapitoli siano chiare espansioni tecniche o narrative dei capitoli padri, senza sovrapposizioni concettuali."""
+            with st.spinner("Creazione indice (Neuro-Analisi e Strutturazione Logica in corso)..."):
+                # PROMPT BLINDATO PER L'INDICE: Solo struttura, zero chat, logica ferrea.
+                prompt_idx = f"""Crea l'indice per il libro '{val_titolo}' (Genere: {val_genere}) rigorosamente in lingua {lingua_sel}. 
+Focus/Trama: {val_trama}. Obiettivo: {val_goal}. 
+
+REGOLE FONDAMENTALI ED ESCLUSIVE:
+1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
+2. STRUTTURA GERARCHICA RIGIDA: Usa unicamente ed esattamente questo formato di elencazione:
+   Parte I: [Nome Parte]
+   Capitolo 1: [Nome Capitolo]
+   1.1 [Sottocapitolo]
+   1.2 [Sottocapitolo]
+3. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
+4. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Solo l'elenco nudo e crudo."""
                 
-                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in strutture editoriali complesse e flow logico-narrativo.")
+                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo.")
                 sync_capitoli(); st.rerun()
         st.session_state["indice_raw"] = st.text_area("Indice Gerarchico:", value=st.session_state.get("indice_raw", ""), height=400)
         if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
@@ -426,8 +470,8 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
             
-            with st.expander("🔍 Linter Qualità & Analisi Sintattica"):
-                if st.button("Controlla Ripetizioni"): st.write(analizza_qualita_prosa(st.session_state.get(k_sessione, "")))
+            with st.expander("🔍 Linter Qualità & Analisi Sintattica Avanzata"):
+                if st.button("Genera Report Sintattico"): st.write(analizza_qualita_prosa(st.session_state.get(k_sessione, "")))
 
     # TAB 3: ANTEPRIMA
     with tabs[2]:
@@ -480,5 +524,6 @@ else:
 # 5. Modulo Anti-Ripetizione Gerarchica: A differenza dei sistemi standard, l'IA qui sa esattamente 
 #    se sta scrivendo un "Padre" (macro-argomento) o un "Figlio" (dettaglio tecnico), eliminando
 #    la fastidiosa ridondanza tipica degli ebook generati artificialmente.
-# 6. Gestione Sicura delle Sessioni e Interfaccia Premium (Dark Mode Anthracite).
+# 6. Linter NLP Qualità: Report integrato per evitare affaticamento da frasi lunghe, eco di parole e check sul vocabolario.
+# 7. Gestione Sicura delle Sessioni e Interfaccia Premium (Dark Mode Anthracite).
 # ... [Fine del Modulo Principale di Esecuzione] ...
