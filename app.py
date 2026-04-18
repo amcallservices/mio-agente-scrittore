@@ -31,7 +31,7 @@ st.set_page_config(
 )
 
 # ======================================================================================================================
-# 2. DIZIONARIO MULTILINGUA INTEGRALE (8 LINGUE - UNIFORMATO)
+# 2. DIZIONARIO MULTILINGUA INTEGRALE (9 LINGUE GLOBALI - ESPANSO)
 # ======================================================================================================================
 TRADUZIONI = {
     "Italiano": {
@@ -59,8 +59,77 @@ TRADUZIONI = {
         "preview_tit": "📖 Reading View", "btn_word": "📥 Word", "btn_pdf": "📥 PDF",
         "msg_err_idx": "Generate index first.", "msg_success_sync": "Synced!",
         "label_editor": "Editor", "welcome": "👋 Welcome.", "guide": "Use sidebar."
+    },
+    "Español": {
+        "side_tit": "⚙️ Configuración del Editor", "lbl_tit": "Título del Libro", "lbl_auth": "Nombre del Autor", "lbl_lang": "Idioma", 
+        "lbl_gen": "Género Literario", "lbl_style": "Estilo de Escritura", "lbl_plot": "Trama o Argumento", "lbl_narrative": "Estilo Narrativo", "lbl_goal": "Objetivo del Libro",
+        "btn_res": "🔄 RESETEAR PROYECTO", "tabs": ["📊 1. Índice", "✍️ 2. Escritura y Quiz", "📖 3. Vista Previa", "📑 4. Exportar"],
+        "btn_idx": "🚀 Generar Índice Profesional", "btn_sync": "✅ Guardar y Sincronizar", "lbl_sec": "Seleccionar sección:",
+        "btn_write": "✨ ESCRIBIR CONTENIDO", "btn_quiz": "🧠 AÑADIR QUIZ", "btn_edit": "🚀 REESCRIBIR",
+        "msg_run": "Analizando jerarquía y estilo...", "preface": "Prefacio", "ack": "Agradecimientos",
+        "preview_tit": "📖 Vista de Lectura", "btn_word": "📥 Descargar Word", "btn_pdf": "📥 Descargar PDF",
+        "msg_err_idx": "Genera el índice primero.", "msg_success_sync": "¡Sincronizado!", "label_editor": "Editor Profesional", "welcome": "👋 Bienvenido.", "guide": "Usa la barra lateral."
+    },
+    "Français": {
+        "side_tit": "⚙️ Configuration de l'Éditeur", "lbl_tit": "Titre du Livre", "lbl_auth": "Nom de l'Auteur", "lbl_lang": "Langue", 
+        "lbl_gen": "Genre Littéraire", "lbl_style": "Style d'Écriture", "lbl_plot": "Intrigue ou Sujet", "lbl_narrative": "Style Narratif", "lbl_goal": "Objectif du Livre",
+        "btn_res": "🔄 RÉINITIALISER", "tabs": ["📊 1. Index", "✍️ 2. Écriture & Quiz", "📖 3. Aperçu", "📑 4. Exporter"],
+        "btn_idx": "🚀 Générer l'Index", "btn_sync": "✅ Synchroniser", "lbl_sec": "Sélectionner la section:",
+        "btn_write": "✨ ÉCRIRE LE CONTENU", "btn_quiz": "🧠 AJOUTER UN QUIZ", "btn_edit": "🚀 RÉÉCRIRE",
+        "msg_run": "Analyse de la hiérarchie et du style...", "preface": "Préface", "ack": "Remerciements",
+        "preview_tit": "📖 Aperçu de Lecture", "btn_word": "📥 Télécharger Word", "btn_pdf": "📥 Télécharger PDF",
+        "msg_err_idx": "Générez l'index d'abord.", "msg_success_sync": "Synchronisé!", "label_editor": "Éditeur Professionnel", "welcome": "👋 Bienvenue.", "guide": "Utilisez la barre latérale."
+    },
+    "Deutsch": {
+        "side_tit": "⚙️ Editor-Setup", "lbl_tit": "Buchtitel", "lbl_auth": "Autorenname", "lbl_lang": "Sprache", 
+        "lbl_gen": "Genre", "lbl_style": "Schreibstil", "lbl_plot": "Handlung", "lbl_narrative": "Erzählstil", "lbl_goal": "Buchziel",
+        "btn_res": "🔄 PROJEKT ZURÜCKSETZEN", "tabs": ["📊 1. Index", "✍️ 2. Schreiben & Quiz", "📖 3. Vorschau", "📑 4. Exportieren"],
+        "btn_idx": "🚀 Index Generieren", "btn_sync": "✅ Synchronisieren", "lbl_sec": "Abschnitt wählen:",
+        "btn_write": "✨ INHALT SCHREIBEN", "btn_quiz": "🧠 QUIZ HINZUFÜGEN", "btn_edit": "🚀 UMSCHREIBEN",
+        "msg_run": "Analysiere Hierarchie und Stil...", "preface": "Vorwort", "ack": "Danksagungen",
+        "preview_tit": "📖 Leseansicht", "btn_word": "📥 Word Herunterladen", "btn_pdf": "📥 PDF Herunterladen",
+        "msg_err_idx": "Generiere zuerst den Index.", "msg_success_sync": "Synchronisiert!", "label_editor": "Professioneller Editor", "welcome": "👋 Willkommen.", "guide": "Nutze die Seitenleiste."
+    },
+    "Română": {
+        "side_tit": "⚙️ Configurare Editor", "lbl_tit": "Titlul Cărții", "lbl_auth": "Nume Autor", "lbl_lang": "Limbă", 
+        "lbl_gen": "Gen Literar", "lbl_style": "Stil de Scriere", "lbl_plot": "Subiect", "lbl_narrative": "Stil Narativ", "lbl_goal": "Obiectivul Cărții",
+        "btn_res": "🔄 RESETARE PROIECT", "tabs": ["📊 1. Cuprins", "✍️ 2. Scriere & Quiz", "📖 3. Previzualizare", "📑 4. Export"],
+        "btn_idx": "🚀 Generare Cuprins", "btn_sync": "✅ Sincronizare", "lbl_sec": "Selectează secțiunea:",
+        "btn_write": "✨ SCRIE CONȚINUT", "btn_quiz": "🧠 ADAUGĂ QUIZ", "btn_edit": "🚀 RESCRIE",
+        "msg_run": "Se analizează ierarhia și stilul...", "preface": "Prefață", "ack": "Mulțumiri",
+        "preview_tit": "📖 Mod Citire", "btn_word": "📥 Descarcă Word", "btn_pdf": "📥 Descarcă PDF",
+        "msg_err_idx": "Generează cuprinsul mai întâi.", "msg_success_sync": "Sincronizat!", "label_editor": "Editor Profesional", "welcome": "👋 Bun venit.", "guide": "Folosește bara laterală."
+    },
+    "Русский": {
+        "side_tit": "⚙️ Настройки Редактора", "lbl_tit": "Название Книги", "lbl_auth": "Имя Автора", "lbl_lang": "Язык", 
+        "lbl_gen": "Жанр", "lbl_style": "Стиль Написания", "lbl_plot": "Сюжет", "lbl_narrative": "Стиль Повествования", "lbl_goal": "Цель Книги",
+        "btn_res": "🔄 СБРОСИТЬ ПРОЕКТ", "tabs": ["📊 1. Оглавление", "✍️ 2. Текст и Тест", "📖 3. Просмотр", "📑 4. Экспорт"],
+        "btn_idx": "🚀 Создать Оглавление", "btn_sync": "✅ Синхронизировать", "lbl_sec": "Выберите раздел:",
+        "btn_write": "✨ НАПИСАТЬ ТЕКСТ", "btn_quiz": "🧠 ДОБАВИТЬ ТЕСТ", "btn_edit": "🚀 ПЕРЕПИСАТЬ",
+        "msg_run": "Анализ иерархии и стиля...", "preface": "Предисловие", "ack": "Благодарности",
+        "preview_tit": "📖 Режим Чтения", "btn_word": "📥 Скачать Word", "btn_pdf": "📥 Скачать PDF",
+        "msg_err_idx": "Сначала создайте оглавление.", "msg_success_sync": "Синхронизировано!", "label_editor": "Профессиональный Редактор", "welcome": "👋 Добро пожаловать.", "guide": "Используйте боковую панель."
+    },
+    "العربية": {
+        "side_tit": "⚙️ إعدادات المحرر", "lbl_tit": "عنوان الكتاب", "lbl_auth": "اسم المؤلف", "lbl_lang": "اللغة", 
+        "lbl_gen": "النوع الأدبي", "lbl_style": "أسلوب الكتابة", "lbl_plot": "الحبكة أو الموضوع", "lbl_narrative": "الأسلوب السردي", "lbl_goal": "هدف الكتاب",
+        "btn_res": "🔄 إعادة ضبط المشروع", "tabs": ["📊 1. الفهرس", "✍️ 2. الكتابة والاختبار", "📖 3. معاينة", "📑 4. تصدير"],
+        "btn_idx": "🚀 إنشاء فهرس احترافي", "btn_sync": "✅ حفظ ومزامنة الفصول", "lbl_sec": "اختر القسم:",
+        "btn_write": "✨ كتابة المحتوى", "btn_quiz": "🧠 إضافة اختبار", "btn_edit": "🚀 إعادة صياغة",
+        "msg_run": "جاري تحليل التسلسل الهرمي والأسلوب...", "preface": "مقدمة", "ack": "شكر وتقدير",
+        "preview_tit": "📖 عرض القراءة الاحترافي", "btn_word": "📥 تحميل Word", "btn_pdf": "📥 تحميل PDF",
+        "msg_err_idx": "قم بإنشاء الفهرس أولاً.", "msg_success_sync": "تمت المزامنة!", "label_editor": "محرر نصوص احترافي", "welcome": "👋 مرحباً بك.", "guide": "استخدم الشريط الجانبي."
+    },
+    "中文": {
+        "side_tit": "⚙️ 编辑器设置", "lbl_tit": "书名", "lbl_auth": "作者姓名", "lbl_lang": "语言", 
+        "lbl_gen": "文学体裁", "lbl_style": "写作类型", "lbl_plot": "情节或主题", "lbl_narrative": "叙事风格", "lbl_goal": "书籍目标",
+        "btn_res": "🔄 重置项目", "tabs": ["📊 1. 目录", "✍️ 2. 写作与测试", "📖 3. 预览", "📑 4. 导出"],
+        "btn_idx": "🚀 生成专业目录", "btn_sync": "✅ 保存并同步章节", "lbl_sec": "选择章节:",
+        "btn_write": "✨ 编写内容", "btn_quiz": "🧠 添加测试", "btn_edit": "🚀 用AI重写",
+        "msg_run": "正在分析层级、风格和情感目标...", "preface": "前言", "ack": "致谢",
+        "preview_tit": "📖 专业阅读视图", "btn_word": "📥 下载 Word", "btn_pdf": "📥 下载 PDF",
+        "msg_err_idx": "请先生成目录。", "msg_success_sync": "已同步！", "label_editor": "专业文本编辑器", "welcome": "👋 欢迎。", "guide": "请使用左侧边栏设置书籍参数。"
     }
-    # [Lingue aggiuntive compresse per massimizzare la logica neurale nel codice]
 }
 
 # ======================================================================================================================
@@ -189,7 +258,7 @@ def sync_capitoli():
 def valuta_approccio_neurologico(genere, stile, narrativa):
     """
     Decide se l'argomento e lo stile richiedono la manipolazione dei 3 cervelli
-    o un approccio più analitico/oggettivo.
+    o un approccio más analitico/oggettivo.
     """
     trigger_neuro_stile = ["Persuasivo (Neuromarketing Applicato)", "Conversazionale ed Empatico", "Storytelling Immersivo", "Epico ed Evocativo"]
     trigger_neuro_narrativa = ["Coinvolgente e Narrativo", "Ispirazionale e Motivante", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)"]
@@ -281,20 +350,21 @@ Fornisci dati, strutture deduttive e un linguaggio pulito, tipico delle pubblica
 """
 
     S_PROMPT = f"""
-Sei un esperto Madrelingua, Editor e Luminare mondiale nel campo '{val_genere}'. 
+Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
 Stai redigendo l'ebook '{val_titolo}'. 
 
 PARAMETRI DI BASE:
 - Stile di Racconto: {val_narrativa}
 - Obiettivo Emozionale/Pratico: {val_goal}
 - Tipologia di Scrittura: {val_stile}
+- Lingua di Output Categorica: {lingua_sel}
 
 {modulo_stilistico}
 
 === REGOLA AUREA: GERARCHIA E NON-RIPETIZIONE (CAPITOLO VS SOTTOCAPITOLO) ===
 Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 - SE STAI SCRIVENDO UN CAPITOLO PRINCIPALE (es. 1, 2, 3): Focalizzati sulla visione d'insieme, introduci l'argomento in modo macroscopico. NON rubare i dettagli tecnici, gli esempi specifici o i casi studio che appartengono ai tuoi sottocapitoli.
-- SE STAI SCRIVENDO UN SOTTOCAPITOLO (es. 1.1, 1.2, 3.4): Entra immediatamente nel dettaglio estremo, nell'azione pratica o nell'analisi profonda. NON ripetere mai le premesse o le introduzioni generali già spiegate nel capitolo padre. 
+- SE STAI SCRIVENDO UN SOTTOCAPITOLO (es. 1.1, 1.2, 3.4): Entra inmediatamente nel dettaglio estremo, nell'azione pratica o nell'analisi profonda. NON ripetere mai le premesse o le introduzioni generali già spiegate nel capitolo padre. 
 - MEMORIA GLOBALE: Leggi il contesto fornito. Non ripetere mai concetti, parole chiave o aneddoti già utilizzati in altre sezioni.
 """
 
@@ -304,7 +374,7 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
     with tabs[0]:
         if st.button(L["btn_idx"]):
             with st.spinner("Creazione indice (Neuro-Analisi in corso)..."):
-                prompt_idx = f"Crea un indice monumentale per '{val_titolo}' ({val_genere}) in {lingua_sel}. Focus: {val_trama}. Obiettivo: {val_goal}. Assicurati che i sottocapitoli siano chiare espansioni tecniche dei capitoli padri, senza sovrapposizioni concettuali."
+                prompt_idx = f"Crea un indice monumentale per '{val_titolo}' ({val_genere}) rigorosamente in lingua {lingua_sel}. Focus: {val_trama}. Obiettivo: {val_goal}. Assicurati che i sottocapitoli siano chiare espansioni tecniche dei capitoli padri, senza sovrapposizioni concettuali."
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in strutture editoriali complesse.")
                 sync_capitoli(); st.rerun()
         st.session_state["indice_raw"] = st.text_area("Indice Gerarchico:", value=st.session_state.get("indice_raw", ""), height=400)
@@ -331,7 +401,7 @@ MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
 {memoria}
 
 AZIONE: 
-Scrivi ora la sezione ESATTA: '{sez_scelta}'. 
+Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente in lingua {lingua_sel}.
 - Analizza l'indice: capisci se sei un 'padre' o un 'figlio' e adatta il livello di dettaglio.
 - Rispetta il modulo stilistico assegnato.
 - Sii estremamente profondo ed esaustivo.
@@ -340,12 +410,12 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'.
             with c2:
                 istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
                 if st.button(L["btn_edit"] + " 🪄"):
-                    if k_sessione in st.session_state: st.session_state[k_sessione] = chiedi_gpt(f"Rielabora con focus su: {istr}. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT); st.rerun()
+                    if k_sessione in st.session_state: st.session_state[k_sessione] = chiedi_gpt(f"Rielabora con focus su: {istr} mantenendo categoricamente la lingua {lingua_sel}. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT); st.rerun()
             with c3:
                 if st.button("🧠 QUIZ"):
                     if k_sessione in st.session_state:
                         with st.spinner("Generazione Quiz didattico..."):
-                            res_q = chiedi_gpt(f"Crea quiz di 10 domande su:\n{st.session_state[k_sessione]}", "Learning Expert.")
+                            res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} su:\n{st.session_state[k_sessione]}", "Learning Expert.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
             
