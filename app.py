@@ -16,7 +16,7 @@ from collections import Counter
 # ======================================================================================================================
 # Nome Applicazione: AI di Antonino: Ebook Mondiale Creator PRO
 # Developer: Antonino & Gemini Collaboration
-# Core Update: Integrazione Neuromarketing (Triune Brain Methodology) e Controllo Gerarchico Anti-Ripetizione.
+# Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 
 try:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
@@ -117,11 +117,9 @@ class EbookPDF(FPDF):
     def _clean(self, txt):
         """Sanitizzazione forzata per FPDF latin-1. Evita crash da smart quotes e unicode."""
         if not txt: return ""
-        # Sostituzioni tipografiche comuni generate dall'IA
         replacements = {'“': '"', '”': '"', '‘': "'", '’': "'", '—': '-', '–': '-', '…': '...'}
         for k, v in replacements.items(): 
             txt = txt.replace(k, v)
-        # Forza l'encode/decode ignorando emoji o caratteri non mappabili
         return txt.encode('latin-1', 'replace').decode('latin-1')
 
     def header(self):
@@ -140,19 +138,18 @@ class EbookPDF(FPDF):
         
     def add_content(self, title, content):
         self.add_page(); self.ln(15); self.set_font('Arial', 'B', 22)
-        # Pulisce titolo e contenuto PRIMA di inviarli a FPDF
         self.cell(0, 15, self._clean(title).upper(), 0, 1); self.ln(10); self.set_font('Arial', '', 12)
         self.multi_cell(0, 10, self._clean(content))
 
 # ======================================================================================================================
-# 5. CORE LOGIC GPT-4o & ANALISI QUALITÀ
+# 5. CORE LOGIC GPT-4o & ANALISI QUALITÀ E DECISIONE NEURALE
 # ======================================================================================================================
 def chiedi_gpt(prompt, system_prompt):
     try:
         response = client.chat.completions.create(
             model="gpt-4o", 
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
-            temperature=0.75 # Leggermente aumentata per favorire un lessico più emozionale/limbico
+            temperature=0.75 
         )
         testo = response.choices[0].message.content.strip()
         prefissi = ["ecco", "certamente", "sicuramente", "ok", "here is", "sure"]
@@ -180,6 +177,20 @@ def sync_capitoli():
         if re.search(regex, riga.strip()): lista.append(riga.strip())
     st.session_state['lista_capitoli'] = lista
 
+# NUOVA FUNZIONE: Motore Decisionale per attivare i 3 Cervelli in base alla Sidebar
+def valuta_approccio_neurologico(genere, stile, narrativa):
+    """
+    Decide se l'argomento e lo stile richiedono la manipolazione dei 3 cervelli
+    o un approccio più analitico/oggettivo.
+    """
+    trigger_neuro_stile = ["Persuasivo (Neuromarketing Applicato)", "Conversazionale ed Empatico", "Storytelling Immersivo", "Epico ed Evocativo"]
+    trigger_neuro_narrativa = ["Coinvolgente e Narrativo", "Ispirazionale e Motivante", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)"]
+    trigger_neuro_genere = ["Business & Marketing", "Manuale Psicologico", "Romanzo Rosa", "Thriller / Noir", "Spirituale / Esoterico"]
+    
+    if stile in trigger_neuro_stile or narrativa in trigger_neuro_narrativa or genere in trigger_neuro_genere:
+        return True
+    return False
+
 # ======================================================================================================================
 # 6. SIDEBAR: SETUP EDITORIALE AVANZATO (AMPLIATE LE TIPOLOGIE DI SCRITTURA)
 # ======================================================================================================================
@@ -193,7 +204,6 @@ with st.sidebar:
     lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
     
-    # TIPOLOGIE DI SCRITTURA AMPLIATE COME RICHIESTO
     stili_estesi = [
         "Standard", 
         "Professionale Accademico", 
@@ -233,7 +243,7 @@ def genera_contesto_avanzato(sezione_corrente):
     return contesto
 
 # ======================================================================================================================
-# 8. UI PRINCIPALE & NEURO-PROMPTING
+# 8. UI PRINCIPALE & GENERAZIONE PROMPT DINAMICO
 # ======================================================================================================================
 st.markdown(f'<div class="custom-title">AI di Antonino: {val_titolo if val_titolo else "Ebook Creator PRO"}</div>', unsafe_allow_html=True)
 
@@ -243,31 +253,41 @@ opzioni_editor = [L["preface"]] + lista_cap_base + [L["ack"]]
 
 if val_titolo and val_trama:
     
-    # ==================================================================================================================
-    # SCRIPT DI SCRITTURA MONUMENTALE: I TRE CERVELLI & GERARCHIA ANTI-RIPETIZIONE
-    # ==================================================================================================================
-    S_PROMPT = f"""
-Sei un esperto Madrelingua, Neuro-Linguista e Luminare mondiale nel campo '{val_genere}'. 
-Stai redigendo l'ebook '{val_titolo}'. 
-
-PARAMETRI DI BASE:
-- Stile di Racconto: {val_narrativa}
-- Obiettivo Emozionale: {val_goal}
-- Tipologia di Scrittura: {val_stile}
-
+    # VALUTAZIONE DINAMICA: L'IA decide se usare o meno la manipolazione cerebrale
+    usa_tre_cervelli = valuta_approccio_neurologico(val_genere, val_stile, val_narrativa)
+    
+    if usa_tre_cervelli:
+        modulo_stilistico = """
 === METODOLOGIA DEI 3 CERVELLI (NEUROMARKETING) ===
 Devi strutturare il testo per comunicare simultaneamente con i 3 livelli cerebrali del lettore, iniettando la giusta chimica:
 1. CERVELLO RETTILE (Sopravvivenza & Istinto): Usa un linguaggio netto, tangibile e basato sui contrasti (prima/dopo, problema/soluzione). Attira l'attenzione istantaneamente. Elimina parole deboli o passive.
 2. CERVELLO LIMBICO (Emozione & Chimica): Usa "Storytelling" ed empatia. Scegli vocaboli sensoriali che stimolino il rilascio di dopamina (curiosità/ricompensa) e ossitocina (fiducia/connessione). Fai percepire al lettore che comprendi esattamente il suo stato d'animo.
 3. NEOCORTECCIA (Logica & Dati): Fornisci struttura, dati precisi, ragionamenti logici e prove che giustifichino razionalmente le emozioni suscitate dal sistema limbico.
+"""
+    else:
+        modulo_stilistico = """
+=== APPROCCIO ANALITICO E OGGETTIVO ===
+Il genere e lo stile scelti richiedono un approccio neutrale e rigoroso. 
+NON utilizzare manipolazioni emotive o neuromarketing. Mantieni un tono accademico, logico e fattuale. 
+Fornisci dati, strutture deduttive e un linguaggio pulito, tipico delle pubblicazioni di alto rigore tecnico-scientifico.
+"""
+
+    S_PROMPT = f"""
+Sei un esperto Madrelingua, Editor e Luminare mondiale nel campo '{val_genere}'. 
+Stai redigendo l'ebook '{val_titolo}'. 
+
+PARAMETRI DI BASE:
+- Stile di Racconto: {val_narrativa}
+- Obiettivo Emozionale/Pratico: {val_goal}
+- Tipologia di Scrittura: {val_stile}
+
+{modulo_stilistico}
 
 === REGOLA AUREA: GERARCHIA E NON-RIPETIZIONE (CAPITOLO VS SOTTOCAPITOLO) ===
 Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 - SE STAI SCRIVENDO UN CAPITOLO PRINCIPALE (es. 1, 2, 3): Focalizzati sulla visione d'insieme, introduci l'argomento in modo macroscopico. NON rubare i dettagli tecnici, gli esempi specifici o i casi studio che appartengono ai tuoi sottocapitoli.
 - SE STAI SCRIVENDO UN SOTTOCAPITOLO (es. 1.1, 1.2, 3.4): Entra immediatamente nel dettaglio estremo, nell'azione pratica o nell'analisi profonda. NON ripetere mai le premesse o le introduzioni generali già spiegate nel capitolo padre. 
 - MEMORIA GLOBALE: Leggi il contesto fornito. Non ripetere mai concetti, parole chiave o aneddoti già utilizzati in altre sezioni.
-
-Pulisci le frasi da parole inutili, sii autorevole, ipnotico, descrittivo e garantisci un senso logico granitico.
 """
 
     tabs = st.tabs(L["tabs"])
@@ -275,14 +295,14 @@ Pulisci le frasi da parole inutili, sii autorevole, ipnotico, descrittivo e gara
     # TAB 1: INDICE
     with tabs[0]:
         if st.button(L["btn_idx"]):
-            with st.spinner("Creazione indice neuro-ottimizzato..."):
+            with st.spinner("Creazione indice (Neuro-Analisi in corso)..."):
                 prompt_idx = f"Crea un indice monumentale per '{val_titolo}' ({val_genere}) in {lingua_sel}. Focus: {val_trama}. Obiettivo: {val_goal}. Assicurati che i sottocapitoli siano chiare espansioni tecniche dei capitoli padri, senza sovrapposizioni concettuali."
-                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in Neuromarketing editoriale.")
+                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in strutture editoriali complesse.")
                 sync_capitoli(); st.rerun()
         st.session_state["indice_raw"] = st.text_area("Indice Gerarchico:", value=st.session_state.get("indice_raw", ""), height=400)
         if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
 
-    # TAB 2: SCRITTURA NERVOSA & LIMBICA
+    # TAB 2: SCRITTURA
     with tabs[1]:
         if not lista_cap_base: st.warning(L["msg_err_idx"])
         else:
@@ -305,23 +325,23 @@ MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
 AZIONE: 
 Scrivi ora la sezione ESATTA: '{sez_scelta}'. 
 - Analizza l'indice: capisci se sei un 'padre' o un 'figlio' e adatta il livello di dettaglio.
-- Applica i 3 cervelli (Rettile per agganciare, Limbico per emozionare, Neocorteccia per dimostrare).
+- Rispetta il modulo stilistico assegnato.
 - Sii estremamente profondo ed esaustivo.
 """
                         st.session_state[k_sessione] = chiedi_gpt(full_prompt, S_PROMPT)
             with c2:
-                istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia il lato emozionale...")
+                istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
                 if st.button(L["btn_edit"] + " 🪄"):
                     if k_sessione in st.session_state: st.session_state[k_sessione] = chiedi_gpt(f"Rielabora con focus su: {istr}. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT); st.rerun()
             with c3:
                 if st.button("🧠 QUIZ"):
                     if k_sessione in st.session_state:
                         with st.spinner("Generazione Quiz didattico..."):
-                            res_q = chiedi_gpt(f"Crea quiz di 10 domande su:\n{st.session_state[k_sessione]}", "Learning Expert neuro-cognitivo.")
+                            res_q = chiedi_gpt(f"Crea quiz di 10 domande su:\n{st.session_state[k_sessione]}", "Learning Expert.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
             
-            with st.expander("🔍 Linter Qualità & Neuro-Analisi"):
+            with st.expander("🔍 Linter Qualità & Analisi Sintattica"):
                 if st.button("Controlla Ripetizioni"): st.write(analizza_qualita_prosa(st.session_state.get(k_sessione, "")))
 
     # TAB 3: ANTEPRIMA
@@ -363,14 +383,17 @@ else:
 # combinando le teorie di Paul MacLean (Triune Brain) con l'architettura gerarchica dei modelli ad albero.
 # 
 # Moduli Attivi e Logiche Sottostanti:
-# 1. Modulo Limbico (Emozione): Il prompt forza l'IA a selezionare aggettivi sensoriali e strutture narrative
+# 1. Motore Decisionale Dinamico: Il programma non applica ciecamente il neuromarketing. Valuta il genere,
+#    lo stile e la narrativa per capire se l'utente desidera un testo emozionale/persuasivo o un saggio
+#    freddo e rigoroso (es. Fisica Quantistica). Questo protegge la coerenza dell'ebook.
+# 2. Modulo Limbico (Emozione): Il prompt forza l'IA a selezionare aggettivi sensoriali e strutture narrative
 #    che favoriscono il rilascio di ossitocina, creando un legame di fiducia tra autore e lettore.
-# 2. Modulo Rettile (Attenzione): Le frasi di apertura generate dall'IA bypassano i filtri analitici,
+# 3. Modulo Rettile (Attenzione): Le frasi di apertura generate dall'IA bypassano i filtri analitici,
 #    usando contrasti forti e linguaggio visivo per catturare l'attenzione in meno di 3 secondi.
-# 3. Modulo Neocorteccia (Logica): I dati e la struttura sono demandati ai sottocapitoli, garantendo 
+# 4. Modulo Neocorteccia (Logica): I dati e la struttura sono demandati ai sottocapitoli, garantendo 
 #    autorevolezza e solidità accademica senza annoiare.
-# 4. Modulo Anti-Ripetizione Gerarchica: A differenza dei sistemi standard, l'IA qui sa esattmente 
+# 5. Modulo Anti-Ripetizione Gerarchica: A differenza dei sistemi standard, l'IA qui sa esattamente 
 #    se sta scrivendo un "Padre" (macro-argomento) o un "Figlio" (dettaglio tecnico), eliminando
 #    la fastidiosa ridondanza tipica degli ebook generati artificialmente.
-# 5. Gestione Sicura delle Sessioni e Interfaccia Premium (Dark Mode Anthracite).
+# 6. Gestione Sicura delle Sessioni e Interfaccia Premium (Dark Mode Anthracite).
 # ... [Fine del Modulo Principale di Esecuzione] ...
