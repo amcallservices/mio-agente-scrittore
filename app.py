@@ -106,13 +106,19 @@ div[data-baseweb="select"] > div { background-color: #2b2b2b !important; color: 
 """, unsafe_allow_html=True)
 
 # ======================================================================================================================
-# 4. GESTIONE EXPORT PDF (CHIRURGIA: FIX UNICODEENCODEERROR)
+# 4. GESTIONE EXPORT PDF (CHIRURGIA: FIX UNICODEENCODEERROR E MARGINI)
 # ======================================================================================================================
 class EbookPDF(FPDF):
     def __init__(self, titolo, autore):
         super().__init__()
         self.titolo = self._clean(titolo)
         self.autore = self._clean(autore)
+        
+        # --- FIX MARGINI: Imposta margini espliciti e interruzione pagina automatica ---
+        # Imposta margine sinistro, superiore e destro a 15 mm
+        self.set_margins(15, 15, 15)
+        # Forza il salto pagina automatico quando si arriva a 15 mm dal fondo
+        self.set_auto_page_break(auto=True, margin=15)
         
     def _clean(self, txt):
         """Sanitizzazione forzata per FPDF latin-1. Evita crash da smart quotes e unicode."""
@@ -139,6 +145,7 @@ class EbookPDF(FPDF):
     def add_content(self, title, content):
         self.add_page(); self.ln(15); self.set_font('Arial', 'B', 22)
         self.cell(0, 15, self._clean(title).upper(), 0, 1); self.ln(10); self.set_font('Arial', '', 12)
+        # multi_cell con w=0 ora calcola la larghezza rispettando il margine destro (15mm)
         self.multi_cell(0, 10, self._clean(content))
 
 # ======================================================================================================================
