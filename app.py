@@ -106,7 +106,7 @@ div[data-baseweb="select"] > div { background-color: #2b2b2b !important; color: 
 """, unsafe_allow_html=True)
 
 # ======================================================================================================================
-# 4. GESTIONE EXPORT PDF (CHIRURGIA: FIX UNICODEENCODEERROR E MARGINI)
+# 4. GESTIONE EXPORT PDF (CHIRURGIA: FIX TITOLI LUNGHI E MARGINI)
 # ======================================================================================================================
 class EbookPDF(FPDF):
     def __init__(self, titolo, autore):
@@ -144,7 +144,8 @@ class EbookPDF(FPDF):
         
     def add_content(self, title, content):
         self.add_page(); self.ln(15); self.set_font('Arial', 'B', 22)
-        self.cell(0, 15, self._clean(title).upper(), 0, 1); self.ln(10); self.set_font('Arial', '', 12)
+        # FIX: Sostituito cell() con multi_cell() per il titolo, per mandare a capo i titoli lunghi!
+        self.multi_cell(0, 15, self._clean(title).upper(), 0, 'L'); self.ln(10); self.set_font('Arial', '', 12)
         # multi_cell con w=0 ora calcola la larghezza rispettando il margine destro (15mm)
         self.multi_cell(0, 10, self._clean(content))
 
