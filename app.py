@@ -439,15 +439,25 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 
     # --- INIZIO NUOVE RIGHE AGGIUNTE PER IMPOSTARE IL RAGIONAMENTO SULLA SIDEBAR ---
     S_PROMPT += f"""
-=== FASE DI RAGIONAMENTO ANALITICO OBBLIGATORIA (CHAIN OF THOUGHT) ===
-Prima di scrivere il contenuto richiesto, devi aprire un blocco di testo intitolato [RAGIONAMENTO EDITORIALE]. 
-In questo blocco, dimostra di aver interiorizzato le istruzioni della sidebar, spiegando in modo conciso come declinerai e applicherai ALLA LETTERA:
+=== APPLICAZIONE DIRETTIVE (STESURA PULITA) ===
+Devi interiorizzare e applicare alla lettera le seguenti istruzioni prima di generare il testo:
 1. Il genere '{val_genere}'
 2. La tipologia di scrittura '{val_stile}' e lo stile di racconto '{val_narrativa}'
 3. Il POV '{val_pov}'
 4. L'obiettivo '{val_goal}'
-nella sezione specifica che stai per scrivere.
-Una volta chiuso questo blocco di ragionamento preliminare, genera immediatamente il testo del capitolo definitivo.
+CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o meta-testo. L'output DEVE contenere ESCLUSIVAMENTE il contenuto finale del capitolo/sottocapitolo, pronto per la pubblicazione.
+"""
+    # --- FINE NUOVE RIGHE ---
+
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER ENFORCEMENT DIRETTIVE SIDEBAR ---
+    S_PROMPT += f"""
+=== DIRETTIVA DI CONFORMITÀ ASSOLUTA (PUNTO DI VISTA E STILE) ===
+È TASSATIVO e NON NEGOZIABILE che l'intero testo sia redatto utilizzando ESATTAMENTE il Punto di Vista (POV) impostato nella sidebar: "{val_pov}". 
+- Se è impostato su "Tu", rivolgiti direttamente e informalmente al singolo lettore (es. "scoprirai che...").
+- Se è impostato su "Voi", rivolgiti in modo plurale e autorevole (es. "scoprirete che...").
+- Se è impostato su "Noi", usa un approccio inclusivo (es. "scopriremo che...").
+- Se è "Impersonale", usa forme impersonali o passive, distaccate e oggettive (es. "si scoprirà che...").
+L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale ad ogni fine paragrafo per assicurarsi che non ci siano "scivoloni" o cambi di pronome accidentali. Lo stile di scrittura "{val_stile}" deve permeare ogni singola scelta di vocabolario.
 """
     # --- FINE NUOVE RIGHE ---
 
@@ -482,7 +492,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 
                 # --- INIZIO NUOVE RIGHE AGGIUNTE PER RAGIONAMENTO INDICE ---
                 prompt_idx += f"""
-7. RAGIONAMENTO PRELIMINARE OBBLIGATORIO: Prima di stampare l'indice, scrivi un paragrafo introduttivo chiamato [RAGIONAMENTO STRUTTURALE] in cui analizzi come l'argomento principale deve essere suddiviso nei vari capitoli e sottocapitoli per rispettare IN TOTO le istruzioni della sidebar (genere "{val_genere}", obiettivo "{val_goal}", ecc.) garantendo una perfetta e rigorosa coerenza editoriale prima della generazione dell'indice stesso.
+7. APPLICAZIONE SILENZIOSA DEI PARAMETRI: Applica rigorosamente le istruzioni della sidebar (genere "{val_genere}", obiettivo "{val_goal}", ecc.) garantendo una perfetta coerenza editoriale. CRITICO: NON inserire alcun "ragionamento strutturale", commento preliminare o spiegazione. Stampa SOLO ed ESCLUSIVAMENTE la lista dell'indice nuda e cruda.
 """
                 # --- FINE NUOVE RIGHE ---
                 
