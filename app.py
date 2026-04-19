@@ -437,6 +437,20 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 - MEMORIA GLOBALE: Leggi il contesto fornito. Non ripetere mai concetti, parole chiave o aneddoti già utilizzati in altre sezioni.
 """
 
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER IMPOSTARE IL RAGIONAMENTO SULLA SIDEBAR ---
+    S_PROMPT += f"""
+=== FASE DI RAGIONAMENTO ANALITICO OBBLIGATORIA (CHAIN OF THOUGHT) ===
+Prima di scrivere il contenuto richiesto, devi aprire un blocco di testo intitolato [RAGIONAMENTO EDITORIALE]. 
+In questo blocco, dimostra di aver interiorizzato le istruzioni della sidebar, spiegando in modo conciso come declinerai e applicherai ALLA LETTERA:
+1. Il genere '{val_genere}'
+2. La tipologia di scrittura '{val_stile}' e lo stile di racconto '{val_narrativa}'
+3. Il POV '{val_pov}'
+4. L'obiettivo '{val_goal}'
+nella sezione specifica che stai per scrivere.
+Una volta chiuso questo blocco di ragionamento preliminare, genera immediatamente il testo del capitolo definitivo.
+"""
+    # --- FINE NUOVE RIGHE ---
+
     tabs = st.tabs(L["tabs"])
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
@@ -465,6 +479,12 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
    1.2 [Sottocapitolo]
 5. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
 6. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo."""
+
+                # --- INIZIO NUOVE RIGHE AGGIUNTE PER RAGIONAMENTO INDICE ---
+                prompt_idx += f"""
+7. RAGIONAMENTO PRELIMINARE OBBLIGATORIO: Prima di stampare l'indice, scrivi un paragrafo introduttivo chiamato [RAGIONAMENTO STRUTTURALE] in cui analizzi come l'argomento principale deve essere suddiviso nei vari capitoli e sottocapitoli per rispettare IN TOTO le istruzioni della sidebar (genere "{val_genere}", obiettivo "{val_goal}", ecc.) garantendo una perfetta e rigorosa coerenza editoriale prima della generazione dell'indice stesso.
+"""
+                # --- FINE NUOVE RIGHE ---
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
                 sync_capitoli(); st.rerun()
