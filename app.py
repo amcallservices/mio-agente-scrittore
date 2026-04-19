@@ -317,7 +317,8 @@ with st.sidebar:
     val_titolo = st.text_input(L["lbl_tit"])
     val_autore = st.text_input(L["lbl_auth"])
     
-    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia"]
+    # --- AGGIUNTA "RICETTARIO" AI GENERI ---
+    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
     
     stili_estesi = [
@@ -398,7 +399,7 @@ NON utilizzare manipolazioni emotive o neuromarketing. Mantieni un tono accademi
 Fornisci dati, strutture deduttive e un linguaggio pulito, tipico delle pubblicazioni di alto rigore tecnico-scientifico.
 """
 
-    # PROMPT POTENZIATO CON COERENZA POV E PULIZIA SINTATTICA
+    # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
     S_PROMPT = f"""
 Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
 Stai redigendo l'ebook '{val_titolo}'. 
@@ -408,6 +409,7 @@ PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Obiettivo Emozionale/Pratico: {val_goal}
 - Tipologia di Scrittura: {val_stile}
 - Punto di Vista (Relazione con il lettore): {val_pov}. Adatta coerentemente questo pronome alla grammatica della lingua {lingua_sel}.
+- Conformità di Genere: Il testo DEVE rispecchiare in pieno le regole, la formattazione e la terminologia del genere '{val_genere}' (es. se è un ricettario, usa formati strutturati con ingredienti e step; se è un romanzo usa narrazione fluida).
 - Lingua di Output Categorica: {lingua_sel}
 
 {modulo_stilistico}
@@ -449,7 +451,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
         st.session_state["indice_raw"] = st.text_area("Indice Gerarchico:", value=st.session_state.get("indice_raw", ""), height=400)
         if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
 
-    # TAB 2: SCRITTURA
+    # TAB 2: SCRITTURA E QUIZ (E ORA ANCHE RICETTE)
     with tabs[1]:
         if not lista_cap_base: st.warning(L["msg_err_idx"])
         else:
@@ -488,6 +490,24 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                         with st.spinner("Generazione Quiz didattico..."):
                             res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} dando del {val_pov} al lettore su:\n{st.session_state[k_sessione]}", "Learning Expert.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
+                
+                # --- AGGIUNTA PULSANTE GENERATORE RICETTE ---
+                if st.button("🍳 10 RICETTE"):
+                    if k_sessione in st.session_state:
+                        with st.spinner("Creazione 10 ricette uniche (Anti-ripetizione in corso)..."):
+                            mem_ricette = st.session_state.get(k_sessione, "")
+                            p_ricette = f"""Crea ESATTAMENTE 10 RICETTE professionali, uniche e dettagliate in lingua {lingua_sel} per la sezione '{sez_scelta}', perfettamente coerenti con l'argomento: '{val_trama}'.
+                            Usa il punto di vista '{val_pov}'.
+                            STRUTTURA DI OGNI RICETTA: Titolo chiaro, Tempi (Preparazione/Cottura), Ingredienti esatti con dosi, Procedimento passo-passo. Nessuna emoji.
+                            
+                            [REGOLA ANTI-RIPETIZIONE ASSOLUTA]: Leggi le ricette o i contenuti già generati qui sotto e NON RIPETERLI MAI. Crea varianti e piatti completamente nuovi:
+                            
+                            {mem_ricette[-4000:]}"""
+                            
+                            res_r = chiedi_gpt(p_ricette, f"Sei un autorevole Chef stellato e scrittore di ricettari in lingua {lingua_sel}.")
+                            st.session_state[k_sessione] += f"\n\n---\n\n### 🍳 10 NUOVE RICETTE\n\n" + res_r
+                            st.rerun()
+
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
             
             with st.expander("🔍 Linter Qualità & Analisi Sintattica Avanzata"):
