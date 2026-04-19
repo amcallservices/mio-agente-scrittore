@@ -317,8 +317,8 @@ with st.sidebar:
     val_titolo = st.text_input(L["lbl_tit"])
     val_autore = st.text_input(L["lbl_auth"])
     
-    # --- AGGIUNTA "RICETTARIO" AI GENERI ---
-    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario"]
+    # --- AGGIUNTA "RICETTARIO" E "TEST PREP" AI GENERI ---
+    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
     
     stili_estesi = [
@@ -409,7 +409,7 @@ PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Obiettivo Emozionale/Pratico: {val_goal}
 - Tipologia di Scrittura: {val_stile}
 - Punto di Vista (Relazione con il lettore): {val_pov}. Adatta coerentemente questo pronome alla grammatica della lingua {lingua_sel}.
-- Conformità di Genere: Il testo DEVE rispecchiare in pieno le regole, la formattazione e la terminologia del genere '{val_genere}' (es. se è un ricettario, usa formati strutturati con ingredienti e step; se è un romanzo usa narrazione fluida).
+- Conformità di Genere: Il testo DEVE rispecchiare in pieno le regole, la formattazione e la terminologia del genere '{val_genere}' (es. se è un ricettario, usa formati strutturati con ingredienti e step; se è un romanzo usa narrazione fluida; se è 'Test Prep', usa schemi, riassunti puntati, concetti chiave da memorizzare e simulazioni d'esame).
 - Lingua di Output Categorica: {lingua_sel}
 
 {modulo_stilistico}
