@@ -18,10 +18,11 @@ from collections import Counter
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 
+# --- AGGIORNAMENTO SICUREZZA API ---
 try:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 except Exception as e:
-    st.error("ERRORE CRITICO: Chiave API OpenAI non configurata nei Secrets di Streamlit.")
+    st.error("ERRORE CRITICO: Chiave API OpenAI non trovata nei Secrets di Streamlit. Assicurati di aver creato il file secrets.toml o configurato i Secrets online.")
 
 st.set_page_config(
     page_title="AI di Antonino: Ebook Mondiale Creator PRO",
