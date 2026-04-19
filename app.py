@@ -235,7 +235,7 @@ class EbookPDF(FPDF):
 def chiedi_gpt(prompt, system_prompt):
     try:
         response = client.chat.completions.create(
-            model="gpt-4o", 
+            model="gpt-4o-mini", 
             messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}],
             temperature=0.75 
         )
@@ -407,7 +407,7 @@ Devi strutturare il testo per comunicare simultaneamente con i 3 livelli cerebra
 === APPROCCIO ANALITICO E OGGETTIVO ===
 Il genere e lo stile scelti richiedono un approccio neutrale e rigoroso. 
 NON utilizzare manipolazioni emotive o neuromarketing. Mantieni un tono accademico, logico e fattuale. 
-Fornisci dati, strutture deduttive e un linguaggio pulito, tipico delle pubblicazioni di alto rigore tecnico-scientifico.
+Fornisci dati, structures deduttive e un linguaggio pulito, tipico delle pubblicazioni di alto rigore tecnico-scientifico.
 """
 
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
