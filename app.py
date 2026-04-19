@@ -276,7 +276,7 @@ def analizza_qualita_prosa(testo):
     elif parole_per_frase < 8:
         risultati.append(f"⚠️ **Ritmo Frammentato**: Frasi molto brevi (media {parole_per_frase:.1f} parole/frase). Il testo potrebbe risultare troppo robotico o telegrafico.")
     else:
-        risultati.append(f"✅ **Ritmo e Leggibilità**: Lunghezza frasi parfaitement bilanciata (media {parole_per_frase:.1f} parole/frase).")
+        risultati.append(f"✅ **Ritmo e Leggibilità**: Lunghezza frasi perfettamente bilanciata (media {parole_per_frase:.1f} parole/frase).")
 
     # 4. Ripetizioni Ravvicinate Fastidiose (Finestra Mobile)
     ripetizioni = []
@@ -446,14 +446,13 @@ Il sistema anti-ripetizione è il parametro più critico di questa operazione:
 """
     # --- FINE NUOVE RIGHE ---
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER SEGREGAZIONE VERTICALE (PARTI / CAPITOLI / SOTTOCAPITOLI) ---
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER SEGREGAZIONE VERTICALE E SILENZIO STAMPA (HARD RULE) ---
     S_PROMPT += f"""
-=== REGOLA DI SEGREGAZIONE VERTICALE (DIVIETO DI SOVRAPPOSIZIONE) ===
-Per garantire zero ripetizioni, devi rispettare rigorosamente la seguente gerarchia quando scrivi:
-- SE SCRIVI UNA "PARTE" (es. Parte I): Scrivi SOLO un'introduzione filosofica o tematica globale. NON anticipare gli argomenti specifici dei Capitoli.
-- SE SCRIVI UN "CAPITOLO" (es. Capitolo 1): Fornisci SOLO la panoramica teorica del concetto. È ASSOLUTAMENTE VIETATO trattare, spiegare o anticipare gli argomenti, le tecniche o gli esempi che verranno affrontati nei suoi Sottocapitoli (1.1, 1.2, ecc.). Lascia il dettaglio a loro.
-- SE SCRIVI UN "SOTTOCAPITOLO" (es. 1.1): Vai dritto al punto tecnico, pratico o analitico. È VIETATO ripetere le premesse generali già fatte nel Capitolo o nella Parte.
-In sintesi: chi sta "sopra" non ruba gli argomenti di chi sta "sotto", e chi sta "sotto" non ripete le introduzioni di chi sta "sopra".
+=== SILENZIO STAMPA ASSOLUTO SUI SOTTOCAPITOLI (MUTUAMENTE ESCLUSIVI) ===
+Questa è la regola d'oro per evitare sovrapposizioni e non farti trattare lo stesso argomento due volte:
+1. IL CAPITOLO PARLA DEL "PERCHÉ": Se l'indice ti posiziona nella stesura di un Capitolo Padre (es. "Capitolo 2"), il tuo UNICO compito è creare la cornice concettuale. Ti è IMPOSTO IL SILENZIO STAMPA su qualsiasi argomento, tecnica o dettaglio che abbia un Sottocapitolo dedicato (es. 2.1, 2.2). NON SPIEGARE NIENTE DI SPECIFICO NEL CAPITOLO PADRE.
+2. IL SOTTOCAPITOLO PARLA DEL "COME" e del "COSA": Se la sezione è un Sottocapitolo (es. "2.1 L'argomento X"), l'intera spiegazione dell'Argomento X DEVE avvenire ESCLUSIVAMENTE lì. Nel Capitolo Padre, X non doveva essere spiegato, ma al massimo accennato come un titolo nel futuro.
+3. CONTROLLO FINALE PRIMA DI GENERARE: Guarda la lista completa dei tuoi sottocapitoli e chiediti: "Sto spiegando in questo testo qualcosa che l'indice dice di spiegare nel prossimo paragrafo numerato?". Se la risposta è SÌ, CANCELLA e astieniti. Lascia vuoto informativo per permettere al Sottocapitolo di esistere senza ripetizioni.
 """
     # --- FINE NUOVE RIGHE ---
 
@@ -551,8 +550,10 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 if st.button(L["btn_write"]):
                     with st.spinner(L["msg_run"]):
                         memoria = genera_contesto_avanzato(sez_scelta)
+                        
+                        # --- MODIFICA NEL FULL PROMPT PER RAFFORZARE LA REGOLA IN FASE DI GENERAZIONE ---
                         full_prompt = f"""
-INDICE GENERALE: 
+INDICE GENERALE (STUDIALO PER CAPIRE COSA NON DEVI ANTICIPARE): 
 {st.session_state['indice_raw']}
 
 MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi): 
@@ -568,11 +569,11 @@ MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
 
 AZIONE: 
 Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente in lingua {lingua_sel}.
-- Analizza l'indice: capisci se sei un 'padre' o un 'figlio' e adatta il livello di dettaglio.
+- REGOLA DEL SILENZIO STAMPA: Guarda l'Indice Generale qui sopra. Se '{sez_scelta}' è un Capitolo, TI È SEVERAMENTE VIETATO spiegare, anticipare o risolvere gli argomenti che hanno un Sottocapitolo (es. 1.1, 1.2). Lascia il vuoto informativo per loro. Il tuo compito ora è solo preparare il terreno (il "Perché").
 - Rispetta INTEGRALMENTE tutti i Parametri Editoriali Sartoriali elencati qui sopra. Ogni frase deve esserne permeata.
 - Usa TASSATIVAMENTE il punto di vista richiesto ({val_pov}).
 - Assicurati che NON ci siano simboli o punteggiature anomale (nessun asterisco di troppo, niente emoji). Il testo deve essere sintatticamente puro.
-- Sii estremamente profondo ed esaustivo.
+- Sii estremamente profondo ed esaustivo nell'ambito della tua specifica sezione, senza rubare materiale alle altre.
 """
                         st.session_state[k_sessione] = chiedi_gpt(full_prompt, S_PROMPT)
             with c2:
