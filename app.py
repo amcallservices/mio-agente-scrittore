@@ -446,6 +446,41 @@ Il sistema anti-ripetizione è il parametro più critico di questa operazione:
 """
     # --- FINE NUOVE RIGHE ---
 
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER SEGREGAZIONE VERTICALE (PARTI / CAPITOLI / SOTTOCAPITOLI) ---
+    S_PROMPT += f"""
+=== REGOLA DI SEGREGAZIONE VERTICALE (DIVIETO DI SOVRAPPOSIZIONE) ===
+Per garantire zero ripetizioni, devi rispettare rigorosamente la seguente gerarchia quando scrivi:
+- SE SCRIVI UNA "PARTE" (es. Parte I): Scrivi SOLO un'introduzione filosofica o tematica globale. NON anticipare gli argomenti specifici dei Capitoli.
+- SE SCRIVI UN "CAPITOLO" (es. Capitolo 1): Fornisci SOLO la panoramica teorica del concetto. È ASSOLUTAMENTE VIETATO trattare, spiegare o anticipare gli argomenti, le tecniche o gli esempi che verranno affrontati nei suoi Sottocapitoli (1.1, 1.2, ecc.). Lascia il dettaglio a loro.
+- SE SCRIVI UN "SOTTOCAPITOLO" (es. 1.1): Vai dritto al punto tecnico, pratico o analitico. È VIETATO ripetere le premesse generali già fatte nel Capitolo o nella Parte.
+In sintesi: chi sta "sopra" non ruba gli argomenti di chi sta "sotto", e chi sta "sotto" non ripete le introduzioni di chi sta "sopra".
+"""
+    # --- FINE NUOVE RIGHE ---
+
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER IMPOSTARE IL RAGIONAMENTO SULLA SIDEBAR ---
+    S_PROMPT += f"""
+=== APPLICAZIONE DIRETTIVE (STESURA PULITA) ===
+Devi interiorizzare e applicare alla lettera le seguenti istruzioni prima di generare il testo:
+1. Il genere '{val_genere}'
+2. La tipologia di scrittura '{val_stile}' e lo stile di racconto '{val_narrativa}'
+3. Il POV '{val_pov}'
+4. L'obiettivo '{val_goal}'
+CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o meta-testo. L'output DEVE contenere ESCLUSIVAMENTE il contenuto finale del capitolo/sottocapitolo, pronto per la pubblicazione.
+"""
+    # --- FINE NUOVE RIGHE ---
+
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER ENFORCEMENT DIRETTIVE SIDEBAR ---
+    S_PROMPT += f"""
+=== DIRETTIVA DI CONFORMITÀ ASSOLUTA (PUNTO DI VISTA E STILE) ===
+È TASSATIVO e NON NEGOZIABILE che l'intero testo sia redatto utilizzando ESATTAMENTE il Punto di Vista (POV) impostato nella sidebar: "{val_pov}". 
+- Se è impostato su "Tu", rivolgiti direttamente e informalmente al singolo lettore (es. "scoprirai che...").
+- Se è impostato su "Voi", rivolgiti in modo plurale e autorevole (es. "scoprirete che...").
+- Se è impostato su "Noi", usa un approccio inclusivo (es. "scopriremo che...").
+- Se è "Impersonale", usa forme impersonali o passive, distaccate e oggettive (es. "si scoprirà che...").
+L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale ad ogni fine paragrafo per assicurarsi che non ci siano "scivoloni" o cambi di pronome accidentali. Lo stile di scrittura "{val_stile}" deve permeare ogni singola scelta di vocabolario.
+"""
+    # --- FINE NUOVE RIGHE ---
+
     tabs = st.tabs(L["tabs"])
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
@@ -474,6 +509,12 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
    1.2 [Sottocapitolo]
 5. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
 6. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo."""
+
+                # --- INIZIO NUOVE RIGHE AGGIUNTE PER RAGIONAMENTO INDICE ---
+                prompt_idx += f"""
+7. APPLICAZIONE SILENZIOSA DEI PARAMETRI: Applica rigorosamente le istruzioni della sidebar (genere "{val_genere}", obiettivo "{val_goal}", ecc.) garantendo una perfetta coerenza editoriale. CRITICO: NON inserire alcun "ragionamento strutturale", commento preliminare o spiegazione. Stampa SOLO ed ESCLUSIVAMENTE la lista dell'indice nuda e cruda.
+"""
+                # --- FINE NUOVE RIGHE ---
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
                 sync_capitoli(); st.rerun()
