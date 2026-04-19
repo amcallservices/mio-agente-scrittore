@@ -468,7 +468,18 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
                 sync_capitoli(); st.rerun()
-        st.session_state["indice_raw"] = st.text_area("Indice Gerarchico:", value=st.session_state.get("indice_raw", ""), height=400)
+                
+        # FIX ANTI-RESET PER L'INDICE: Salvataggio sicuro per prevenire sovrascritture da parte di Streamlit
+        testo_corrente = st.session_state.get("indice_raw", "")
+        testo_input = st.text_area("Indice Gerarchico:", value=testo_corrente, height=400)
+        
+        if testo_input != testo_corrente:
+            # Se la UI ricarica e invia stringa vuota per errore, ignoriamo l'aggiornamento, preservando i dati
+            if testo_input.strip() == "" and testo_corrente != "":
+                pass
+            else:
+                st.session_state["indice_raw"] = testo_input
+                
         if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
 
     # TAB 2: SCRITTURA E QUIZ (E ORA ANCHE RICETTE)
@@ -486,15 +497,21 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 INDICE GENERALE: 
 {st.session_state['indice_raw']}
 
-TRAMA: {val_trama}
-
 MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi): 
 {memoria}
+
+=== PARAMETRI EDITORIALI SARTORIALI (DA APPLICARE TASSATIVAMENTE IN QUESTO CAPITOLO) ===
+- Argomento Centrale / Trama: {val_trama}
+- Genere Letterario: {val_genere}
+- Tipologia di Scrittura: {val_stile}
+- Stile di Racconto: {val_narrativa}
+- Punto di Vista (POV): {val_pov}
+- Obiettivo Emozionale/Pratico: {val_goal}
 
 AZIONE: 
 Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente in lingua {lingua_sel}.
 - Analizza l'indice: capisci se sei un 'padre' o un 'figlio' e adatta il livello di dettaglio.
-- Rispetta il modulo stilistico assegnato.
+- Rispetta INTEGRALMENTE tutti i Parametri Editoriali Sartoriali elencati qui sopra. Ogni frase deve esserne permeata.
 - Usa TASSATIVAMENTE il punto di vista richiesto ({val_pov}).
 - Assicurati che NON ci siano simboli o punteggiature anomale (nessun asterisco di troppo, niente emoji). Il testo deve essere sintatticamente puro.
 - Sii estremamente profondo ed esaustivo.
