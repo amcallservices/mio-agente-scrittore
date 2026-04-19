@@ -327,8 +327,8 @@ with st.sidebar:
     val_titolo = st.text_input(L["lbl_tit"])
     val_autore = st.text_input(L["lbl_auth"])
     
-    # --- AGGIUNTA "RICETTARIO" E "TEST PREP" AI GENERI ---
-    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)"]
+    # --- AGGIUNTA "RICETTARIO", "TEST PREP", "NARRATIVO" E "ROMANZO CLASSICO" AI GENERI ---
+    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)", "Narrativo", "Romanzo Classico"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
     
     stili_estesi = [
