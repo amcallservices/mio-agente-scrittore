@@ -12,6 +12,16 @@ from io import BytesIO
 from collections import Counter
 
 # ======================================================================================================================
+# 0. GESTIONE MEMORIA DI STATO E PREVENZIONE AUTO-RESET
+# ======================================================================================================================
+# Questo blocco garantisce che l'applicazione mantenga i dati in memoria durante le elaborazioni lunghe
+# e i cambi di tab. I dati verranno azzerati SOLO tramite l'esplicito pulsante di RESET.
+if "memoria_blindata" not in st.session_state:
+    st.session_state["memoria_blindata"] = True
+    st.session_state["indice_raw"] = ""
+    st.session_state["lista_capitoli"] = []
+
+# ======================================================================================================================
 # 1. ARCHITETTURA DI SISTEMA E SICUREZZA API
 # ======================================================================================================================
 # Nome Applicazione: AI di Antonino: Ebook Mondiale Creator PRO
@@ -104,7 +114,7 @@ TRADUZIONI = {
     "Русский": {
         "side_tit": "⚙️ Настройки Редактора", "lbl_tit": "Название Книги", "lbl_auth": "Имя Автора", "lbl_lang": "Язык", 
         "lbl_gen": "Жанр", "lbl_style": "Стиль Написания", "lbl_plot": "Сюжет", "lbl_narrative": "Стиль Повествования", "lbl_goal": "Цель Книги", "lbl_pov": "Точка зрения (Местоимение)",
-        "btn_res": "🔄 СБРОСИТЬ ПРОЕКТ", "tabs": ["📊 1. Оглавление", "✍️ 2. Текст и Тест", "📖 3. Просмотр", "📑 4. Экспорт"],
+        "btn_res": "🔄 СБРОСИТЬ ПРОЕКТ", "tabs": ["📊 1. Оглавление", "✍️ 2. Текст и Тест", "📖 3. Просмотр", "📑 4. Export"],
         "btn_idx": "🚀 Создать Оглавление", "btn_sync": "✅ Синхронизировать", "lbl_sec": "Выберите раздел:",
         "btn_write": "✨ НАПИСАТЬ ТЕКСТ", "btn_quiz": "🧠 ДОБАВИТЬ ТЕСТ", "btn_edit": "🚀 ПЕРЕПИСАТЬ",
         "msg_run": "Анализ иерархии и стиля...", "preface": "Предисловие", "ack": "Благодарности",
@@ -353,6 +363,7 @@ with st.sidebar:
     val_goal = st.text_input(L["lbl_goal"], placeholder="Es: Mantenere l'attenzione alta, far emozionare...")
     val_trama = st.text_area(L["lbl_plot"], height=150)
     
+    # PULSANTE RESET BLINDATO: Unico modo per svuotare la session_state
     if st.button(L["btn_res"]):
         for key in list(st.session_state.keys()): del st.session_state[key]
         st.rerun()
@@ -428,24 +439,32 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 
     tabs = st.tabs(L["tabs"])
 
-    # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE)
+    # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
     with tabs[0]:
         if st.button(L["btn_idx"]):
-            with st.spinner("Creazione indice (Neuro-Analisi e Strutturazione Logica in corso)..."):
-                # PROMPT BLINDATO PER L'INDICE: Solo struttura, zero chat, logica ferrea.
-                prompt_idx = f"""Crea l'indice per il libro '{val_titolo}' (Genere: {val_genere}) rigorosamente in lingua {lingua_sel}. 
-Focus/Trama: {val_trama}. Obiettivo: {val_goal}. 
+            with st.spinner("Creazione indice (Neuro-Analisi, Connessione Parametri e Strutturazione Logica in corso)..."):
+                # PROMPT BLINDATO PER L'INDICE: Ora prende in carico TUTTI i parametri della sidebar per coerenza assoluta.
+                prompt_idx = f"""Crea l'indice per il libro '{val_titolo}' rigorosamente in lingua {lingua_sel}. 
+
+PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente attinente a queste caratteristiche):
+- Trama/Argomento Centrale: {val_trama}
+- Genere Letterario: {val_genere}
+- Tipologia di Scrittura: {val_stile}
+- Stile di Racconto: {val_narrativa}
+- Punto di Vista: {val_pov}
+- Obiettivo Emozionale/Pratico: {val_goal}
 
 REGOLE FONDAMENTALI ED ESCLUSIVE:
 1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
-2. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa da 3 a 5 Sottocapitoli molto specifici.
-3. STRUTTURA GERARCHICA RIGIDA E PULITA: Usa unicamente ed esattamente questo formato di elencazione, SENZA ASTERISCHI O SIMBOLI STRANI:
+2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfettamente lo stile '{val_stile}', il genere '{val_genere}' e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
+3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa da 3 a 5 Sottocapitoli molto specifici.
+4. STRUTTURA GERARCHICA RIGIDA E PULITA: Usa unicamente ed esattamente questo formato di elencazione, SENZA ASTERISCHI O SIMBOLI STRANI:
    Parte I: [Nome Parte]
    Capitolo 1: [Nome Capitolo]
    1.1 [Sottocapitolo]
    1.2 [Sottocapitolo]
-4. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
-5. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo."""
+5. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
+6. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo."""
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
                 sync_capitoli(); st.rerun()
