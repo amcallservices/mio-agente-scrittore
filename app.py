@@ -276,7 +276,7 @@ def analizza_qualita_prosa(testo):
     elif parole_per_frase < 8:
         risultati.append(f"⚠️ **Ritmo Frammentato**: Frasi molto brevi (media {parole_per_frase:.1f} parole/frase). Il testo potrebbe risultare troppo robotico o telegrafico.")
     else:
-        risultati.append(f"✅ **Ritmo e Leggibilità**: Lunghezza frasi perfettamente bilanciata (media {parole_per_frase:.1f} parole/frase).")
+        risultati.append(f"✅ **Ritmo e Leggibilità**: Lunghezza frasi parfaitement bilanciata (media {parole_per_frase:.1f} parole/frase).")
 
     # 4. Ripetizioni Ravvicinate Fastidiose (Finestra Mobile)
     ripetizioni = []
@@ -454,6 +454,14 @@ Per garantire zero ripetizioni, devi rispettare rigorosamente la seguente gerarc
 - SE SCRIVI UN "CAPITOLO" (es. Capitolo 1): Fornisci SOLO la panoramica teorica del concetto. È ASSOLUTAMENTE VIETATO trattare, spiegare o anticipare gli argomenti, le tecniche o gli esempi che verranno affrontati nei suoi Sottocapitoli (1.1, 1.2, ecc.). Lascia il dettaglio a loro.
 - SE SCRIVI UN "SOTTOCAPITOLO" (es. 1.1): Vai dritto al punto tecnico, pratico o analitico. È VIETATO ripetere le premesse generali già fatte nel Capitolo o nella Parte.
 In sintesi: chi sta "sopra" non ruba gli argomenti di chi sta "sotto", e chi sta "sotto" non ripete le introduzioni di chi sta "sopra".
+"""
+    # --- FINE NUOVE RIGHE ---
+
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER DIVIETO DI ANTICIPAZIONE ARGOMENTI ---
+    S_PROMPT += f"""
+=== DIVIETO DI ANTICIPAZIONE (SPOILER SUI SOTTOCAPITOLI) ===
+ASCOLTA ATTENTAMENTE: Se l'indice prevede che un argomento specifico venga trattato in un Sottocapitolo (es. 1.1, 1.2, 1.3), è ASSOLUTAMENTE VIETATO parlarne, menzionarlo o spiegarlo nel Capitolo Padre (es. Capitolo 1).
+Il Capitolo Padre deve fungere SOLO da cornice introduttiva generale. Non deve MAI svuotare di significato i sottocapitoli anticipandone i contenuti. Mantieni il vuoto informativo sulle questioni specifiche finché non arrivi a scrivere il sottocapitolo dedicato.
 """
     # --- FINE NUOVE RIGHE ---
 
