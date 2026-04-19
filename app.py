@@ -437,27 +437,12 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 - MEMORIA GLOBALE: Leggi il contesto fornito. Non ripetere mai concetti, parole chiave o aneddoti già utilizzati in altre sezioni.
 """
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER IMPOSTARE IL RAGIONAMENTO SULLA SIDEBAR ---
+    # --- INIZIO NUOVE RIGHE AGGIUNTE PER ANTI-RIPETIZIONE ASSOLUTA ---
     S_PROMPT += f"""
-=== APPLICAZIONE DIRETTIVE (STESURA PULITA) ===
-Devi interiorizzare e applicare alla lettera le seguenti istruzioni prima di generare il testo:
-1. Il genere '{val_genere}'
-2. La tipologia di scrittura '{val_stile}' e lo stile di racconto '{val_narrativa}'
-3. Il POV '{val_pov}'
-4. L'obiettivo '{val_goal}'
-CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o meta-testo. L'output DEVE contenere ESCLUSIVAMENTE il contenuto finale del capitolo/sottocapitolo, pronto per la pubblicazione.
-"""
-    # --- FINE NUOVE RIGHE ---
-
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER ENFORCEMENT DIRETTIVE SIDEBAR ---
-    S_PROMPT += f"""
-=== DIRETTIVA DI CONFORMITÀ ASSOLUTA (PUNTO DI VISTA E STILE) ===
-È TASSATIVO e NON NEGOZIABILE che l'intero testo sia redatto utilizzando ESATTAMENTE il Punto di Vista (POV) impostato nella sidebar: "{val_pov}". 
-- Se è impostato su "Tu", rivolgiti direttamente e informalmente al singolo lettore (es. "scoprirai che...").
-- Se è impostato su "Voi", rivolgiti in modo plurale e autorevole (es. "scoprirete che...").
-- Se è impostato su "Noi", usa un approccio inclusivo (es. "scopriremo che...").
-- Se è "Impersonale", usa forme impersonali o passive, distaccate e oggettive (es. "si scoprirà che...").
-L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale ad ogni fine paragrafo per assicurarsi che non ci siano "scivoloni" o cambi di pronome accidentali. Lo stile di scrittura "{val_stile}" deve permeare ogni singola scelta di vocabolario.
+=== DIRETTIVA ANTI-RIPETIZIONE E BLACKLIST DEGLI ARGOMENTI ===
+Il sistema anti-ripetizione è il parametro più critico di questa operazione:
+1. DISTINZIONE PADRE/FIGLIO: Se stai scrivendo un Capitolo Principale (es. "Capitolo 1"), devi limitarti a una visione "dall'alto", introducendo i temi SENZA svelarne le meccaniche o gli esempi. Se stai scrivendo un Sottocapitolo (es. "1.1" o "1.2"), devi entrare nel micro-dettaglio e ti è SEVERAMENTE VIETATO riassumere o ripetere l'introduzione già fatta nel Capitolo Padre.
+2. BLACKLIST DEI CONTENUTI PRECEDENTI: I contenuti presenti nella "MEMORIA CONTENUTI PRECEDENTI" sono da considerarsi in una BLACKLIST. Non usare MAI le stesse introduzioni, non riciclare esempi e non riproporre gli stessi concetti o checklist. Ogni sezione deve essere 100% inedita rispetto alle precedenti.
 """
     # --- FINE NUOVE RIGHE ---
 
@@ -489,12 +474,6 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
    1.2 [Sottocapitolo]
 5. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
 6. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo."""
-
-                # --- INIZIO NUOVE RIGHE AGGIUNTE PER RAGIONAMENTO INDICE ---
-                prompt_idx += f"""
-7. APPLICAZIONE SILENZIOSA DEI PARAMETRI: Applica rigorosamente le istruzioni della sidebar (genere "{val_genere}", obiettivo "{val_goal}", ecc.) garantendo una perfetta coerenza editoriale. CRITICO: NON inserire alcun "ragionamento strutturale", commento preliminare o spiegazione. Stampa SOLO ed ESCLUSIVAMENTE la lista dell'indice nuda e cruda.
-"""
-                # --- FINE NUOVE RIGHE ---
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
                 sync_capitoli(); st.rerun()
