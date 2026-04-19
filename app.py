@@ -571,14 +571,14 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                 for s in opzioni_editor:
                     ke = f"txt_{s.replace(' ', '_').replace('.', '')}"
                     if ke in st.session_state: doc.add_page_break(); doc.add_heading(s.upper(), level=1); doc.add_paragraph(st.session_state[ke])
-                bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], bw, file_name=f"{val_titolo}.docx")
+                bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
             if st.button(L["btn_pdf"]):
                 pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
                 for s in opzioni_editor:
                     kd = f"txt_{s.replace(' ', '_').replace('.', '')}"
                     if kd in st.session_state: pdf.add_content(s.upper(), st.session_state[kd])
-                out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], out_p, file_name=f"{val_titolo}.pdf")
+                out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
 else:
     st.info(L["welcome"] + " " + L["guide"])
 
