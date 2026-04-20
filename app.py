@@ -10,6 +10,7 @@ from openai import OpenAI
 from docx import Document
 from io import BytesIO
 from collections import Counter
+import PyPDF2  # Libreria necessaria per leggere i PDF caricati
 
 # ======================================================================================================================
 # 0. GESTIONE MEMORIA DI STATO E PREVENZIONE AUTO-RESET
@@ -20,6 +21,26 @@ if "memoria_blindata" not in st.session_state:
     st.session_state["memoria_blindata"] = True
     st.session_state["indice_raw"] = ""
     st.session_state["lista_capitoli"] = []
+    st.session_state["conoscenza_extra"] = ""
+
+# ======================================================================================================================
+# FUNZIONI DI SUPPORTO PER ANALISI DOCUMENTI (NUOVO MODULO)
+# ======================================================================================================================
+def estrai_testo_da_files(caricati):
+    testo_totale = ""
+    for file in caricati:
+        try:
+            if file.name.lower().endswith('.pdf'):
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page in pdf_reader.pages:
+                    testo_totale += (page.extract_text() or "") + "\n"
+            elif file.name.lower().endswith('.docx'):
+                doc = Document(file)
+                for para in doc.paragraphs:
+                    testo_totale += para.text + "\n"
+        except Exception as e:
+            st.error(f"Errore nella lettura di {file.name}: {e}")
+    return testo_totale
 
 # ======================================================================================================================
 # 1. ARCHITETTURA DI SISTEMA E SICUREZZA API
@@ -109,7 +130,7 @@ TRADUZIONI = {
         "btn_write": "✨ SCRIE CONȚINUT", "btn_quiz": "🧠 ADAUGĂ QUIZ", "btn_edit": "🚀 RESCRIE",
         "msg_run": "Se analizează ierarhia și stilul...", "preface": "Prefață", "ack": "Mulțumiri",
         "preview_tit": "📖 Mod Citire", "btn_word": "📥 Descarcă Word", "btn_pdf": "📥 Descarcă PDF",
-        "msg_err_idx": "Generează cuprinsul mai întâi.", "msg_success_sync": "Sincronizat!", "label_editor": "Editor Profesional", "welcome": "👋 Bun venit.", "guide": "Folosește bara laterală."
+        "msg_err_idx": "Generează cuprinsul mai întâi.", "msg_success_sync": "Sincronizat!", "label_editor": "Editor Profesional", "welcome": "👋 Bun venit.", "guide": "Folosește bara lateral."
     },
     "Русский": {
         "side_tit": "⚙️ Настройки Редактора", "lbl_tit": "Название Книги", "lbl_auth": "Имя Автора", "lbl_lang": "Язык", 
@@ -318,7 +339,7 @@ def valuta_approccio_neurologico(genere, stile, narrativa):
     return False
 
 # ======================================================================================================================
-# 6. SIDEBAR: SETUP EDITORIALE AVANZATO (AMPLIATE LE TIPOLOGIE DI SCRITTURA E POV)
+# 6. SIDEBAR: SETUP EDITORIALE AVANZATO E CARICAMENTO FONTI
 # ======================================================================================================================
 with st.sidebar:
     lingua_sel = st.selectbox("🌐 Lingua / Language", list(TRADUZIONI.keys()))
@@ -327,6 +348,22 @@ with st.sidebar:
     val_titolo = st.text_input(L["lbl_tit"])
     val_autore = st.text_input(L["lbl_auth"])
     
+    # --- NUOVA SEZIONE CARICAMENTO FONTI ---
+    st.markdown("### 📂 Fonti Esterne (Opzionale)")
+    st.markdown("<small>Carica PDF o DOCX per aiutare l'IA nel ragionamento di stesura.</small>", unsafe_allow_html=True)
+    file_caricati = st.file_uploader("Carica Fonti Esterne", type=['pdf', 'docx'], accept_multiple_files=True, label_visibility="collapsed")
+    if file_caricati:
+        if len(file_caricati) > 10:
+            st.warning("Hai superato il limite di 10 file. Verranno analizzati i primi 10.")
+            file_caricati = file_caricati[:10]
+        with st.spinner("Lettura e analisi fonti in corso..."):
+            st.session_state["conoscenza_extra"] = estrai_testo_da_files(file_caricati)
+            if st.session_state["conoscenza_extra"]:
+                st.success(f"Analizzati {len(file_caricati)} documenti. Pronti per l'uso!")
+    else:
+        st.session_state["conoscenza_extra"] = ""
+    
+    st.markdown("---")
     # --- AGGIUNTA "RICETTARIO", "TEST PREP", "NARRATIVO", "ROMANZO CLASSICO" E "CONTEMPORANEO" AI GENERI ---
     lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)", "Narrativo", "Romanzo Classico", "Contemporaneo"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
@@ -369,10 +406,13 @@ with st.sidebar:
         st.rerun()
 
 # ======================================================================================================================
-# 7. LOGICA DI MEMORIA E COERENZA (EVITA RIPETIZIONI GLOBALI)
+# 7. LOGICA DI MEMORIA E COERENZA (EVITA RIPETIZIONI GLOBALI) E INTEGRAZIONE FONTI
 # ======================================================================================================================
 def genera_contesto_avanzato(sezione_corrente):
     contesto = ""
+    if st.session_state.get("conoscenza_extra"):
+        contesto += f"=== FONTI ESTERNE DI RIFERIMENTO (USATE PER RAGIONAMENTO) ===\n{st.session_state['conoscenza_extra'][:8000]}\n\n"
+        
     for s in st.session_state.get("lista_capitoli", []):
         if s == sezione_corrente: break
         k = f"txt_{s.replace(' ', '_').replace('.', '')}"
@@ -410,10 +450,20 @@ NON utilizzare manipolazioni emotive o neuromarketing. Mantieni un tono accademi
 Fornisci dati, structures deduttive e un linguaggio pulito, tipico delle pubblicazioni di alto rigore tecnico-scientifico.
 """
 
+    modulo_fonti = ""
+    if st.session_state.get("conoscenza_extra"):
+        modulo_fonti = """
+=== INTEGRAZIONE FONTI ESTERNE (RAGIONAMENTO AI) ===
+I documenti forniti servono per arricchire il tuo ragionamento, estrarre dati e terminologia tecnica.
+È TASSATIVAMENTE VIETATO FARE COPIA E INCOLLA dei testi originali. Usa queste fonti esclusivamente come "cervello esterno" per scrivere le tue sezioni originali basandoti su quei concetti, con lo stile e il POV richiesto per il libro.
+"""
+
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
     S_PROMPT = f"""
 Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
 Stai redigendo l'ebook '{val_titolo}'. 
+
+{modulo_fonti}
 
 PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Stile di Racconto: {val_narrativa}
@@ -435,37 +485,22 @@ Dovrai analizzare l'indice fornito per capire la tua esatta posizione:
 - SE STAI SCRIVENDO UN CAPITOLO PRINCIPALE (es. 1, 2, 3): Focalizzati sulla visione d'insieme, introduci l'argomento in modo macroscopico. NON rubare i dettagli tecnici, gli esempi specifici o i casi studio che appartengono ai tuoi sottocapitoli.
 - SE STAI SCRIVENDO UN SOTTOCAPITOLO (es. 1.1, 1.2, 3.4): Entra inmediatamente nel dettaglio estremo, nell'azione pratica o nell'analisi profonda. NON ripetere mai le premesse o le introduzioni generali già spiegate nel capitolo padre. 
 - MEMORIA GLOBALE: Leggi il contesto fornito. Non ripetere mai concetti, parole chiave o aneddoti già utilizzati in altre sezioni.
-"""
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER ANTI-RIPETIZIONE ASSOLUTA ---
-    S_PROMPT += f"""
 === DIRETTIVA ANTI-RIPETIZIONE E BLACKLIST DEGLI ARGOMENTI ===
 Il sistema anti-ripetizione è il parametro più critico di questa operazione:
 1. DISTINZIONE PADRE/FIGLIO: Se stai scrivendo un Capitolo Principale (es. "Capitolo 1"), devi limitarti a una visione "dall'alto", introducendo i temi SENZA svelarne le meccaniche o gli esempi. Se stai scrivendo un Sottocapitolo (es. "1.1" o "1.2"), devi entrare nel micro-dettaglio e ti è SEVERAMENTE VIETATO riassumere o ripetere l'introduzione già fatta nel Capitolo Padre.
 2. BLACKLIST DEI CONTENUTI PRECEDENTI: I contenuti presenti nella "MEMORIA CONTENUTI PRECEDENTI" sono da considerarsi in una BLACKLIST. Non usare MAI le stesse introduzioni, non riciclare esempi e non riproporre gli stessi concetti o checklist. Ogni sezione deve essere 100% inedita rispetto alle precedenti.
-"""
-    # --- FINE NUOVE RIGHE ---
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER SEGREGAZIONE VERTICALE E SILENZIO STAMPA (HARD RULE) ---
-    S_PROMPT += f"""
 === SILENZIO STAMPA ASSOLUTO SUI SOTTOCAPITOLI (MUTUAMENTE ESCLUSIVI) ===
 Questa è la regola d'oro per evitare sovrapposizioni e non farti trattare lo stesso argomento due volte:
 1. IL CAPITOLO PARLA DEL "PERCHÉ": Se l'indice ti posiziona nella stesura di un Capitolo Padre (es. "Capitolo 2"), il tuo UNICO compito è creare la cornice concettuale. Ti è IMPOSTO IL SILENZIO STAMPA su qualsiasi argomento, tecnica o dettaglio che abbia un Sottocapitolo dedicato (es. 2.1, 2.2). NON SPIEGARE NIENTE DI SPECIFICO NEL CAPITOLO PADRE.
 2. IL SOTTOCAPITOLO PARLA DEL "COME" e del "COSA": Se la sezione è un Sottocapitolo (es. "2.1 L'argomento X"), l'intera spiegazione dell'Argomento X DEVE avvenire ESCLUSIVAMENTE lì. Nel Capitolo Padre, X non doveva essere spiegato, ma al massimo accennato come un titolo nel futuro.
 3. CONTROLLO FINALE PRIMA DI GENERARE: Guarda la lista completa dei tuoi sottocapitoli e chiediti: "Sto spiegando in questo testo qualcosa che l'indice dice di spiegare nel prossimo paragrafo numerato?". Se la risposta è SÌ, CANCELLA e astieniti. Lascia vuoto informativo per permettere al Sottocapitolo di esistere senza ripetizioni.
-"""
-    # --- FINE NUOVE RIGHE ---
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER DIVIETO DI ANTICIPAZIONE ARGOMENTI ---
-    S_PROMPT += f"""
 === DIVIETO DI ANTICIPAZIONE (SPOILER SUI SOTTOCAPITOLI) ===
 ASCOLTA ATTENTAMENTE: Se l'indice prevede che un argomento specifico venga trattato in un Sottocapitolo (es. 1.1, 1.2, 1.3), è ASSOLUTAMENTE VIETATO parlarne, menzionarlo o spiegarlo nel Capitolo Padre (es. Capitolo 1).
 Il Capitolo Padre deve fungere SOLO da cornice introduttiva generale. Non deve MAI svuotare di significato i sottocapitoli anticipandone i contenuti. Mantieni il vuoto informativo sulle questioni specifiche finché non arrivi a scrivere il sottocapitolo dedicato.
-"""
-    # --- FINE NUOVE RIGHE ---
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER IMPOSTARE IL RAGIONAMENTO SULLA SIDEBAR ---
-    S_PROMPT += f"""
 === APPLICAZIONE DIRETTIVE (STESURA PULITA) ===
 Devi interiorizzare e applicare alla lettera le seguenti istruzioni prima di generare il testo:
 1. Il genere '{val_genere}'
@@ -473,11 +508,7 @@ Devi interiorizzare e applicare alla lettera le seguenti istruzioni prima di gen
 3. Il POV '{val_pov}'
 4. L'obiettivo '{val_goal}'
 CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o meta-testo. L'output DEVE contenere ESCLUSIVAMENTE il contenuto finale del capitolo/sottocapitolo, pronto per la pubblicazione.
-"""
-    # --- FINE NUOVE RIGHE ---
 
-    # --- INIZIO NUOVE RIGHE AGGIUNTE PER ENFORCEMENT DIRETTIVE SIDEBAR ---
-    S_PROMPT += f"""
 === DIRETTIVA DI CONFORMITÀ ASSOLUTA (PUNTO DI VISTA E STILE) ===
 È TASSATIVO e NON NEGOZIABILE che l'intero testo sia redatto utilizzando ESATTAMENTE il Punto di Vista (POV) impostato nella sidebar: "{val_pov}". 
 - Se è impostato su "Tu", rivolgiti direttamente e informalmente al singolo lettore (es. "scoprirai che...").
@@ -486,7 +517,6 @@ CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o 
 - Se è "Impersonale", usa forme impersonali o passive, distaccate e oggettive (es. "si scoprirà che...").
 L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale ad ogni fine paragrafo per assicurarsi che non ci siano "scivoloni" o cambi di pronome accidentali. Lo stile di scrittura "{val_stile}" deve permeare ogni singola scelta di vocabolario.
 """
-    # --- FINE NUOVE RIGHE ---
 
     tabs = st.tabs(L["tabs"])
 
@@ -504,10 +534,14 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
 - Stile di Racconto: {val_narrativa}
 - Punto di Vista: {val_pov}
 - Obiettivo Emozionale/Pratico: {val_goal}
+"""
+                if st.session_state.get("conoscenza_extra"):
+                    prompt_idx += f"\n\nFONTI ESTERNE E RAGIONAMENTO:\nUsa queste informazioni fornite dall'utente per strutturare l'indice in modo logico e autorevole. \n{st.session_state['conoscenza_extra'][:4000]}\n"
 
+                prompt_idx += """
 REGOLE FONDAMENTALI ED ESCLUSIVE:
 1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
-2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfettamente lo stile '{val_stile}', il genere '{val_genere}' e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
+2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfettamente lo stile, il genere e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
 3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa da 3 a 5 Sottocapitoli molto specifici.
 4. STRUTTURA GERARCHICA RIGIDA E PULITA: Usa unicamente ed esattamente questo formato di elencazione, SENZA ASTERISCHI O SIMBOLI STRANI:
    Parte I: [Nome Parte]
@@ -515,13 +549,10 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
    1.1 [Sottocapitolo]
    1.2 [Sottocapitolo]
 5. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
-6. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo."""
+6. PULIZIA VISIVA: Nessuna descrizione sotto i capitoli. Nessuna punteggiatura anomala. Solo l'elenco nudo e crudo.
 
-                # --- INIZIO NUOVE RIGHE AGGIUNTE PER RAGIONAMENTO INDICE ---
-                prompt_idx += f"""
-7. APPLICAZIONE SILENZIOSA DEI PARAMETRI: Applica rigorosamente le istruzioni della sidebar (genere "{val_genere}", obiettivo "{val_goal}", ecc.) garantendo una perfetta coerenza editoriale. CRITICO: NON inserire alcun "ragionamento strutturale", commento preliminare o spiegazione. Stampa SOLO ed ESCLUSIVAMENTE la lista dell'indice nuda e cruda.
+7. APPLICAZIONE SILENZIOSA DEI PARAMETRI: Applica rigorosamente le istruzioni della sidebar garantendo una perfetta coerenza editoriale. CRITICO: NON inserire alcun "ragionamento strutturale", commento preliminare o spiegazione. Stampa SOLO ed ESCLUSIVAMENTE la lista dell'indice nuda e cruda.
 """
-                # --- FINE NUOVE RIGHE ---
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
                 sync_capitoli(); st.rerun()
