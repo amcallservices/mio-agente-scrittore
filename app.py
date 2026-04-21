@@ -516,6 +516,13 @@ CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o 
 - Se è impostato su "Noi", usa un approccio inclusivo (es. "scopriremo che...").
 - Se è "Impersonale", usa forme impersonali o passive, distaccate e oggettive (es. "si scoprirà che...").
 L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale ad ogni fine paragrafo per assicurarsi che non ci siano "scivoloni" o cambi di pronome accidentali. Lo stile di scrittura "{val_stile}" deve permeare ogni singola scelta di vocabolario.
+
+        # --- INIZIO NUOVE RIGHE AGGIUNTE PER STILE DIRETTO, DETTAGLIATO E ARGOMENTATIVO ---
+=== REGOLA DELLA DENSITÀ E APPROCCIO DIRETTO (NO FLUFF) ===
+- VAI AL SODO: Elimina qualsiasi preambolo inutile, frasi fatte o giri di parole. Inizia immediatamente a trattare il cuore dell'argomento della sezione.
+- ZERO VAGHEZZA: Sii estremamente descrittivo, specifico e dettagliato. Non limitarti a enunciare i concetti, ma sviscerali e dimostrali.
+- PROFONDITÀ ARGOMENTATIVA: Tratta gli argomenti in maniera fortemente argomentativa. Se stai spiegando una teoria, una tecnica o un concetto pratico, fornisci il "come" e il "perché" con autorevolezza, supportando le tue affermazioni con logica ferrea, dati e dettagli concreti, mantenendo un focus laser sull'argomento.
+        # --- FINE NUOVE RIGHE ---
 """
 
     tabs = st.tabs(L["tabs"])
