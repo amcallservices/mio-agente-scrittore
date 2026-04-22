@@ -456,6 +456,14 @@ Fornisci dati, structures deduttive e un linguaggio pulito, tipico delle pubblic
 === INTEGRAZIONE FONTI ESTERNE (RAGIONAMENTO AI) ===
 I documenti forniti servono per arricchire il tuo ragionamento, estrarre dati e terminologia tecnica.
 È TASSATIVAMENTE VIETATO FARE COPIA E INCOLLA dei testi originali. Usa queste fonti esclusivamente come "cervello esterno" per scrivere le tue sezioni originali basandoti su quei concetti, con lo stile e il POV richiesto per il libro.
+
+        # --- INIZIO NUOVE RIGHE PER STUDIO E RAGIONAMENTO FONTI (SISTEMA) ---
+=== STUDIO ATTIVO E ASSIMILAZIONE CONCETTI ===
+Devi agire come uno studioso che ha appena letto le fonti caricate dall'utente. 
+1. ESTRAZIONE E ANALISI: Individua i princìpi cardine, i framework, i concetti chiave e i dati presenti nei documenti.
+2. RAGIONAMENTO PROFONDO: Non limitarti a citare i concetti a pappagallo. Sviscerali, spiegane il "perché", il contesto e come si applicano operativamente all'argomento del libro.
+3. ELABORAZIONE ORIGINALE: Fai tuoi questi concetti. Intrecciali fluidamente con la tua base di conoscenza per creare un testo ricco e autorevole, dimostrando assoluta padronanza della materia, mantenendo il divieto di copia-incolla.
+        # --- FINE NUOVE RIGHE ---
 """
 
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
@@ -526,11 +534,9 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 - OPERATIVITÀ IMMEDIATA: Spiega esattamente "COME" fare le cose. Inserisci step operativi, checklist, esempi concreti, casi studio reali o template applicativi.
 - IPER-DETTAGLIO: Scendi in profondità nel micro-dettaglio. Se menzioni una tecnica, smontala nei suoi componenti base. Il lettore non deve mai chiedersi "Ok, ma in pratica come si fa?". La risposta deve essere già lì, sviscerata in ogni suo singolo passaggio logico e pratico.
 
-        # --- INIZIO NUOVE RIGHE AGGIUNTE PER EVITARE DOPPIONI DEI TITOLI ---
 === DIVIETO ASSOLUTO DI RITRASCRIZIONE TITOLI (CRITICO) ===
 - NON RITRASCRIVERE o ripetere MAI il nome del capitolo, del sottocapitolo o della sezione all'interno del testo generato o come intestazione (es. non scrivere mai "Capitolo 1" o "1.1 Introduzione" all'inizio).
 - Inizia a scrivere DIRETTAMENTE il corpo del testo. L'applicazione impagina i titoli automaticamente; se tu li scrivi, verrà creato un brutto e fastidioso doppione visivo. Non usare `#` o `##` all'inizio per ripetere il titolo che ti è stato assegnato.
-        # --- FINE NUOVE RIGHE ---
 """
 
     tabs = st.tabs(L["tabs"])
@@ -622,10 +628,11 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
 - Usa TASSATIVAMENTE il punto di vista richiesto ({val_pov}).
 - Assicurati che NON ci siano simboli o punteggiature anomale (nessun asterisco di troppo, niente emoji). Il testo deve essere sintatticamente puro.
 - Sii estremamente profondo ed esaustivo nell'ambito della tua specifica sezione, senza rubare materiale alle altre.
-
-        # --- INIZIO NUOVA RIGA AGGIUNTA PER EVITARE DOPPIONI NELLA GENERAZIONE ---
 - DIVIETO DI INTESTAZIONE: Non scrivere e non ripetere MAI '{sez_scelta}' all'inizio della tua risposta. Inizia direttamente con la prima frase del paragrafo/contenuto.
-        # --- FINE NUOVA RIGA ---
+
+        # --- INIZIO NUOVE RIGHE PER STUDIO E RAGIONAMENTO FONTI (TASK SPECIFICO) ---
+- UTILIZZO E RAGIONAMENTO SULLE FONTI: Se nella tua base di istruzioni ci sono "FONTI ESTERNE", non ignorarle. Trova i collegamenti e i concetti applicabili a '{sez_scelta}', ragionaci sopra criticamente e integrali nel discorso. Spiega, argomenta e dimostra padronanza del testo fornito.
+        # --- FINE NUOVE RIGHE ---
 """
                         st.session_state[k_sessione] = chiedi_gpt(full_prompt, S_PROMPT)
             with c2:
