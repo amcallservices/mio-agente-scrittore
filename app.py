@@ -517,7 +517,6 @@ CRITICO: NON inserire alcun "ragionamento editoriale", commento, introduzione o 
 - Se è "Impersonale", usa forme impersonali o passive, distaccate e oggettive (es. "si scoprirà che...").
 L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale ad ogni fine paragrafo per assicurarsi che non ci siano "scivoloni" o cambi di pronome accidentali. Lo stile di scrittura "{val_stile}" deve permeare ogni singola scelta di vocabolario.
 
-        # --- INIZIO NUOVE RIGHE AGGIUNTE PER STILE DIRETTO, DETTAGLIATO E ARGOMENTATIVO ---
 === REGOLA DELLA DENSITÀ E APPROCCIO DIRETTO (NO FLUFF) ===
 - VAI AL SODO: Elimina qualsiasi preambolo inutile, frasi fatte o giri di parole. Inizia immediatamente a trattare il cuore dell'argomento della sezione.
 - ZERO VAGHEZZA: Sii estremamente descrittivo, specifico e dettagliato. Non limitarti a enunciare i concetti, ma sviscerali e dimostrali.
@@ -526,6 +525,11 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 === APPROCCIO IPER-PRATICO E MICRO-DETTAGLIO ===
 - OPERATIVITÀ IMMEDIATA: Spiega esattamente "COME" fare le cose. Inserisci step operativi, checklist, esempi concreti, casi studio reali o template applicativi.
 - IPER-DETTAGLIO: Scendi in profondità nel micro-dettaglio. Se menzioni una tecnica, smontala nei suoi componenti base. Il lettore non deve mai chiedersi "Ok, ma in pratica come si fa?". La risposta deve essere già lì, sviscerata in ogni suo singolo passaggio logico e pratico.
+
+        # --- INIZIO NUOVE RIGHE AGGIUNTE PER EVITARE DOPPIONI DEI TITOLI ---
+=== DIVIETO ASSOLUTO DI RITRASCRIZIONE TITOLI (CRITICO) ===
+- NON RITRASCRIVERE o ripetere MAI il nome del capitolo, del sottocapitolo o della sezione all'interno del testo generato o come intestazione (es. non scrivere mai "Capitolo 1" o "1.1 Introduzione" all'inizio).
+- Inizia a scrivere DIRETTAMENTE il corpo del testo. L'applicazione impagina i titoli automaticamente; se tu li scrivi, verrà creato un brutto e fastidioso doppione visivo. Non usare `#` o `##` all'inizio per ripetere il titolo che ti è stato assegnato.
         # --- FINE NUOVE RIGHE ---
 """
 
@@ -618,12 +622,16 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
 - Usa TASSATIVAMENTE il punto di vista richiesto ({val_pov}).
 - Assicurati che NON ci siano simboli o punteggiature anomale (nessun asterisco di troppo, niente emoji). Il testo deve essere sintatticamente puro.
 - Sii estremamente profondo ed esaustivo nell'ambito della tua specifica sezione, senza rubare materiale alle altre.
+
+        # --- INIZIO NUOVA RIGA AGGIUNTA PER EVITARE DOPPIONI NELLA GENERAZIONE ---
+- DIVIETO DI INTESTAZIONE: Non scrivere e non ripetere MAI '{sez_scelta}' all'inizio della tua risposta. Inizia direttamente con la prima frase del paragrafo/contenuto.
+        # --- FINE NUOVA RIGA ---
 """
                         st.session_state[k_sessione] = chiedi_gpt(full_prompt, S_PROMPT)
             with c2:
                 istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
                 if st.button(L["btn_edit"] + " 🪄"):
-                    if k_sessione in st.session_state: st.session_state[k_sessione] = chiedi_gpt(f"Rielabora con focus su: {istr} mantenendo categoricamente la lingua {lingua_sel}, il POV ({val_pov}) e senza usare punteggiatura anomala. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT); st.rerun()
+                    if k_sessione in st.session_state: st.session_state[k_sessione] = chiedi_gpt(f"Rielabora con focus su: {istr} mantenendo categoricamente la lingua {lingua_sel}, il POV ({val_pov}) e senza usare punteggiatura anomala né riscrivere il titolo all'inizio. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT); st.rerun()
             with c3:
                 if st.button("🧠 QUIZ"):
                     if k_sessione in st.session_state:
