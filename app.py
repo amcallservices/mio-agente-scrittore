@@ -319,7 +319,12 @@ def sync_capitoli():
     testo_indice = st.session_state.get("indice_raw", "")
     if not testo_indice: st.session_state['lista_capitoli'] = []; return
     lista = []
-    regex = r'(?i)(Capitolo|Chapter|Kapitel|Capítulo|Раздел|章节|Secţiune|Parte|\d+\.)'
+    
+    # --- INIZIO RIGHE MODIFICATE PER SUPPORTARE TUTTE LE LINGUE NELL'ESTRAZIONE DELLA SIDEBAR ---
+    # Inclusi tutti i termini stranieri di "Capitolo" o "Parte" per il Parsing
+    regex = r'(?i)(Capitolo|Chapter|Kapitel|Capítulo|Chapitre|Capitolul|Глава|الفصل|Раздел|章节|Secţiune|Parte|Part|Partie|Teil|Partea|Часть|الجزء|部分|\d+\.)'
+    # --- FINE RIGHE MODIFICATE ---
+    
     for riga in testo_indice.split('\n'):
         if re.search(regex, riga.strip()): lista.append(riga.strip())
     st.session_state['lista_capitoli'] = lista
@@ -536,12 +541,10 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 - NON RITRASCRIVERE o ripetere MAI il nome del capitolo, del sottocapitolo o della sezione all'interno del testo generato o come intestazione (es. non scrivere mai "Capitolo 1" o "1.1 Introduzione" all'inizio).
 - Inizia a scrivere DIRETTAMENTE il corpo del testo. L'applicazione impagina i titoli automaticamente; se tu li scrivi, verrà creato un brutto e fastidioso doppione visivo. Non usare `#` o `##` all'inizio per ripetere il titolo che ti è stato assegnato.
 
-        # --- INIZIO NUOVE RIGHE PER COMPETENZA MADRELINGUA E SPECIFICITÀ ASSOLUTA ---
 === MAESTRIA LINGUISTICA E PROFONDITÀ DA LUMINARE (CRITICO) ===
 - LIVELLO MADRELINGUA ASSOLUTO: Scrivi in {lingua_sel} con la naturalezza, il ritmo e la ricchezza di vocabolario di un autore locale di altissimo livello. Evita categoricamente frasi robotiche, traduzioni letterali o costrutti tipici dell'IA. Usa le sfumature linguistiche, le metafore e le espressioni idiomatiche proprie della lingua {lingua_sel}.
 - COMPETENZA VERTICALE (ESPERTO DEL SETTORE): Comportati come un professionista con 30 anni di esperienza reale in questo esatto argomento. Sii chirurgico nei termini tecnici e fornisci dettagli, aneddoti o concetti avanzati che solo un vero "addetto ai lavori" conoscerebbe.
 - NO SUPERFICIALITÀ: Non dare risposte generiche o banali. Ogni paragrafo deve trasudare competenza profonda, spiegando i meccanismi interni, le ragioni nascoste e i dettagli tecnici dell'argomento.
-        # --- FINE NUOVE RIGHE ---
 """
 
     tabs = st.tabs(L["tabs"])
@@ -550,7 +553,25 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
     with tabs[0]:
         if st.button(L["btn_idx"]):
             with st.spinner("Creazione indice (Neuro-Analisi, Connessione Parametri e Strutturazione Logica in corso)..."):
+                
+                # --- INIZIO NUOVE RIGHE PER TRADUZIONE TERMINI INDICE ---
+                trad_termini = {
+                    "Italiano": {"parte": "Parte", "cap": "Capitolo"},
+                    "English": {"parte": "Part", "cap": "Chapter"},
+                    "Español": {"parte": "Parte", "cap": "Capítulo"},
+                    "Français": {"parte": "Partie", "cap": "Chapitre"},
+                    "Deutsch": {"parte": "Teil", "cap": "Kapitel"},
+                    "Română": {"parte": "Partea", "cap": "Capitolul"},
+                    "Русский": {"parte": "Часть", "cap": "Глава"},
+                    "العربية": {"parte": "الجزء", "cap": "الفصل"},
+                    "中文": {"parte": "部分", "cap": "章节"}
+                }
+                t_parte = trad_termini.get(lingua_sel, trad_termini["Italiano"])["parte"]
+                t_cap = trad_termini.get(lingua_sel, trad_termini["Italiano"])["cap"]
+                # --- FINE NUOVE RIGHE ---
+
                 # PROMPT BLINDATO PER L'INDICE: Ora prende in carico TUTTI i parametri della sidebar per coerenza assoluta.
+                # E include i termini tradotti (f-string per iniezione variabili)
                 prompt_idx = f"""Crea l'indice per il libro '{val_titolo}' rigorosamente in lingua {lingua_sel}. 
 
 PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente attinente a queste caratteristiche):
@@ -564,14 +585,14 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
                 if st.session_state.get("conoscenza_extra"):
                     prompt_idx += f"\n\nFONTI ESTERNE E RAGIONAMENTO:\nUsa queste informazioni fornite dall'utente per strutturare l'indice in modo logico e autorevole. \n{st.session_state['conoscenza_extra'][:4000]}\n"
 
-                prompt_idx += """
+                prompt_idx += f"""
 REGOLE FONDAMENTALI ED ESCLUSIVE:
 1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
-2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfettamente lo stile, il genere e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
+2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfectly lo stile, il genere e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
 3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa da 3 a 5 Sottocapitoli molto specifici.
 4. STRUTTURA GERARCHICA RIGIDA E PULITA: Usa unicamente ed esattamente questo formato di elencazione, SENZA ASTERISCHI O SIMBOLI STRANI:
-   Parte I: [Nome Parte]
-   Capitolo 1: [Nome Capitolo]
+   {t_parte} I: [Nome Parte]
+   {t_cap} 1: [Nome Capitolo]
    1.1 [Sottocapitolo]
    1.2 [Sottocapitolo]
 5. SENSO LOGICO SEQUENZIALE: Il flusso narrativo/didattico deve essere ineccepibile. Parti dalle basi/introduzione, sviluppa il cuore del problema, e concludi con soluzioni o risoluzioni finali.
@@ -649,21 +670,40 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} dando del {val_pov} al lettore su:\n{st.session_state[k_sessione]}", "Learning Expert.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
                 
+                # --- INIZIO NUOVE RIGHE PER TRADUZIONE RICETTE ---
+                trad_ricette = {
+                    "Italiano": {"btn": "🍳 10 RICETTE", "titolo": "### 🍳 10 NUOVE RICETTE", "struttura": "Titolo, Tempi (Preparazione/Cottura), Ingredienti, Procedimento"},
+                    "English": {"btn": "🍳 10 RECIPES", "titolo": "### 🍳 10 NEW RECIPES", "struttura": "Title, Prep/Cook Time, Ingredients, Instructions"},
+                    "Español": {"btn": "🍳 10 RECETAS", "titolo": "### 🍳 10 NUEVAS RECETAS", "struttura": "Título, Tiempo de preparación/cocción, Ingredientes, Elaboración"},
+                    "Français": {"btn": "🍳 10 RECETTES", "titolo": "### 🍳 10 NOUVELLES RECETTES", "struttura": "Titre, Temps de préparation/cuisson, Ingrédients, Préparation"},
+                    "Deutsch": {"btn": "🍳 10 REZEPTE", "titolo": "### 🍳 10 NEUE REZEPTE", "struttura": "Titel, Zubereitungs-/Kochzeit, Zutaten, Zubereitung"},
+                    "Română": {"btn": "🍳 10 REȚETE", "titolo": "### 🍳 10 REȚETE NOI", "struttura": "Titlu, Timp de preparare/gătire, Ingrediente, Mod de preparare"},
+                    "Русский": {"btn": "🍳 10 РЕЦЕПТОВ", "titolo": "### 🍳 10 НОВЫХ РЕЦЕПТОВ", "struttura": "Название, Время подготовки/приготовления, Ингредиенты, Инструкции"},
+                    "العربية": {"btn": "🍳 10 وصفات", "titolo": "### 🍳 10 وصفات جديدة", "struttura": "العنوان، وقت التحضير/الطهي، المكونات، طريقة التحضير"},
+                    "中文": {"btn": "🍳 10 个食谱", "titolo": "### 🍳 10 个新食谱", "struttura": "标题, 准备/烹饪时间, 配料, 制作步骤"}
+                }
+                t_btn_ric = trad_ricette.get(lingua_sel, trad_ricette["Italiano"])["btn"]
+                t_tit_ric = trad_ricette.get(lingua_sel, trad_ricette["Italiano"])["titolo"]
+                t_strut_ric = trad_ricette.get(lingua_sel, trad_ricette["Italiano"])["struttura"]
+                # --- FINE NUOVE RIGHE ---
+                
                 # --- AGGIUNTA PULSANTE GENERATORE RICETTE ---
-                if st.button("🍳 10 RICETTE"):
+                if st.button(t_btn_ric):
                     if k_sessione in st.session_state:
-                        with st.spinner("Creazione 10 ricette uniche (Anti-ripetizione in corso)..."):
+                        with st.spinner(f"Creazione 10 ricette uniche in {lingua_sel}..."):
                             mem_ricette = st.session_state.get(k_sessione, "")
-                            p_ricette = f"""Crea ESATTAMENTE 10 RICETTE professionali, uniche e dettagliate in lingua {lingua_sel} per la sezione '{sez_scelta}', perfettamente coerenti con l'argomento: '{val_trama}'.
+                            p_ricette = f"""Crea ESATTAMENTE 10 RICETTE professionali, uniche e dettagliate rigorosamente in lingua {lingua_sel} per la sezione '{sez_scelta}', perfettamente coerenti con l'argomento: '{val_trama}'.
                             Usa il punto di vista '{val_pov}'.
-                            STRUTTURA DI OGNI RICETTA: Titolo chiaro, Tempi (Preparazione/Cottura), Ingredienti esatti con dosi, Procedimento passo-passo. Nessuna emoji.
+                            
+                            [ATTENZIONE ALLA LINGUA]: È TASSATIVO che l'intera ricetta, inclusi i titoli e le voci strutturali, sia scritta in {lingua_sel}.
+                            STRUTTURA DI OGNI RICETTA ({lingua_sel}): {t_strut_ric}. Nessuna emoji.
                             
                             [REGOLA ANTI-RIPETIZIONE ASSOLUTA]: Leggi le ricette o i contenuti già generati qui sotto e NON RIPETERLI MAI. Crea varianti e piatti completamente nuovi:
                             
                             {mem_ricette[-4000:]}"""
                             
                             res_r = chiedi_gpt(p_ricette, f"Sei un autorevole Chef stellato e scrittore di ricettari in lingua {lingua_sel}.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n### 🍳 10 NUOVE RICETTE\n\n" + res_r
+                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ric}\n\n" + res_r
                             st.rerun()
 
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
