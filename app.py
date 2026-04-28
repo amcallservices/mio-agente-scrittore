@@ -510,6 +510,18 @@ Il tuo compito non è solo descrivere, ma DIMOSTRARE e APPROFONDIRE. In base al 
         modulo_esempi_specifici += "- Non rimanere mai in superficie: ogni volta che introduci un concetto, fai subito un ESEMPIO PRATICO e dettagliato che lo esplichi al 100%.\n"
     # --- FINE NUOVE RIGHE ---
 
+    # --- INIZIO NUOVE RIGHE PER ADERENZA TITOLO-GENERE (DETTAGLIO ESTREMO) ---
+    modulo_aderenza_titolo_genere = f"""
+=== DIRETTIVA DI ESECUZIONE REALE E SPECIFICA (INCROCIO GENERE E TITOLO SEZIONE) ===
+Analizza attentamente il genere letterario ('{val_genere}') e il titolo esatto della sezione che stai per scrivere.
+Non limitarti a fare un discorso generico: devi FORNIRE MATERIALMENTE ciò che il titolo della sezione suggerisce, declinato per quel genere.
+- Esempio 1: Se il genere è "Test Prep" o simile e il titolo della sezione che stai scrivendo parla di "Test", "Quiz", "Simulazione" o "Autovalutazione", DEVI generare un VERO test (es. domande a risposta multipla, scenari, soluzioni e spiegazioni dettagliate del perché un'opzione è corretta o sbagliata). Non descrivere come si fa un test, FALLO E REDIGILO REALMENTE.
+- Esempio 2: Se il genere è "Manuale" o "Business" e il titolo suggerisce un "Piano d'Azione", un "Caso Studio" o un "Esercizio", scrivi i passaggi operativi completi o il caso studio di esempio con nomi, dati e soluzioni.
+- Esempio 3: Se il genere è "Ricettario" e la sezione è un piatto, scrivi la ricetta vera e propria.
+- Regola Universale: Cogli l'intento pratico implicito nel titolo della sezione corrente in base al genere. Se la sezione richiede un contenuto specifico (una tabella, un test di autovalutazione, un esercizio, un dialogo d'esempio), REDIGI QUEL CONTENUTO FISICAMENTE. Il lettore deve trovarsi di fronte allo strumento o alla scena reale, non a un riassunto teorico.
+"""
+    # --- FINE NUOVE RIGHE ---
+
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
     S_PROMPT = f"""
 Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
@@ -519,6 +531,7 @@ Stai redigendo l'ebook '{val_titolo}'.
 
 {modulo_approfondimento_genere}
 {modulo_esempi_specifici}
+{modulo_aderenza_titolo_genere}
 
 PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Stile di Racconto: {val_narrativa}
@@ -698,6 +711,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
 - Usa TASSATIVAMENTE il punto di vista richiesto ({val_pov}).
 - Assicurati che NON ci siano simboli o punteggiature anomale (nessun asterisco di troppo, niente emoji). Il testo deve essere sintatticamente puro.
 - Sii estremamente profondo ed esaustivo nell'ambito della tua specifica sezione, senza rubare materiale alle altre.
+- Analizza il titolo '{sez_scelta}' e, come richiesto, REDIGI IL CONTENUTO CONCRETO suggerito dal titolo stesso, senza fare preamboli inutili.
 - DIVIETO DI INTESTAZIONE: Non scrivere e non ripetere MAI '{sez_scelta}' all'inizio della tua risposta. Inizia direttamente con la prima frase del paragrafo/contenuto.
 
 - UTILIZZO E RAGIONAMENTO SULLE FONTI: Se nella tua base di istruzioni ci sono "FONTI ESTERNE", non ignorarle. Trova i collegamenti e i concetti applicabili a '{sez_scelta}', ragionaci sopra criticamente e integrali nel discorso. Spiega, argomenta e dimostra padronanza del testo fornito.
