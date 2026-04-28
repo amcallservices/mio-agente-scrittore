@@ -335,9 +335,10 @@ def valuta_approccio_neurologico(genere, stile, narrativa):
     Decide se l'argomento e lo stile richiedono la manipolazione dei 3 cervelli
     o un approccio più analitico/oggettivo.
     """
+    # --- AGGIUNTO "Economia e Finanza" AL TRIGGER ---
     trigger_neuro_stile = ["Persuasivo (Neuromarketing Applicato)", "Conversazionale ed Empatico", "Storytelling Immersivo", "Epico ed Evocativo"]
     trigger_neuro_narrativa = ["Coinvolgente e Narrativo", "Ispirazionale e Motivante", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)"]
-    trigger_neuro_genere = ["Business & Marketing", "Manuale Psicologico", "Romanzo Rosa", "Thriller / Noir", "Spirituale / Esoterico"]
+    trigger_neuro_genere = ["Business & Marketing", "Economia e Finanza", "Manuale Psicologico", "Romanzo Rosa", "Thriller / Noir", "Spirituale / Esoterico"]
     
     if stile in trigger_neuro_stile or narrativa in trigger_neuro_narrativa or genere in trigger_neuro_genere:
         return True
@@ -369,8 +370,8 @@ with st.sidebar:
         st.session_state["conoscenza_extra"] = ""
     
     st.markdown("---")
-    # --- AGGIUNTA "RICETTARIO", "TEST PREP", "NARRATIVO", "ROMANZO CLASSICO" E "CONTEMPORANEO" AI GENERI ---
-    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)", "Narrativo", "Romanzo Classico", "Contemporaneo", "Self-Help", "Manuale Pratico"]
+    # --- AGGIUNTA "ECONOMIA E FINANZA" AI GENERI ---
+    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Economia e Finanza", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)", "Narrativo", "Romanzo Classico", "Contemporaneo", "Self-Help", "Manuale Pratico"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
     
     stili_estesi = [
@@ -471,7 +472,8 @@ Devi agire come uno studioso che ha appena letto le fonti caricate dall'utente.
 
     # --- INIZIO NUOVE RIGHE PER ADATTAMENTO PROMPT IN BASE AL GENERE ---
     modulo_approfondimento_genere = ""
-    if "Manuale" in val_genere or "Saggio" in val_genere or "Test Prep" in val_genere:
+    # Aggiunto "Economia e Finanza" a questo blocco logico
+    if "Manuale" in val_genere or "Saggio" in val_genere or "Test Prep" in val_genere or "Economia" in val_genere:
         modulo_approfondimento_genere = """
 === DIRETTIVA DI APPROFONDIMENTO ESTREMO (MANUALISTICA E SAGGISTICA) ===
 Trattandosi di un testo tecnico, didattico o manualistico, il tuo compito primario è ISTRUIRE. 
@@ -498,7 +500,8 @@ Il tuo compito non è solo descrivere, ma DIMOSTRARE e APPROFONDIRE. In base al 
 """
     if "Test Prep" in val_genere or "Quiz" in val_genere:
         modulo_esempi_specifici += "- Crea VERE SIMULAZIONI D'ESAME o test complessi inerenti al capitolo. Inserisci domande a risposta multipla, scenari pratici e fornisci le soluzioni dettagliate con spiegazione logica per ogni opzione (perché è giusta o sbagliata).\n"
-    elif "Manuale" in val_genere or "Business" in val_genere or "Self-Help" in val_genere:
+    # Aggiunto "Economia" a questo blocco logico
+    elif "Manuale" in val_genere or "Business" in val_genere or "Economia" in val_genere or "Self-Help" in val_genere:
         modulo_esempi_specifici += "- Inserisci veri e propri CASI STUDIO (reali o verosimili), framework applicativi, checklist e scenari di 'Roleplay' o 'What-if' per mostrare come applicare la teoria nella realtà.\n"
     elif "Saggio" in val_genere or "Tecnico" in val_genere:
         modulo_esempi_specifici += "- Fornisci spiegazioni tecniche microscopiche, formule, dati statistici ed esempi concreti di applicazione nel mondo reale per supportare la tesi.\n"
@@ -516,7 +519,7 @@ Il tuo compito non è solo descrivere, ma DIMOSTRARE e APPROFONDIRE. In base al 
 Analizza attentamente il genere letterario ('{val_genere}') e il titolo esatto della sezione che stai per scrivere.
 Non limitarti a fare un discorso generico: devi FORNIRE MATERIALMENTE ciò che il titolo della sezione suggerisce, declinato per quel genere.
 - Esempio 1: Se il genere è "Test Prep" o simile e il titolo della sezione che stai scrivendo parla di "Test", "Quiz", "Simulazione" o "Autovalutazione", DEVI generare un VERO test (es. domande a risposta multipla, scenari, soluzioni e spiegazioni dettagliate del perché un'opzione è corretta o sbagliata). Non descrivere come si fa un test, FALLO E REDIGILO REALMENTE.
-- Esempio 2: Se il genere è "Manuale" o "Business" e il titolo suggerisce un "Piano d'Azione", un "Caso Studio" o un "Esercizio", scrivi i passaggi operativi completi o il caso studio di esempio con nomi, dati e soluzioni.
+- Esempio 2: Se il genere è "Manuale", "Business" o "Economia" e il titolo suggerisce un "Piano d'Azione", un "Caso Studio" o un "Esercizio", scrivi i passaggi operativi completi o il caso studio di esempio con nomi, dati, calcoli finanziari e soluzioni.
 - Esempio 3: Se il genere è "Ricettario" e la sezione è un piatto, scrivi la ricetta vera e propria.
 - Regola Universale: Cogli l'intento pratico implicito nel titolo della sezione corrente in base al genere. Se la sezione richiede un contenuto specifico (una tabella, un test di autovalutazione, un esercizio, un dialogo d'esempio), REDIGI QUEL CONTENUTO FISICAMENTE. Il lettore deve trovarsi di fronte allo strumento o alla scena reale, non a un riassunto teorico.
 """
