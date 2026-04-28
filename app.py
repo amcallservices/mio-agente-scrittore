@@ -469,12 +469,36 @@ Devi agire come uno studioso che ha appena letto le fonti caricate dall'utente.
 3. ELABORAZIONE ORIGINALE: Fai tuoi questi concetti. Intrecciali fluidamente con la tua base di conoscenza per creare un testo ricco e autorevole, dimostrando assoluta padronanza della materia, mantenendo il divieto di copia-incolla.
 """
 
+    # --- INIZIO NUOVE RIGHE PER ADATTAMENTO PROMPT IN BASE AL GENERE ---
+    modulo_approfondimento_genere = ""
+    if "Manuale" in val_genere or "Saggio" in val_genere or "Test Prep" in val_genere:
+        modulo_approfondimento_genere = """
+=== DIRETTIVA DI APPROFONDIMENTO ESTREMO (MANUALISTICA E SAGGISTICA) ===
+Trattandosi di un testo tecnico, didattico o manualistico, il tuo compito primario è ISTRUIRE. 
+Ogni singolo capitolo e sottocapitolo DEVE essere sviscerato in profondità assoluta. 
+- NON dare MAI nulla per scontato o rimanere in superficie.
+- Spiega dettagliatamente "COSA è", "PERCHÉ funziona così" e "COME si applica" nella pratica.
+- Inserisci esempi concreti, casi d'uso pratici, schemi logici o spiegazioni passo-passo.
+- Il lettore deve acquisire una competenza reale, dettagliata e spendibile alla fine di questa sezione. Evita categoricamente la superficialità.
+"""
+    elif "Romanzo" in val_genere or "Narrativo" in val_genere or "Thriller" in val_genere or "Fantasy" in val_genere or "Fantascienza" in val_genere:
+        modulo_approfondimento_genere = """
+=== DIRETTIVA DI IMMERSIONE NARRATIVA (NARRATIVA E ROMANZO) ===
+Trattandosi di un'opera narrativa, il tuo focus esclusivo è lo STORYTELLING e l'immersione.
+- Mostra, non raccontare (Show, Don't Tell). Descrivi minuziosamente gli ambienti, le espressioni e le atmosfere usando i 5 sensi.
+- Dai spessore profondo ai personaggi, ai dialoghi e gestisci il ritmo dell'azione o dell'introspezione.
+- Evita totalmente lo stile accademico, saggistico o manualistico: il lettore deve "vivere" la scena in tempo reale, non studiarla.
+"""
+    # --- FINE NUOVE RIGHE ---
+
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
     S_PROMPT = f"""
 Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
 Stai redigendo l'ebook '{val_titolo}'. 
 
 {modulo_fonti}
+
+{modulo_approfondimento_genere}
 
 PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Stile di Racconto: {val_narrativa}
