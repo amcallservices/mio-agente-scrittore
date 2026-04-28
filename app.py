@@ -459,7 +459,7 @@ Fornisci dati, structures deduttive e un linguaggio pulito, tipico delle pubblic
     if st.session_state.get("conoscenza_extra"):
         modulo_fonti = """
 === INTEGRAZIONE FONTI ESTERNE (RAGIONAMENTO AI) ===
-I documenti forniti servono per arricchire il tuo ragionamento, estrarre dati e terminologia tecnica.
+I documenti forniti serve per arricchire il tuo ragionamento, estrarre dati e terminologia tecnica.
 È TASSATIVAMENTE VIETATO FARE COPIA E INCOLLA dei testi originali. Usa queste fonti esclusivamente come "cervello esterno" per scrivere le tue sezioni originali basandoti su quei concetti, con lo stile e il POV richiesto per il libro.
 
 === STUDIO ATTIVO E ASSIMILAZIONE CONCETTI ===
@@ -728,6 +728,40 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} dando del {val_pov} al lettore su:\n{st.session_state[k_sessione]}", "Learning Expert.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
                 
+                # --- INIZIO NUOVE RIGHE PER TRADUZIONE ESEMPI ---
+                trad_esempi = {
+                    "Italiano": {"btn": "💡 10 ESEMPI", "titolo": "### 💡 10 ESEMPI PRATICI"},
+                    "English": {"btn": "💡 10 EXAMPLES", "titolo": "### 💡 10 PRACTICAL EXAMPLES"},
+                    "Español": {"btn": "💡 10 EJEMPLOS", "titolo": "### 💡 10 EJEMPLOS PRÁCTICOS"},
+                    "Français": {"btn": "💡 10 EXEMPLES", "titolo": "### 💡 10 EXEMPLES PRATIQUES"},
+                    "Deutsch": {"btn": "💡 10 BEISPIELE", "titolo": "### 💡 10 PRAKTISCHE BEISPIELE"},
+                    "Română": {"btn": "💡 10 EXEMPLE", "titolo": "### 💡 10 EXEMPLE PRACTICE"},
+                    "Русский": {"btn": "💡 10 ПРИМЕРОВ", "titolo": "### 💡 10 ПРАКТИЧЕСКИХ ПРИМЕРОВ"},
+                    "العربية": {"btn": "💡 10 أمثلة", "titolo": "### 💡 10 أمثلة عملية"},
+                    "中文": {"btn": "💡 10 个例子", "titolo": "### 💡 10 个实际例子"}
+                }
+                t_btn_ese = trad_esempi.get(lingua_sel, trad_esempi["Italiano"])["btn"]
+                t_tit_ese = trad_esempi.get(lingua_sel, trad_esempi["Italiano"])["titolo"]
+                # --- FINE NUOVE RIGHE ---
+
+                # --- AGGIUNTA PULSANTE GENERATORE ESEMPI ---
+                if st.button(t_btn_ese):
+                    if k_sessione in st.session_state:
+                        with st.spinner(f"Creazione 10 esempi in {lingua_sel}..."):
+                            mem_esempi = st.session_state.get(k_sessione, "")
+                            p_esempi = f"""Genera ESATTAMENTE 10 ESEMPI PRATICI, unici e dettagliati rigorosamente in lingua {lingua_sel} per la sezione '{sez_scelta}', perfettamente coerenti con l'argomento: '{val_trama}' e il genere '{val_genere}'.
+                            Usa il punto di vista '{val_pov}'.
+                            
+                            [ATTENZIONE ALLA LINGUA]: È TASSATIVO che l'intero contenuto, inclusi i titoli, sia scritto in {lingua_sel}.
+                            
+                            [REGOLA ANTI-RIPETIZIONE]: Leggi i contenuti già generati qui sotto e NON RIPETERLI MAI. Crea scenari, casi studio o applicazioni completamente nuovi:
+                            
+                            {mem_esempi[-4000:]}"""
+                            
+                            res_e = chiedi_gpt(p_esempi, f"Sei un autorevole esperto in {val_genere} e scrittore in lingua {lingua_sel}.")
+                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ese}\n\n" + res_e
+                            st.rerun()
+
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE RICETTE ---
                 trad_ricette = {
                     "Italiano": {"btn": "🍳 10 RICETTE", "titolo": "### 🍳 10 NUOVE RICETTE", "struttura": "Titolo, Tempi (Preparazione/Cottura), Ingredienti, Procedimento"},
