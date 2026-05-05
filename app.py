@@ -335,7 +335,6 @@ def valuta_approccio_neurologico(genere, stile, narrativa):
     Decide se l'argomento e lo stile richiedono la manipolazione dei 3 cervelli
     o un approccio più analitico/oggettivo.
     """
-    # --- AGGIUNTO "Economia e Finanza" AL TRIGGER ---
     trigger_neuro_stile = ["Persuasivo (Neuromarketing Applicato)", "Conversazionale ed Empatico", "Storytelling Immersivo", "Epico ed Evocativo"]
     trigger_neuro_narrativa = ["Coinvolgente e Narrativo", "Ispirazionale e Motivante", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)"]
     trigger_neuro_genere = ["Business & Marketing", "Economia e Finanza", "Manuale Psicologico", "Romanzo Rosa", "Thriller / Noir", "Spirituale / Esoterico"]
@@ -370,8 +369,8 @@ with st.sidebar:
         st.session_state["conoscenza_extra"] = ""
     
     st.markdown("---")
-    # --- AGGIUNTA "ECONOMIA E FINANZA" AI GENERI ---
-    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Economia e Finanza", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)", "Narrativo", "Romanzo Classico", "Contemporaneo", "Self-Help", "Manuale Pratico"]
+    # --- AGGIUNTA "STORICO" AI GENERI ---
+    lista_gen = ["Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Religioso / Teologico", "Spirituale / Esoterico", "Meditazione / Mindfulness", "Business & Marketing", "Economia e Finanza", "Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Manuale Psicologico", "Biografia", "Ricettario", "Test Prep (Preparazione Esami)", "Narrativo", "Romanzo Classico", "Contemporaneo", "Self-Help", "Manuale Pratico", "Storico"]
     val_genere = st.selectbox(L["lbl_gen"], lista_gen)
     
     stili_estesi = [
@@ -389,9 +388,10 @@ with st.sidebar:
     val_stile = st.selectbox(L["lbl_style"], stili_estesi)
     
     st.markdown("---")
+    # --- AGGIUNTA "STORICO E DOCUMENTALE" AGLI STILI DI RACCONTO ---
     val_narrativa = st.selectbox(L["lbl_narrative"], [
         "Coinvolgente e Narrativo", "Tecnico e Analitico", "Ispirazionale e Motivante", 
-        "Socratico (Domanda/Risposta)", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)"
+        "Socratico (Domanda/Risposta)", "Storytelling Emozionale", "Diretto e Pratico (Action-oriented)", "Storico e Documentale"
     ])
     
     # NUOVO BLOCCO: Punto di Vista (POV)
@@ -472,8 +472,8 @@ Devi agire come uno studioso che ha appena letto le fonti caricate dall'utente.
 
     # --- INIZIO NUOVE RIGHE PER ADATTAMENTO PROMPT IN BASE AL GENERE ---
     modulo_approfondimento_genere = ""
-    # Aggiunto "Economia e Finanza" a questo blocco logico
-    if "Manuale" in val_genere or "Saggio" in val_genere or "Test Prep" in val_genere or "Economia" in val_genere:
+    # Aggiunto "Storico" a questo blocco logico
+    if "Manuale" in val_genere or "Saggio" in val_genere or "Test Prep" in val_genere or "Economia" in val_genere or "Storico" in val_genere:
         modulo_approfondimento_genere = """
 === DIRETTIVA DI APPROFONDIMENTO ESTREMO (MANUALISTICA E SAGGISTICA) ===
 Trattandosi di un testo tecnico, didattico o manualistico, il tuo compito primario è ISTRUIRE. 
@@ -500,9 +500,11 @@ Il tuo compito non è solo descrivere, ma DIMOSTRARE e APPROFONDIRE. In base al 
 """
     if "Test Prep" in val_genere or "Quiz" in val_genere:
         modulo_esempi_specifici += "- Crea VERE SIMULAZIONI D'ESAME o test complessi inerenti al capitolo. Inserisci domande a risposta multipla, scenari pratici e fornisci le soluzioni dettagliate con spiegazione logica per ogni opzione (perché è giusta o sbagliata).\n"
-    # Aggiunto "Economia" a questo blocco logico
     elif "Manuale" in val_genere or "Business" in val_genere or "Economia" in val_genere or "Self-Help" in val_genere:
         modulo_esempi_specifici += "- Inserisci veri e propri CASI STUDIO (reali o verosimili), framework applicativi, checklist e scenari di 'Roleplay' o 'What-if' per mostrare come applicare la teoria nella realtà.\n"
+    # Aggiunto blocco logico per "Storico"
+    elif "Storico" in val_genere:
+        modulo_esempi_specifici += "- Inserisci riferimenti storici accurati, date precise, eventi chiave, analisi del contesto socio-politico e cita documenti o figure di rilievo dell'epoca.\n"
     elif "Saggio" in val_genere or "Tecnico" in val_genere:
         modulo_esempi_specifici += "- Fornisci spiegazioni tecniche microscopiche, formule, dati statistici ed esempi concreti di applicazione nel mondo reale per supportare la tesi.\n"
     elif "Romanzo" in val_genere or "Narrativo" in val_genere or "Fantasy" in val_genere or "Thriller" in val_genere:
