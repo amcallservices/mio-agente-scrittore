@@ -405,6 +405,9 @@ with st.sidebar:
     
     val_goal = st.text_input(L["lbl_goal"], placeholder="Es: Mantenere l'attenzione alta, far emozionare...")
     val_trama = st.text_area(L["lbl_plot"], height=150)
+    specifica_editoriale = costruisci_specifica_editoriale(
+        val_titolo, val_genere, val_stile, val_narrativa, val_pov, val_goal, val_trama
+    )
     
     # PULSANTE RESET BLINDATO: Unico modo per svuotare la session_state
     if st.button(L["btn_res"]):
@@ -423,8 +426,48 @@ def genera_contesto_avanzato(sezione_corrente):
         if s == sezione_corrente: break
         k = f"txt_{s.replace(' ', '_').replace('.', '')}"
         if k in st.session_state and st.session_state[k].strip():
-            contesto += f"- Trattato in {s}: [Sintesi: {st.session_state[k][:150]}...]\n"
+            # Memoria estesa: il riepilogo breve da 150 caratteri non era sufficiente
+            # per distinguere concetti, esempi e procedure già utilizzati.
+            testo_precedente = st.session_state[k]
+            contesto += f"- Trattato in {s}:\n{testo_precedente[:1200]}\n"
     return contesto
+
+def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
+    """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
+    return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
+Titolo: {titolo}
+Genere: {genere}
+Tipologia di scrittura: {stile}
+Stile di racconto: {narrativa}
+Punto di vista: {pov}
+
+OBIETTIVO OPERATIVO:
+{obiettivo}
+
+ARGOMENTO E CONFINI:
+{argomento}
+
+Per ogni sezione ricava un risultato concreto, il livello del lettore, i concetti necessari,
+gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare ripetizioni.
+"""
+
+def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento):
+    """Controllo deterministico preliminare su struttura, copertura e ripetizioni."""
+    risultati = ["REPORT CONTROLLO COERENZA DEL LIBRO"]
+    testo = "\n".join(contenuti.values()) if contenuti else ""
+    capitoli = re.findall(r"(?im)^(?:Capitolo|Chapter|CAPITOLO)\\s+\\d+", indice or "")
+    sottocapitoli = re.findall(r"(?m)^\\d+\\.\\d+\\s+", indice or "")
+    risultati.append(f"Capitoli rilevati: {len(capitoli)}")
+    risultati.append(f"Sottocapitoli rilevati: {len(sottocapitoli)}")
+    if not indice.strip(): risultati.append("ERRORE: indice assente")
+    if not obiettivo.strip(): risultati.append("AVVISO: obiettivo assente")
+    if not argomento.strip(): risultati.append("AVVISO: argomento assente")
+    if len(testo.strip()) < 1000: risultati.append("AVVISO: contenuto ancora troppo breve per una verifica completa")
+    frasi = [f.strip().lower() for f in re.split(r"[.!?]+", testo) if len(f.strip()) > 40]
+    duplicati = len(frasi) - len(set(frasi))
+    risultati.append(f"Frasi duplicate identiche rilevate: {max(0, duplicati)}")
+    if duplicati == 0: risultati.append("OK: nessuna duplicazione identica rilevata nel testo disponibile")
+    return "\n".join(risultati)
 
 # ======================================================================================================================
 # 8. UI PRINCIPALE & GENERAZIONE PROMPT DINAMICO
@@ -546,6 +589,8 @@ PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Conformità di Genere: Il testo DEVE rispecchiare in pieno le regole, la formattazione e la terminologia del genere '{val_genere}' (es. se è un ricettario, usa formati strutturati con ingredienti e step; se è un romanzo usa narrazione fluida; se è 'Test Prep', usa schemi, riassunti puntati, concetti chiave da memorizzare e simulazioni d'esame).
 - Lingua di Output Categorica: {lingua_sel}
 
+{specifica_editoriale}
+
 {modulo_stilistico}
 
 === REGOLA DI FORMATTAZIONE E SINTASSI PULITA (CRITICO) ===
@@ -595,6 +640,13 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 - ZERO VAGHEZZA: Sii estremamente descrittivo, specifico e dettagliato. Non limitarti a enunciare i concetti, ma sviscerali e dimostrali.
 - PROFONDITÀ ARGOMENTATIVA: Tratta gli argomenti in maniera fortemente argomentativa. Se stai spiegando una teoria, una tecnica o un concetto pratico, fornisci il "come" e il "perché" con autorevolezza, supportando le tue affermazioni con logica ferrea, dati e dettagli concreti, mantenendo un focus laser sull'argomento.
 
+=== OUTPUT OBBLIGATORI PER EVITARE GENERICITÀ ===
+- Ogni sezione deve contenere almeno un elemento applicabile: procedura numerata, esempio concreto,
+  checklist, tabella, esercizio, caso studio o criterio di verifica, in base al titolo della sezione.
+- Non dichiarare soltanto che una tecnica è utile: mostra quando usarla, come applicarla e come controllare il risultato.
+- Non introdurre strumenti, dati o risultati non supportati dalle fonti o dal contesto; segnala ciò che deve essere verificato.
+- Rispetta i confini della sezione e non riempire spazio con ripetizioni o frasi motivazionali generiche.
+
 === APPROCCIO IPER-PRATICO E MICRO-DETTAGLIO ===
 - OPERATIVITÀ IMMEDIATA: Spiega esattamente "COME" fare le cose. Inserisci step operativi, checklist, esempi concreti, casi studio reali o template applicativi.
 - IPER-DETTAGLIO: Scendi in profondità nel micro-dettaglio. Se menzioni una tecnica, smontala nei suoi componenti base. Il lettore non deve mai chiedersi "Ok, ma in pratica come si fa?". La risposta deve essere già lì, sviscerata in ogni suo singolo passaggio logico e pratico.
@@ -643,6 +695,8 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
 - Stile di Racconto: {val_narrativa}
 - Punto di Vista: {val_pov}
 - Obiettivo Emozionale/Pratico: {val_goal}
+
+{specifica_editoriale}
 """
                 if st.session_state.get("conoscenza_extra"):
                     prompt_idx += f"\n\nFONTI ESTERNE E RAGIONAMENTO:\nUsa queste informazioni fornite dall'utente per strutturare l'indice in modo logico e autorevole. \n{st.session_state['conoscenza_extra'][:4000]}\n"
@@ -811,6 +865,16 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
     # TAB 3: ANTEPRIMA
     with tabs[2]:
         st.subheader(L["preview_tit"])
+        if st.button("🔍 CONTROLLO COERENZA COMPLETO"):
+            contenuti_libro = {
+                s: st.session_state.get(f"txt_{s.replace(' ', '_').replace('.', '')}", "")
+                for s in opzioni_editor
+            }
+            st.session_state["report_coerenza_libro"] = analizza_coerenza_libro(
+                st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama
+            )
+        if st.session_state.get("report_coerenza_libro"):
+            st.info(st.session_state["report_coerenza_libro"])
         html_p = f"<div class='preview-box'><h1 style='text-align:center;'>{val_titolo.upper()}</h1>"
         if val_autore: html_p += f"<h3 style='text-align:center;'>di {val_autore}</h3>"
         html_p += "<hr><br>"
@@ -862,3 +926,4 @@ else:
 # 6. Linter NLP Qualità: Report integrato per evitare affaticamento da frasi lunghe, eco di parole e check sul vocabolario.
 # 7. Gestione Sicura delle Sessioni e Interfaccia Premium (Dark Mode Anthracite).
 # ... [Fine del Modulo Principale di Esecuzione] ...
+
