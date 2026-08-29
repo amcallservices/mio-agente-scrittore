@@ -652,7 +652,9 @@ def profilo_genere_stesura(genere):
 
 def estrai_numero_ricette(titolo, trama, obiettivo):
     testo = f"{titolo} {trama} {obiettivo}".lower()
-    match = re.search(r"\\b(\\d{1,3})\\s+(?:ricette|recipes|recetas|recettes|rezepte)\\b", testo)
+    # Il confine di parola deve essere una vera espressione regolare, non il testo letterale "\\b".
+    # Supporta le principali lingue offerte dalla sidebar.
+    match = re.search(r"\b(\d{1,3})\s+(?:ricette|recipes|recetas|recettes|rezepte|rețete|рецептов|وصفات|个食谱)\b", testo)
     return int(match.group(1)) if match else None
 
 
@@ -713,9 +715,15 @@ def criticita_indice_generato(indice, genere, titolo, trama, obiettivo):
         if richieste and len(capitoli) != richieste:
             problemi.append(f"sono richieste {richieste} ricette, ma l'indice contiene {len(capitoli)} capitoli")
         titoli_capitoli = " ".join(capitoli).lower()
-        non_ricette = ("introduzione", "ingredient", "attrezz", "tecniche", "consigli", "dispensa")
+        non_ricette = (
+            "introduzione", "ingredient", "attrezz", "tecniche", "consigli", "dispensa",
+            "sostituz", "substitut", "preparazione di ingredient", "nutrient", "planific", "consejos",
+            "conservación", "alternativas", "erreurs", "conseils", "substitutions", "grundlagen"
+        )
         if any(parola in titoli_capitoli for parola in non_ricette):
             problemi.append("un capitolo del ricettario è introduttivo o tecnico invece di essere una ricetta")
+        if any(re.match(r"^\d+\.\d+\s+", riga) for riga in righe):
+            problemi.append("il ricettario contiene sottocapitoli: ogni capitolo deve essere una ricetta completa e autonoma")
 
     if genere in narrativi:
         titoli_generici = {
@@ -780,7 +788,7 @@ def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obie
         )
         difetti_bloccanti = (
             "non sono stati riconosciuti capitoli", "capitoli senza almeno due sottocapitoli",
-            "sono richieste", "un capitolo del ricettario", "manca una sezione con quiz", "manca una sezione di simulazione",
+            "sono richieste", "un capitolo del ricettario", "il ricettario contiene sottocapitoli", "manca una sezione con quiz", "manca una sezione di simulazione",
             "struttura troppo breve"
         )
         ha_blocchi = any(any(blocco in problema for blocco in difetti_bloccanti) for problema in problemi)
