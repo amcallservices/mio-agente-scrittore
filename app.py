@@ -311,16 +311,32 @@ def verifica_e_correggi_fatti_online(testo, sezione, lingua):
                 "Cerca online fonti autorevoli e aggiornate per ogni fatto verificabile, soprattutto "
                 "leggi, normative, prezzi, licenze, specifiche, date, software e dati numerici. "
                 "Correggi soltanto le affermazioni non aggiornate o non supportate; non inventare dati. "
-                "Mantieni struttura e stile. Alla fine aggiungi una sezione 'Fonti verificate' con URL "
-                "e data di consultazione. Distingui chiaramente fatti verificati, esempi ipotetici e "
-                "informazioni che richiedono ulteriore controllo. Restituisci solo il testo revisionato.\n\n"
+                "Mantieni struttura e stile, ma NON inserire nel testo URL, link Markdown, citazioni, "
+                "note bibliografiche, nomi di fonti o una sezione 'Fonti verificate'. Le fonti servono "
+                "esclusivamente per il controllo interno e non devono comparire nell'opera destinata al lettore. "
+                "Distingui i fatti verificati dagli esempi ipotetici senza apporre etichette tecniche o note di fonte. "
+                "Restituisci solo il testo editoriale revisionato e pulito.\n\n"
                 f"TESTO:\n{testo}"
             )
         )
-        return getattr(risposta, "output_text", None) or testo
+        return pulisci_testo_editoriale(getattr(risposta, "output_text", None) or testo)
     except Exception as e:
         st.warning(f"Verifica online non disponibile: {e}")
-        return testo
+        return pulisci_testo_editoriale(testo)
+
+def pulisci_testo_editoriale(testo):
+    """Rimuove fonti tecniche dal testo destinato ad anteprima ed esportazione."""
+    if not testo:
+        return ""
+    testo = str(testo)
+    testo = re.sub(r"(?is)(?:^|\n)\s{0,3}(?:#+\s*)?(?:fonti verificate|fonti consultate|riferimenti bibliografici|sources|references)\s*:?.*$", "", testo)
+    testo = re.sub(r"\[([^\]]+)\]\(https?://[^)]+\)", r"\1", testo)
+    testo = re.sub(r"https?://[^\s)\]>]+", "", testo)
+    testo = re.sub(r"\s*\([^\n()]{0,180}(?:\.com|\.org|\.gov|\.edu|doi\.org|utm_source|consultato il)[^\n()]*\)", "", testo, flags=re.I)
+    testo = re.sub(r"(?im)^\s*\[?(?:informazione|fatto|esempio|fonte)[^\n]{0,120}(?:da verificare|verificato|ipotetico|di carattere generale)[^\n]*\]?\s*$", "", testo)
+    testo = re.sub(r"(?m)^\s*[-_*]{3,}\s*$", "", testo)
+    testo = re.sub(r"\n{3,}", "\n\n", testo)
+    return testo.strip()
 
 def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
     """GPT-4o-mini prepara il brief; gpt-image-1 genera l'immagine didattica."""
@@ -948,13 +964,14 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
             with c2:
                 istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
                 if st.button(L["btn_edit"] + " 🪄"):
-                    if k_sessione in st.session_state: st.session_state[k_sessione] = chiedi_gpt(f"Rielabora con focus su: {istr} mantenendo categoricamente la lingua {lingua_sel}, il POV ({val_pov}) e senza usare punteggiatura anomala né riscrivere il titolo all'inizio. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT); st.rerun()
+                    if k_sessione in st.session_state:
+                        st.session_state[k_sessione] = pulisci_testo_editoriale(chiedi_gpt(f"Rielabora con focus su: {istr} mantenendo categoricamente la lingua {lingua_sel}, il POV ({val_pov}) e senza usare punteggiatura anomala né riscrivere il titolo all'inizio. Non inserire URL, link, citazioni o sezioni bibliografiche. Testo da modificare:\n{st.session_state[k_sessione]}", S_PROMPT)); st.rerun()
             with c3:
                 if st.button("🧠 QUIZ"):
                     if k_sessione in st.session_state:
                         with st.spinner("Generazione Quiz didattico..."):
                             res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} dando del {val_pov} al lettore su:\n{st.session_state[k_sessione]}", "Learning Expert.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
+                            st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + pulisci_testo_editoriale(res_q); st.rerun()
 
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE ESEMPI ---
                 trad_esempi = {
@@ -987,7 +1004,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             {mem_esempi[-4000:]}"""
                             
                             res_e = chiedi_gpt(p_esempi, f"Sei un autorevole esperto in {val_genere} e scrittore in lingua {lingua_sel}.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ese}\n\n" + res_e
+                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ese}\n\n" + pulisci_testo_editoriale(res_e)
                             st.rerun()
 
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE RICETTE ---
@@ -1023,7 +1040,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             {mem_ricette[-4000:]}"""
                             
                             res_r = chiedi_gpt(p_ricette, f"Sei un autorevole Chef stellato e scrittore di ricettari in lingua {lingua_sel}.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ric}\n\n" + res_r
+                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ric}\n\n" + pulisci_testo_editoriale(res_r)
                             st.rerun()
 
             st.divider()
@@ -1048,7 +1065,8 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
             if st.session_state.get("immagini_capitoli", {}).get(sez_scelta):
                 st.image(st.session_state["immagini_capitoli"][sez_scelta]["bytes"], caption="Immagine associata al capitolo", width=500)
 
-            st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
+            testo_editor = pulisci_testo_editoriale(st.session_state.get(k_sessione, ""))
+            st.session_state[k_sessione] = st.text_area(L["label_editor"], value=testo_editor, height=500)
             
             with st.expander("🔍 Linter Qualità & Analisi Sintattica Avanzata"):
                 if st.button("Genera Report Sintattico"): st.write(analizza_qualita_prosa(st.session_state.get(k_sessione, "")))
@@ -1083,7 +1101,8 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                         f"style='max-width:82%;height:auto;max-height:520px;object-fit:contain;'>"
                         f"<div style='font-size:13px;color:#555;font-style:italic;'>{caption}</div></div>"
                     )
-                html_p += f"<p>{st.session_state[sk].replace(chr(10), '<br>')}</p>"
+                testo_preview = pulisci_testo_editoriale(st.session_state[sk])
+                html_p += f"<p>{testo_preview.replace(chr(10), '<br>')}</p>"
         st.markdown(html_p + "</div>", unsafe_allow_html=True)
 
     # TAB 4: ESPORTAZIONE
@@ -1100,7 +1119,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                         if img:
                             doc.add_picture(BytesIO(img["bytes"]), width=Inches(5.8))
                             doc.add_paragraph(img.get("caption", ""))
-                        doc.add_paragraph(st.session_state[ke])
+                        doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
                 bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
             if st.button(L["btn_pdf"]):
@@ -1110,7 +1129,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                     if kd in st.session_state:
                         img = st.session_state.get("immagini_capitoli", {}).get(s)
                         pdf.add_content(
-                            s.upper(), st.session_state[kd],
+                            s.upper(), pulisci_testo_editoriale(st.session_state[kd]),
                             image_bytes=img.get("bytes") if img else None,
                             image_caption=img.get("caption") if img else None
                         )
