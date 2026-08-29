@@ -8,6 +8,8 @@ import time
 import datetime
 import base64
 import hashlib
+import tempfile
+import uuid
 from fpdf import FPDF
 from openai import OpenAI
 from docx import Document
@@ -28,6 +30,11 @@ from PIL import Image
 # e i cambi di tab. I dati verranno azzerati SOLO tramite l'esplicito pulsante di RESET.
 if "memoria_blindata" not in st.session_state:
     st.session_state["memoria_blindata"] = True
+    # Ogni browser riceve una cartella temporanea privata: nessun file o stato viene condiviso tra utenti.
+    st.session_state["id_sessione_utente"] = uuid.uuid4().hex
+    st.session_state["tmp_dir"] = os.path.join(
+        tempfile.gettempdir(), "ebook_creator_sessions", st.session_state["id_sessione_utente"]
+    )
     st.session_state["indice_raw"] = ""
     st.session_state["lista_capitoli"] = []
     st.session_state["conoscenza_extra"] = ""
@@ -166,7 +173,7 @@ def notifica_sonora(evento, lingua="Italiano"):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r12"
+VERSIONE_DEPLOY = "QA-2026-08-30-r13"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -381,7 +388,8 @@ class EbookPDF(FPDF):
         self.multi_cell(0, 15, self._clean(title).upper(), 0, 'L'); self.ln(10); self.set_font('Arial', '', 12)
         # multi_cell con w=0 ora calcola la larghezza rispettando il margine destro (15mm)
         if image_bytes:
-            image_path = os.path.join(st.session_state.get("tmp_dir", os.path.abspath("tmp")), "ebook_creator_image.png")
+            session_dir = st.session_state.get("tmp_dir", os.path.abspath("tmp"))
+            image_path = os.path.join(session_dir, f"ebook_creator_image_{uuid.uuid4().hex}.png")
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
             with open(image_path, "wb") as f:
                 f.write(image_bytes)
