@@ -142,7 +142,8 @@ def notifica_sonora(evento):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r5"
+VERSIONE_DEPLOY = "QA-2026-08-30-r7"
+VERSIONE_AUDIT_COHERENZA = "2"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
 try:
@@ -1493,7 +1494,7 @@ def chiedi_audit_editoriale(prompt):
         return f"ERRORE AUDIT: {str(e)}"
 
 
-def valuta_manoscritto_completo(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
+def valuta_manoscritto_completo(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti="", avanzamento=None):
     """Valuta ogni porzione del manoscritto, poi crea una sintesi basata sugli esiti effettivi."""
     sezioni_scritte = [s for s, c in contenuti.items() if pulisci_testo_editoriale(c).strip()]
     sezioni_vuote = [s for s, c in contenuti.items() if not pulisci_testo_editoriale(c).strip()]
@@ -1510,8 +1511,16 @@ Obiettivo: {obiettivo}
 Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 Approfondimenti prioritari: {approfondimenti.strip() or "Nessuno"}"""
     blocchi = blocchi_per_audit_manoscritto(contenuti)
-    firma_base = hashlib.sha256(f"{brief}\n{indice}".encode("utf-8")).hexdigest()
+    totale_blocchi = len(blocchi)
+    # La versione dell'audit invalida in modo sicuro i vecchi report quando cambiano le regole di valutazione.
+    firma_base = hashlib.sha256(
+        f"{VERSIONE_AUDIT_COHERENZA}\n{brief}\n{indice}".encode("utf-8")
+    ).hexdigest()
     cache_blocchi = st.session_state.setdefault("cache_audit_blocchi", {})
+
+    def aggiorna_avanzamento(completati, fase):
+        if avanzamento:
+            avanzamento(completati, totale_blocchi, fase)
 
     def prompt_audit_blocco(numero, blocco):
         return f"""Sei un editor rigoroso. Analizza il BLOCCO {numero} di {len(blocchi)} di un manoscritto in lingua {lingua}.
@@ -1525,13 +1534,29 @@ INDICE
 BLOCCO DA VALUTARE
 {blocco}
 
-Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, contributo al risultato finale desiderato, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti. Non inventare difetti, non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette: SEZIONI ESAMINATE, PUNTI FORTI, PROBLEMI SPECIFICI, INTERVENTI PROPOSTI."""
+Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, contributo al risultato finale desiderato, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti.
+
+IDENTIFICAZIONE OBBLIGATORIA DELLE CORREZIONI
+- Usa sempre il titolo esatto presente nell'indice o nell'intestazione del testo, compreso il numero (per esempio "Capitolo 4: ..." oppure "4.2 ...").
+- Non usare mai formule vaghe come "questa parte", "il capitolo precedente" o "la sezione tecnica".
+- Se il problema riguarda più sottocapitoli, crea una riga distinta per ciascun sottocapitolo interessato.
+- Se non esistono problemi osservabili, scrivi "NESSUN PROBLEMA SPECIFICO RILEVATO"; non inventare difetti.
+
+Non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette:
+SEZIONI ESAMINATE:
+PUNTI FORTI:
+PROBLEMI SPECIFICI:
+Per ogni problema: SEZIONE ESATTA | PRIORITÀ (alta/media/bassa) | DIFETTO OSSERVATO | INTERVENTO RICHIESTO.
+INTERVENTI PROPOSTI:"""
 
     esiti_per_numero, da_analizzare = {}, []
+    completati = 0
     for numero, blocco in enumerate(blocchi, 1):
         firma_blocco = hashlib.sha256(f"{firma_base}\n{blocco}".encode("utf-8")).hexdigest()
         if firma_blocco in cache_blocchi:
             esiti_per_numero[numero] = cache_blocchi[firma_blocco]
+            completati += 1
+            aggiorna_avanzamento(completati, "Riutilizzo delle analisi già disponibili")
         else:
             da_analizzare.append((numero, blocco, firma_blocco))
 
@@ -1550,6 +1575,8 @@ Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, co
                     esito = f"ERRORE AUDIT: {errore}"
                 cache_blocchi[firma_blocco] = esito
                 esiti_per_numero[numero] = esito
+                completati += 1
+                aggiorna_avanzamento(completati, "Analisi editoriale dei blocchi del manoscritto")
 
     esiti_blocchi = [f"AUDIT BLOCCO {numero}\n{esiti_per_numero[numero]}" for numero in range(1, len(blocchi) + 1)]
 
@@ -1557,7 +1584,9 @@ Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, co
     firma_completa = hashlib.sha256(f"{firma_base}\n{audit_compilati}".encode("utf-8")).hexdigest()
     cache_sintesi = st.session_state.setdefault("cache_sintesi_audit", {})
     if firma_completa in cache_sintesi:
+        aggiorna_avanzamento(totale_blocchi, "Sintesi già disponibile")
         return cache_sintesi[firma_completa]
+    aggiorna_avanzamento(totale_blocchi, "Preparazione della valutazione finale")
     sintesi = chiedi_audit_editoriale(f"""Sei un direttore editoriale. Prepara la valutazione finale di un manoscritto in lingua {lingua}, basandoti esclusivamente sul brief, sui dati oggettivi e sugli audit qui sotto. Non inventare contenuti non riportati.
 
 BRIEF
@@ -1582,10 +1611,21 @@ COERENZA E PROGRESSIONE:
 SEZIONI DA MIGLIORARE:
 AZIONI PRIORITARIE:
 PROMPT PRONTI PER RIGENERA CON AI:
+
+REGOLE OBBLIGATORIE PER "SEZIONI DA MIGLIORARE" E PER I PROMPT:
+- Elenca soltanto problemi realmente emersi dagli audit.
+- Ogni voce deve identificare la destinazione con il titolo esatto dell'indice: prima il capitolo, poi il sottocapitolo specifico quando il difetto è locale.
+- Non scrivere mai indicazioni generiche quali "migliorare il capitolo" senza identificare il punto esatto.
+- Non accorpare sottocapitoli diversi nella stessa voce se richiedono interventi differenti.
+- Se non rilevi criticità, scrivi "NESSUNA SEZIONE DA RIGENERARE" in entrambe le voci.
+
 Per ogni sezione da migliorare, usa obbligatoriamente questo blocco separato:
-SEZIONE: titolo esatto della sezione
-PROBLEMA: difetto concreto osservato
-PROMPT DA INCOLLARE: istruzione autonoma, pronta da copiare nel campo "Rigenera con AI" di quella sezione. Indica cosa mantenere, cosa aggiungere, cosa eliminare, genere, stile, POV e divieto di ripetere altre sezioni. Non proporre alcuna riscrittura automatica.""")
+CAPITOLO DI RIFERIMENTO: numero e titolo esatti del capitolo
+SOTTOCAPITOLO DA SISTEMARE: numero e titolo esatti; scrivi "INTERO CAPITOLO" solo se il problema riguarda davvero ogni sua parte
+PRIORITÀ: alta, media o bassa
+PROBLEMA: difetto concreto osservato nel testo
+OBIETTIVO DELLA CORREZIONE: risultato verificabile da ottenere
+PROMPT DA INCOLLARE: istruzione autonoma, pronta da copiare nel campo "Rigenera con AI" della sezione indicata. Indica cosa mantenere, cosa aggiungere, cosa eliminare, genere, stile, POV e divieto di ripetere altre sezioni. Non proporre alcuna riscrittura automatica.""")
     cache_sintesi[firma_completa] = sintesi
     return sintesi
 
@@ -2383,6 +2423,17 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
             val_genere, val_stile, val_narrativa, val_pov, val_goal, val_risultato, val_approfondimenti
         )
         if st.button("🔍 CONTROLLO COERENZA COMPLETO"):
+            barra_coerenza = st.progress(0, text="Preparazione del controllo completo del manoscritto...")
+            stato_coerenza = st.empty()
+
+            def mostra_avanzamento_coerenza(completati, totale, fase):
+                percentuale = int((completati / totale) * 100) if totale else 100
+                barra_coerenza.progress(
+                    percentuale,
+                    text=f"{fase}: {completati} di {totale} blocchi completati ({percentuale}%)"
+                )
+                stato_coerenza.caption(f"Controllo in corso — {completati}/{totale} blocchi del manoscritto.")
+
             with st.spinner("Analisi completa del manoscritto in corso..."):
                 controllo_tecnico = analizza_coerenza_libro(
                     st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama, val_genere, val_risultato
@@ -2390,7 +2441,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                 valutazione_editoriale = valuta_manoscritto_completo(
                     st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo,
                     val_trama, val_genere, val_stile, val_narrativa, val_pov, val_goal,
-                    lingua_sel, val_approfondimenti
+                    lingua_sel, val_approfondimenti, mostra_avanzamento_coerenza
                 )
                 st.session_state["report_coerenza_libro"] = (
                     f"CONTROLLO TECNICO\n{controllo_tecnico}\n\n"
@@ -2398,6 +2449,8 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                 )
                 st.session_state["report_coerenza_firma"] = firma_attuale_coerenza
                 notifica_sonora("coerenza_completata")
+                barra_coerenza.progress(100, text="Controllo coerenza completato.")
+                stato_coerenza.success("Controllo completo concluso.")
         if st.session_state.get("report_coerenza_libro"):
             if st.session_state.get("report_coerenza_firma") != firma_attuale_coerenza:
                 st.warning("Analisi non aggiornata: il testo, l'indice o il brief sono cambiati dopo l'ultimo controllo. Premi di nuovo il pulsante per ottenere il report della versione corrente.")
