@@ -403,6 +403,43 @@ with st.sidebar:
     ]
     val_pov = st.selectbox(L.get("lbl_pov", "Punto di Vista (Pronome)"), lista_pov)
     
+    # Definizioni disponibili prima del loro primo utilizzo nella UI.
+    # Restano presenti anche nel modulo di memoria sottostante per compatibilità.
+    def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
+        return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
+Titolo: {titolo}
+Genere: {genere}
+Tipologia di scrittura: {stile}
+Stile di racconto: {narrativa}
+Punto di vista: {pov}
+
+OBIETTIVO OPERATIVO:
+{obiettivo}
+
+ARGOMENTO E CONFINI:
+{argomento}
+
+Per ogni sezione ricava un risultato concreto, il livello del lettore, i concetti necessari,
+gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare ripetizioni.
+"""
+
+    def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento):
+        risultati = ["REPORT CONTROLLO COERENZA DEL LIBRO"]
+        testo = "\n".join(contenuti.values()) if contenuti else ""
+        capitoli = re.findall(r"(?im)^(?:Capitolo|Chapter|CAPITOLO)\\s+\\d+", indice or "")
+        sottocapitoli = re.findall(r"(?m)^\\d+\\.\\d+\\s+", indice or "")
+        risultati.append(f"Capitoli rilevati: {len(capitoli)}")
+        risultati.append(f"Sottocapitoli rilevati: {len(sottocapitoli)}")
+        if not indice.strip(): risultati.append("ERRORE: indice assente")
+        if not obiettivo.strip(): risultati.append("AVVISO: obiettivo assente")
+        if not argomento.strip(): risultati.append("AVVISO: argomento assente")
+        if len(testo.strip()) < 1000: risultati.append("AVVISO: contenuto ancora troppo breve per una verifica completa")
+        frasi = [f.strip().lower() for f in re.split(r"[.!?]+", testo) if len(f.strip()) > 40]
+        duplicati = len(frasi) - len(set(frasi))
+        risultati.append(f"Frasi duplicate identiche rilevate: {max(0, duplicati)}")
+        if duplicati == 0: risultati.append("OK: nessuna duplicazione identica rilevata nel testo disponibile")
+        return "\n".join(risultati)
+
     val_goal = st.text_input(L["lbl_goal"], placeholder="Es: Mantenere l'attenzione alta, far emozionare...")
     val_trama = st.text_area(L["lbl_plot"], height=150)
     specifica_editoriale = costruisci_specifica_editoriale(
@@ -926,4 +963,3 @@ else:
 # 6. Linter NLP Qualità: Report integrato per evitare affaticamento da frasi lunghe, eco di parole e check sul vocabolario.
 # 7. Gestione Sicura delle Sessioni e Interfaccia Premium (Dark Mode Anthracite).
 # ... [Fine del Modulo Principale di Esecuzione] ...
-
