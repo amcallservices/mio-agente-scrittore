@@ -25,6 +25,10 @@ if "memoria_blindata" not in st.session_state:
     st.session_state["conoscenza_extra"] = ""
     st.session_state["immagini_capitoli"] = {}
 
+# Compatibilità con sessioni aperte prima dell'introduzione delle immagini.
+if "immagini_capitoli" not in st.session_state:
+    st.session_state["immagini_capitoli"] = {}
+
 # ======================================================================================================================
 # FUNZIONI DI SUPPORTO PER ANALISI DOCUMENTI (NUOVO MODULO)
 # ======================================================================================================================
@@ -938,6 +942,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             st.session_state[k_sessione], lingua_sel
                         )
                         if img_bytes:
+                            st.session_state.setdefault("immagini_capitoli", {})
                             st.session_state["immagini_capitoli"][sez_scelta] = {
                                 "bytes": img_bytes, "prompt": img_prompt,
                                 "caption": f"Illustrazione didattica: {sez_scelta}"
