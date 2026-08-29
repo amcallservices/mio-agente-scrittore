@@ -911,6 +911,7 @@ L'indice deve permettere di scrivere sezioni dettagliate senza riempitivi.
 
                 prompt_idx += f"""
 REGOLE FONDAMENTALI ED ESCLUSIVE:
+0. ATTINENZA ASSOLUTA: Inserisci esclusivamente capitoli e sottocapitoli direttamente pertinenti al titolo, alla trama, al pubblico e all'obiettivo del libro. Non aggiungere sezioni generiche o accessorie come glossario dei termini, elenco di risorse, checklist generiche, bibliografia, link, ringraziamenti, conclusioni vaghe o suggerimenti finali. Ogni voce dell'indice deve sviluppare un argomento reale del libro e poter essere trasformata in contenuto sostanziale.
 1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
 2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfectly lo stile, il genere e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
 3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa da 3 a 5 Sottocapitoli molto specifici.
