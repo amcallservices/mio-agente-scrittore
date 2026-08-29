@@ -719,6 +719,15 @@ def individua_sottocapitoli_del_capitolo(capitolo, sezioni):
     numero = match.group(1)
     return [s for s in sezioni if re.match(rf"^{re.escape(numero)}\.\d+\s", s.strip())]
 
+def individua_sezioni_da_stendere(sezioni):
+    """Restituisce capitoli e sottocapitoli in ordine, escludendo Parti e appendici."""
+    regex_capitolo = r'(?i)^(?:capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+'
+    regex_sottocapitolo = r'^\d+\.\d+\s+'
+    return [
+        sezione for sezione in sezioni
+        if re.match(regex_capitolo, sezione.strip()) or re.match(regex_sottocapitolo, sezione.strip())
+    ]
+
 def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa, pov, obiettivo, lingua):
     """Costruisce il prompt comune usato dalla stesura singola e dalla stesura di un capitolo intero."""
     memoria = genera_contesto_avanzato(sezione)
@@ -1102,6 +1111,56 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
     with tabs[1]:
         if not lista_cap_base: st.warning(L["msg_err_idx"])
         else:
+            sezioni_intero_libro = individua_sezioni_da_stendere(lista_cap_base)
+            st.caption(f"Stesura completa disponibile: {len(sezioni_intero_libro)} capitoli e sottocapitoli rilevati. I contenuti già scritti verranno conservati.")
+            if st.button("📚 SCRIVI TUTTO IL LIBRO", use_container_width=True, key="scrivi_tutto_libro"):
+                da_generare = []
+                gia_presenti = 0
+                for sezione in sezioni_intero_libro:
+                    chiave = f"txt_{sezione.replace(' ', '_').replace('.', '')}"
+                    if st.session_state.get(chiave, "").strip():
+                        gia_presenti += 1
+                    else:
+                        da_generare.append((sezione, chiave))
+                if not da_generare:
+                    st.info("Il libro risulta già scritto: nessun contenuto è stato sovrascritto.")
+                else:
+                    avanzamento_libro = st.progress(0, text="Preparazione della stesura completa...")
+                    stato_libro = st.empty()
+                    errori_stesura = []
+                    for posizione, (sezione, chiave) in enumerate(da_generare, start=1):
+                        avanzamento_libro.progress(
+                            int((posizione - 1) / len(da_generare) * 100),
+                            text=f"Scrittura di {sezione} ({posizione}/{len(da_generare)})..."
+                        )
+                        stato_libro.info(f"Elaborazione in corso: {sezione}")
+                        try:
+                            prompt = crea_prompt_stesura_sezione(
+                                sezione, st.session_state['indice_raw'], val_trama, val_genere,
+                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel
+                            )
+                            testo_generato = chiedi_gpt(prompt, S_PROMPT)
+                            if testo_generato.startswith("ERRORE:"):
+                                raise RuntimeError(testo_generato)
+                            st.session_state[chiave] = verifica_e_correggi_fatti_online(
+                                testo_generato, sezione, lingua_sel
+                            )
+                        except Exception as e:
+                            errori_stesura.append(f"{sezione}: {e}")
+                            break
+                    completati = len(da_generare) - len(errori_stesura)
+                    avanzamento_libro.progress(
+                        int(completati / len(da_generare) * 100),
+                        text="Stesura completata." if not errori_stesura else "Stesura interrotta: puoi riprendere dal punto salvato."
+                    )
+                    if errori_stesura:
+                        stato_libro.error(f"Stesura interrotta dopo {completati} sezioni. I contenuti già creati sono stati salvati. Errore: {errori_stesura[0]}")
+                    else:
+                        messaggio = f"Libro completato: scritte {completati} sezioni."
+                        if gia_presenti:
+                            messaggio += f" Conservate senza modifiche: {gia_presenti}."
+                        stato_libro.success(messaggio)
+                        st.rerun()
             sez_scelta = st.selectbox(L["lbl_sec"], opzioni_editor)
             k_sessione = f"txt_{sez_scelta.replace(' ', '_').replace('.', '')}"
             sottocapitoli_capitolo = individua_sottocapitoli_del_capitolo(sez_scelta, lista_cap_base)
