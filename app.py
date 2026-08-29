@@ -557,6 +557,114 @@ def sync_capitoli():
         if re.search(regex, riga.strip()): lista.append(riga.strip())
     st.session_state['lista_capitoli'] = lista
 
+
+# ======================================================================================================================
+# PROFILI EDITORIALI: REGOLE SPECIFICHE PER GENERE, TIPOLOGIA E STRUTTURA
+# ======================================================================================================================
+def profilo_tipologia_stesura(stile):
+    """Restituisce istruzioni di stesura realmente diverse per ogni tipologia selezionabile."""
+    profili = {
+        "Standard": "Esponi con chiarezza e ordine. Alterna spiegazione, esempio e applicazione senza estremi retorici.",
+        "Professionale Accademico": "Definisci termini, separa fatti, metodo, interpretazioni e limiti. Usa un registro preciso e prudente; non trasformare il testo in un elenco di istruzioni quando il contenuto richiede argomentazione.",
+        "Persuasivo (Neuromarketing Applicato)": "Parti da un problema concreto, chiarisci valore e prove, affronta obiezioni e guida verso una scelta o un'azione. Non usare pressione, manipolazione o promesse garantite.",
+        "Conversazionale ed Empatico": "Accompagna il lettore con un linguaggio umano e rispettoso. Anticipa dubbi reali, normalizza gli ostacoli e offri indicazioni applicabili senza toni paternalistici.",
+        "Scientifico Divulgativo": "Rendi comprensibili concetti complessi attraverso definizioni semplici, meccanismi, esempi e limiti. Distingui sempre dati, ipotesi, analogie e aspetti da verificare.",
+        "Storytelling Immersivo": "Costruisci scene, azioni, conseguenze e dettagli sensoriali coerenti. Ogni sezione deve far evolvere conflitto, personaggio, relazione o posta in gioco; non riassumere ciò che può essere mostrato.",
+        "Giornalistico d'Inchiesta": "Mantieni una linea di verifica: fatti documentabili, fonti da controllare, contraddizioni, contesto e conseguenze. Non presentare ipotesi come prove e non inventare testimonianze.",
+        "Socratico (Dialogico / Riflessivo)": "Organizza la sezione attorno a una domanda reale. Esplora presupposti, dubbi e obiezioni, quindi porta il lettore a una conclusione argomentata o a una riflessione verificabile.",
+        "Epico ed Evocativo": "Usa immagini e ritmo evocativi senza perdere chiarezza. La trasformazione, le prove e il significato devono essere concreti e adeguati al genere, non formule decorative.",
+        "Minimalista ed Essenziale": "Elimina tutto ciò che non serve. Usa frasi sobrie, titoli funzionali, esempi strettamente necessari e una sola idea centrale per blocco di testo."
+    }
+    return profili.get(stile, profili["Standard"])
+
+
+def profilo_genere_stesura(genere):
+    """Regole di forma e contenuto per tutti i generi offerti dall'interfaccia."""
+    profili = {
+        "Saggio Scientifico": "Sostieni una tesi con definizioni, metodo, evidenze, controargomentazioni, limiti e implicazioni. Non inventare dati o studi.",
+        "Quiz Scientifico": "Alterna spiegazione essenziale, domande verificabili, soluzioni motivate e chiarimento degli errori più probabili.",
+        "Manuale Tecnico": "Fornisci prerequisiti, strumenti, parametri, sequenze operative, controlli, errori e criteri di riuscita. Se software o norme possono cambiare, segnala cosa verificare.",
+        "Religioso / Teologico": "Distingui testi, interpretazioni, tradizioni e opinioni. Mantieni rispetto, precisione storica e nessuna affermazione dogmatica non attribuita.",
+        "Spirituale / Esoterico": "Usa un tono rispettoso e non prescrittivo. Presenta pratiche come esperienze personali o tradizionali, non come cure o certezze scientifiche.",
+        "Meditazione / Mindfulness": "Offri pratiche graduali, istruzioni sicure, durata indicativa, osservazioni e alternative. Evita promesse terapeutiche o risultati garantiti.",
+        "Business & Marketing": "Usa obiettivi, pubblico, casi, metriche, scelte operative e criteri di verifica. Se i dati non sono forniti, usa esempi dichiaratamente ipotetici.",
+        "Economia e Finanza": "Separa educazione generale da consulenza personalizzata. Spiega rischio, limiti, dati e ipotesi; non dare raccomandazioni finanziarie individuali.",
+        "Romanzo Rosa": "Sviluppa desiderio, relazione, vulnerabilità, ostacoli e scelta emotiva attraverso scene, dialoghi e trasformazione dei personaggi.",
+        "Thriller / Noir": "Costruisci tensione con indizi, conseguenze, conflitti e rivelazioni coerenti. Ogni capitolo deve cambiare le informazioni disponibili o aumentare la posta in gioco.",
+        "Fantasy": "Mantieni coerenti mondo, regole, conflitti e conseguenze. Mostra il worldbuilding dentro azioni e scene, senza blocchi enciclopedici.",
+        "Fantascienza": "Rendi coerente la premessa speculativa e mostra come modifica società, tecnologia, personaggi e conflitto. Non sostituire la storia con spiegazioni astratte.",
+        "Manuale Psicologico": "Spiega modelli e pratiche in modo accessibile, con limiti chiari. Non fare diagnosi, non promettere cura e invita a rivolgersi a professionisti quando necessario.",
+        "Biografia": "Segui una cronologia significativa, usando fonti verificabili e distinguendo fatti, testimonianze e interpretazioni. Privilegia svolte e contesto rispetto a elenchi di date.",
+        "Ricettario": "Ogni capitolo-ricetta deve contenere porzioni, tempi, ingredienti con dosi, procedimento numerato, segnali di riuscita, errore e correzione, variante e conservazione solo se verificata. Non duplicare la stessa ricetta in forma breve ed estesa.",
+        "Test Prep (Preparazione Esami)": "Spiega ciò che serve per l'esame, poi fornisci esercizi, soluzioni ragionate, errori tipici e criteri di autovalutazione. Non inventare regole d'esame non verificate.",
+        "Narrativo": "Sviluppa personaggi, conflitto, cause e conseguenze in scene concrete. Ogni capitolo deve avere una funzione narrativa distinta.",
+        "Romanzo Classico": "Usa una costruzione narrativa solida, personaggi coerenti, ambientazione e temi sviluppati attraverso azioni e dialoghi; evita imitazioni di autori viventi.",
+        "Contemporaneo": "Racconta conflitti e relazioni con voce naturale, dettagli specifici e temi attuali trattati attraverso la storia, non con prediche.",
+        "Self-Help": "Definisci problemi realistici, pratiche graduali, esempi e criteri di verifica. Evita promesse di trasformazione garantita o consigli clinici.",
+        "Manuale Pratico": "Fornisci un percorso eseguibile: materiali o prerequisiti, passaggi, controlli, errori, alternative e risultato finale verificabile.",
+        "Storico": "Ordina il racconto per nessi causali e cronologia, distinguendo fonti, fatti, interpretazioni e controversie. Non inventare citazioni o date."
+    }
+    return profili.get(genere, "Mantieni una struttura coerente con pubblico, obiettivo, genere e limiti dichiarati.")
+
+
+def estrai_numero_ricette(titolo, trama, obiettivo):
+    testo = f"{titolo} {trama} {obiettivo}".lower()
+    match = re.search(r"\\b(\\d{1,3})\\s+(?:ricette|recipes|recetas|recettes|rezepte)\\b", testo)
+    return int(match.group(1)) if match else None
+
+
+def profilo_struttura_indice(genere, titolo, trama, obiettivo):
+    """Evita che una stessa gabbia 15-18 capitoli venga applicata a libri incompatibili."""
+    if genere == "Ricettario":
+        numero = estrai_numero_ricette(titolo, trama, obiettivo)
+        quantità = f"esattamente {numero}" if numero else "un numero coerente con la richiesta"
+        return f"""RICETTARIO: crea {quantità} ricette effettive, distribuite in parti tematiche coerenti. Ogni ricetta è un Capitolo autonomo e completo. Non creare sottocapitoli 1.1, 1.2 o 1.3 per espandere la stessa ricetta e non inserire una versione breve della ricetta nella Parte: la Parte contiene soltanto una breve introduzione di orientamento. Il numero delle ricette nell'indice deve coincidere con il numero richiesto."""
+    if genere in {"Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Narrativo", "Romanzo Classico", "Contemporaneo", "Biografia"}:
+        return "NARRATIVA E BIOGRAFIA: organizza 3-6 Parti e un numero di capitoli proporzionato all'arco narrativo. Non imporre sottocapitoli a ogni capitolo: usali solo se sono necessari e non spezzano artificialmente scene o svolte."
+    if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
+        return "QUIZ E TEST PREP: organizza fondamenti, esercitazione graduata, simulazioni e correzioni. Ogni unità deve indicare una competenza verificabile; non creare capitoli riempitivi."
+    return "SAGGISTICA E MANUALI: usa 4-6 Parti, 15-18 capitoli effettivi e 3-5 sottocapitoli solo quando corrispondono a concetti o passaggi realmente distinti."
+
+
+def tipo_sezione_editoriale(sezione):
+    pulita = sezione.strip()
+    if re.match(r'(?i)^(parte|part|partie|teil|partea|часть|الجزء|部分)\b', pulita):
+        return "parte"
+    if re.match(r'(?i)^(capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+', pulita):
+        return "capitolo"
+    if re.match(r'^\d+\.\d+\s+', pulita):
+        return "sottocapitolo"
+    return "frontespizio"
+
+
+def chiave_sezione(sezione):
+    return f"txt_{sezione.replace(' ', '_').replace('.', '')}"
+
+
+def sezioni_mancanti_per_esportazione(sezioni, genere):
+    """Non consente di esportare un libro se l'indice contiene sezioni non effettivamente redatte."""
+    mancanti = []
+    minimi = {"parte": 35, "capitolo": 90 if genere == "Ricettario" else 120, "sottocapitolo": 120, "frontespizio": 40}
+    for sezione in sezioni:
+        testo = pulisci_testo_editoriale(st.session_state.get(chiave_sezione(sezione), "")).strip()
+        if len(testo.split()) < minimi[tipo_sezione_editoriale(sezione)]:
+            mancanti.append(sezione)
+    return mancanti
+
+
+def genera_sezione_con_ripetizione(prompt, system_prompt, sezione, lingua, tentativi=2):
+    """Riprova una sezione senza perdere le precedenti; evita libri interrotti a metà dopo un errore transitorio."""
+    ultimo_errore = None
+    for tentativo in range(1, tentativi + 1):
+        try:
+            testo = chiedi_gpt(prompt, system_prompt)
+            if not testo or testo.startswith("ERRORE:"):
+                raise RuntimeError(testo or "Risposta vuota")
+            return verifica_e_correggi_fatti_online(testo, sezione, lingua)
+        except Exception as exc:
+            ultimo_errore = exc
+    raise RuntimeError(f"Impossibile completare la sezione dopo {tentativi} tentativi: {ultimo_errore}")
+
 # NUOVA FUNZIONE: Motore Decisionale per attivare i 3 Cervelli in base alla Sidebar
 def valuta_approccio_neurologico(genere, stile, narrativa):
     """
@@ -739,6 +847,10 @@ def individua_sezioni_da_stendere(sezioni):
 def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
     """Costruisce il prompt comune usato dalla stesura singola e dalla stesura di un capitolo intero."""
     memoria = genera_contesto_avanzato(sezione)
+    tipo_sezione = tipo_sezione_editoriale(sezione)
+    profilo_genere = profilo_genere_stesura(genere)
+    profilo_tipologia = profilo_tipologia_stesura(stile)
+    regola_struttura = profilo_struttura_indice(genere, "", trama, obiettivo)
     return f"""
 INDICE GENERALE (STUDIALO PER CAPIRE COSA NON DEVI ANTICIPARE):
 {indice}
@@ -755,9 +867,17 @@ MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
 - Obiettivo Emozionale/Pratico: {obiettivo}
 - Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
+=== PROFILO EDITORIALE DA RISPETTARE ===
+- Regole del genere: {profilo_genere}
+- Regole della tipologia di scrittura: {profilo_tipologia}
+- Regole della struttura: {regola_struttura}
+- Tipo della sezione corrente: {tipo_sezione}
+
 AZIONE:
 Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in lingua {lingua}.
-- Se la sezione è un Capitolo, non anticipare né risolvere gli argomenti assegnati ai relativi sottocapitoli.
+- Se la sezione è una Parte, scrivi soltanto una breve apertura che spiega lo scopo della Parte e come usarla: non sviluppare o riassumere i capitoli che seguono.
+- Se la sezione è un Capitolo con sottocapitoli nell'indice, non anticipare né risolvere gli argomenti assegnati ai relativi sottocapitoli.
+- Se il genere è Ricettario, ogni Capitolo che porta il nome di un piatto è una sola ricetta completa: non aggiungere sottocapitoli autonomi e non ripetere una ricetta già presente nella Parte o in altre sezioni.
 - Rispetta integralmente i parametri editoriali e usa tassativamente il POV richiesto ({pov}).
 - Tratta con priorità gli approfondimenti forniti, ma soltanto nelle sezioni cui sono pertinenti; non ripeterli artificialmente e non anticipare contenuti assegnati a sezioni successive.
 - Sii profondo ed esaustivo nell'ambito della sezione, senza rubare materiale alle altre.
@@ -766,6 +886,7 @@ Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in
 - Usa formattazione editoriale pulita: non usare Markdown, simboli ###, ##, **, __, ``` o intestazioni tecniche. Se servono elenchi, usa semplici punti o numeri senza caratteri decorativi.
 - Non inserire URL, link, citazioni, note bibliografiche o sezioni fonti.
 - Se sono disponibili fonti esterne, usale solo per ragionare e integrare concetti pertinenti, senza citarle nel testo finale.
+- Prima di consegnare, verifica internamente che il contenuto sia completo per la sezione assegnata, che non sia una bozza o un frammento e che non contenga residui di altre sezioni.
 
 === PROFONDITÀ ADATTIVA E SPIEGAZIONE PASSO PASSO ===
 - Scrivi un testo professionale, completo e proporzionato alla complessità della sezione: amplia dove sono necessari metodo, procedura, decisioni tecniche o esempi; evita invece di allungare con frasi motivazionali, ripetizioni o riassunti inutili.
@@ -878,7 +999,7 @@ Per ogni sezione ricava un risultato concreto, il livello del lettore, i concett
 gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare ripetizioni.
 """
 
-def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento):
+def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere=""):
     """Controllo deterministico preliminare su struttura, copertura e ripetizioni."""
     risultati = ["REPORT CONTROLLO COERENZA DEL LIBRO"]
     testo = "\n".join(contenuti.values()) if contenuti else ""
@@ -889,6 +1010,26 @@ def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento):
     if not indice.strip(): risultati.append("ERRORE: indice assente")
     if not obiettivo.strip(): risultati.append("AVVISO: obiettivo assente")
     if not argomento.strip(): risultati.append("AVVISO: argomento assente")
+    sezioni_indice = st.session_state.get("lista_capitoli", [])
+    if sezioni_indice:
+        mancanti = sezioni_mancanti_per_esportazione(sezioni_indice, genere)
+        risultati.append(f"Sezioni dell'indice non ancora complete: {len(mancanti)}")
+        if mancanti:
+            anteprima = "; ".join(mancanti[:8])
+            risultati.append(f"ERRORE: non esportare il libro. Sezioni incomplete: {anteprima}" + (" ..." if len(mancanti) > 8 else ""))
+        else:
+            risultati.append("OK: tutte le sezioni previste dall'indice risultano compilate.")
+    if genere == "Ricettario":
+        numero_richiesto = estrai_numero_ricette("", argomento, obiettivo)
+        capitoli_ricetta = [s for s in sezioni_indice if tipo_sezione_editoriale(s) == "capitolo"]
+        if numero_richiesto:
+            risultati.append(f"Ricette richieste dal brief: {numero_richiesto}; capitoli-ricetta nell'indice: {len(capitoli_ricetta)}")
+            if len(capitoli_ricetta) != numero_richiesto:
+                risultati.append("ERRORE RICETTARIO: il numero delle ricette nell'indice non coincide con la richiesta.")
+        termini_non_vegani = r"\b(miele|latte vaccino|burro|uova|formaggio|panna|yogurt greco)\b"
+        non_vegani = sorted(set(re.findall(termini_non_vegani, testo.lower())))
+        if non_vegani:
+            risultati.append("AVVISO RICETTARIO: verificare ingredienti non vegani rilevati: " + ", ".join(non_vegani))
     if len(testo.strip()) < 1000: risultati.append("AVVISO: contenuto ancora troppo breve per una verifica completa")
     frasi = [f.strip().lower() for f in re.split(r"[.!?]+", testo) if len(f.strip()) > 40]
     duplicati = len(frasi) - len(set(frasi))
@@ -1011,6 +1152,10 @@ Nel capitolo principale mantieni la visione d'insieme; nel sottocapitolo svilupp
 dettaglio assegnato senza anticipare o ripetere gli altri sottocapitoli.
 """
 
+    profilo_genere_corrente = profilo_genere_stesura(val_genere)
+    profilo_tipologia_corrente = profilo_tipologia_stesura(val_stile)
+    profilo_indice_corrente = profilo_struttura_indice(val_genere, val_titolo, val_trama, val_goal)
+
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
     S_PROMPT = f"""
 Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
@@ -1022,6 +1167,13 @@ Stai redigendo l'ebook '{val_titolo}'.
 {modulo_esempi_specifici}
 {modulo_aderenza_titolo_genere}
 {modulo_operativita_universale}
+
+=== PROFILO EDITORIALE SPECIFICO ===
+- Regole del genere '{val_genere}': {profilo_genere_corrente}
+- Regole della tipologia '{val_stile}': {profilo_tipologia_corrente}
+- Architettura richiesta: {profilo_indice_corrente}
+Queste regole prevalgono sulle istruzioni generiche incompatibili con il genere. Non applicare
+procedure, checklist, test, sottocapitoli o scene narrative quando non sono pertinenti.
 
 PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Stile di Racconto: {val_narrativa}
@@ -1147,6 +1299,12 @@ Gli approfondimenti prioritari devono essere considerati prima di distribuire gl
 Tipologia selezionata: {val_stile}
 {direttiva_indice_selezionata}
 
+=== ARCHITETTURA ADATTIVA AL GENERE ===
+{profilo_struttura_indice(val_genere, val_titolo, val_trama, val_goal)}
+
+=== REGOLA DI STESURA DEL GENERE ===
+{profilo_genere_stesura(val_genere)}
+
 === SPECIFICA OPERATIVA PER LA PROGETTAZIONE DELL'INDICE ===
 Costruisci l'indice come un progetto editoriale eseguibile, non come un elenco generico.
 Ricava dal brief il risultato finale promesso, il pubblico e il livello di partenza, i problemi
@@ -1169,7 +1327,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 0. ATTINENZA ASSOLUTA: Inserisci esclusivamente capitoli e sottocapitoli direttamente pertinenti al titolo, alla trama, al pubblico e all'obiettivo del libro. Non aggiungere sezioni generiche o accessorie come glossario dei termini, elenco di risorse, checklist generiche, bibliografia, link, ringraziamenti, conclusioni vaghe o suggerimenti finali. Ogni voce dell'indice deve sviluppare un argomento reale del libro e poter essere trasformata in contenuto sostanziale.
 1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
 2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfectly lo stile, il genere e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
-3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa normalmente da 3 a 5 Sottocapitoli molto specifici; aumenta fino a 6 soltanto quando l'argomento richiede passaggi, competenze o procedure realmente distinte. Non aggiungere sottocapitoli per riempire spazio.
+3. ESTENSIONE PROPORZIONATA: Applica l'architettura adattiva indicata sopra. Non imporre 15-18 capitoli, 3-5 sottocapitoli o 100 pagine a generi che richiedono una struttura diversa. Per un ricettario, il numero di Capitoli deve coincidere con il numero di ricette richiesto e ogni Capitolo deve essere una ricetta, senza sottocapitoli artificiosi. Per la narrativa, non frammentare scene in sottocapitoli riempitivi.
 4. STRUTTURA GERARCHICA RIGIDA E PULITA: Usa unicamente ed esattamente questo formato di elencazione, SENZA ASTERISCHI O SIMBOLI STRANI:
    {t_parte} I: [Nome Parte]
    {t_cap} 1: [Nome Capitolo]
@@ -1182,7 +1340,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 
 8. PRATICITÀ ESTREMA E IPER-DETTAGLIO: I titoli devono essere estremamente pratici e orientati all'azione. Niente macro-concetti vaghi. Ogni capitolo e sottocapitolo deve puntare a risolvere un problema specifico, mostrando il "come fare" passo dopo passo, con un taglio estremamente operativo e profondo.
 
-9. NUMERO E STRUTTURA OBBLIGATORI: Genera da 15 a 18 Capitoli effettivi, non 13 o 14. Ogni Capitolo deve avere normalmente da 3 a 5 sottocapitoli specifici. Il sistema può aumentarli fino a 6 se, e solo se, la complessità del tema rende necessarie ulteriori fasi non sovrapposte; la decisione deve dipendere da competenze, procedure o verifiche realmente diverse. Ogni Capitolo deve avere una funzione autonoma e ogni sottocapitolo un confine preciso.
+9. COMPLETEZZA SENZA RIEMPITIVI: Rispetta il numero e il formato stabiliti dall'architettura adattiva. Ogni Capitolo deve avere una funzione autonoma. Crea sottocapitoli soltanto quando sviluppano aspetti distinti e non quando ripetono ingredienti, procedimenti, esempi o scene già assegnati. Prima di concludere, conta internamente le voci richieste e verifica che nessuna sia vuota o solo un titolo.
 
 10. ADATTAMENTO AL TIPO DI LIBRO E OUTPUT FINALE: Per manuali tecnici separa fondamenti, strumenti, procedure, verifiche e progetto applicativo. Per manuali pratici inserisci esercizi, checklist e risultati misurabili. Per business, marketing, economia e self-help inserisci framework, casi studio, piani d'azione e criteri di valutazione. Per saggi scientifici o storici separa contesto, tesi, prove, fonti e conclusioni. Per ricettari organizza tecniche, ingredienti, ricette, varianti e sicurezza. Per test prep inserisci teoria, esercizi, simulazioni e soluzioni. Per narrativa costruisci sviluppo di trama, personaggi, conflitto e risoluzione, senza imporre procedure tecniche. In ogni caso prevedi un output finale coerente con il genere: progetto, piano, esercizio completato, ricetta, simulazione, decisione applicativa, sintesi o conclusione narrativa. Gli esempi devono essere concreti e verificabili secondo il tipo di libro.
 """
@@ -1229,54 +1387,69 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
             # prefazione, parti, capitoli, sottocapitoli e ringraziamenti.
             sezioni_intero_libro = opzioni_editor
             st.caption(f"Stesura completa disponibile: {len(sezioni_intero_libro)} sezioni rilevate. I contenuti già scritti verranno conservati.")
+            # Job persistente: genera una sezione alla volta e conserva sempre quanto già scritto.
+            # Questo rende la pausa effettiva tra una richiesta AI e la successiva.
             if st.button("📚 SCRIVI TUTTO IL LIBRO", use_container_width=True, key="scrivi_tutto_libro"):
-                da_generare = []
-                gia_presenti = 0
-                for sezione in sezioni_intero_libro:
-                    chiave = f"txt_{sezione.replace(' ', '_').replace('.', '')}"
-                    if st.session_state.get(chiave, "").strip():
-                        gia_presenti += 1
-                    else:
-                        da_generare.append((sezione, chiave))
+                da_generare = [
+                    sezione for sezione in sezioni_intero_libro
+                    if not st.session_state.get(chiave_sezione(sezione), "").strip()
+                ]
                 if not da_generare:
                     st.info("Il libro risulta già scritto: nessun contenuto è stato sovrascritto.")
                 else:
-                    avanzamento_libro = st.progress(0, text="Preparazione della stesura completa...")
-                    stato_libro = st.empty()
-                    errori_stesura = []
-                    for posizione, (sezione, chiave) in enumerate(da_generare, start=1):
-                        avanzamento_libro.progress(
-                            int((posizione - 1) / len(da_generare) * 100),
-                            text=f"Scrittura di {sezione} ({posizione}/{len(da_generare)})..."
+                    st.session_state["job_scrittura_coda"] = da_generare
+                    st.session_state["job_scrittura_totale"] = len(da_generare)
+                    st.session_state["job_scrittura_attivo"] = True
+                    st.session_state["job_scrittura_pausa"] = False
+                    st.session_state.pop("job_scrittura_errore", None)
+
+            coda_scrittura = st.session_state.get("job_scrittura_coda", [])
+            if st.session_state.get("job_scrittura_attivo") and coda_scrittura:
+                totale = st.session_state.get("job_scrittura_totale", len(coda_scrittura))
+                completati = totale - len(coda_scrittura)
+                st.progress(
+                    int(completati / totale * 100),
+                    text=f"Stesura in corso: completate {completati} di {totale} sezioni."
+                )
+                sezione_corrente = coda_scrittura[0]
+                col_stato, col_pausa = st.columns([3, 1])
+                with col_stato:
+                    st.info(f"Elaborazione in corso: {sezione_corrente}. Puoi fermare il lavoro prima della sezione successiva.")
+                with col_pausa:
+                    pausa_richiesta = st.button("⏸ PAUSA", use_container_width=True, key="pausa_scrittura_libro")
+                if pausa_richiesta:
+                    st.session_state["job_scrittura_attivo"] = False
+                    st.session_state["job_scrittura_pausa"] = True
+                    st.info(f"Generazione in pausa. Restano {len(coda_scrittura)} sezioni da scrivere; puoi controllare il libro e poi riprendere.")
+                else:
+                    try:
+                        prompt = crea_prompt_stesura_sezione(
+                            sezione_corrente, st.session_state['indice_raw'], val_trama, val_genere,
+                            val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                         )
-                        stato_libro.info(f"Elaborazione in corso: {sezione}")
-                        try:
-                            prompt = crea_prompt_stesura_sezione(
-                                sezione, st.session_state['indice_raw'], val_trama, val_genere,
-                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
-                            )
-                            testo_generato = chiedi_gpt(prompt, S_PROMPT)
-                            if testo_generato.startswith("ERRORE:"):
-                                raise RuntimeError(testo_generato)
-                            st.session_state[chiave] = verifica_e_correggi_fatti_online(
-                                testo_generato, sezione, lingua_sel
-                            )
-                        except Exception as e:
-                            errori_stesura.append(f"{sezione}: {e}")
-                            break
-                    completati = len(da_generare) - len(errori_stesura)
-                    avanzamento_libro.progress(
-                        int(completati / len(da_generare) * 100),
-                        text="Stesura completata." if not errori_stesura else "Stesura interrotta: puoi riprendere dal punto salvato."
-                    )
-                    if errori_stesura:
-                        stato_libro.error(f"Stesura interrotta dopo {completati} sezioni. I contenuti già creati sono stati salvati. Errore: {errori_stesura[0]}")
-                    else:
-                        messaggio = f"Libro completato: scritte {completati} sezioni."
-                        if gia_presenti:
-                            messaggio += f" Conservate senza modifiche: {gia_presenti}."
-                        stato_libro.success(messaggio)
+                        st.session_state[chiave_sezione(sezione_corrente)] = genera_sezione_con_ripetizione(
+                            prompt, S_PROMPT, sezione_corrente, lingua_sel
+                        )
+                        st.session_state["job_scrittura_coda"] = coda_scrittura[1:]
                         st.rerun()
+                    except Exception as exc:
+                        st.session_state["job_scrittura_attivo"] = False
+                        st.session_state["job_scrittura_pausa"] = True
+                        st.session_state["job_scrittura_errore"] = f"{sezione_corrente}: {exc}"
+                        st.error("Generazione sospesa per un errore. I contenuti precedenti sono salvi: controllali e poi riprendi.")
+
+            if st.session_state.get("job_scrittura_pausa") and st.session_state.get("job_scrittura_coda"):
+                rimanenti = len(st.session_state["job_scrittura_coda"])
+                st.warning(f"Generazione in pausa: restano {rimanenti} sezioni. Puoi esaminare l'anteprima e riprendere quando vuoi.")
+                if st.session_state.get("job_scrittura_errore"):
+                    st.caption(f"Ultimo errore: {st.session_state['job_scrittura_errore']}")
+                if st.button("▶ RIPRENDI GENERAZIONE", use_container_width=True, key="riprendi_scrittura_libro"):
+                    st.session_state["job_scrittura_attivo"] = True
+                    st.session_state["job_scrittura_pausa"] = False
+                    st.session_state.pop("job_scrittura_errore", None)
+                    st.rerun()
+            elif st.session_state.get("job_scrittura_attivo") is False and not st.session_state.get("job_scrittura_coda") and st.session_state.get("job_scrittura_totale"):
+                st.success("Libro completato: tutte le sezioni previste sono state generate e salvate.")
             sez_scelta = st.selectbox(L["lbl_sec"], opzioni_editor)
             k_sessione = f"txt_{sez_scelta.replace(' ', '_').replace('.', '')}"
             sottocapitoli_capitolo = individua_sottocapitoli_del_capitolo(sez_scelta, lista_cap_base)
@@ -1304,9 +1477,8 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                                 sottocapitolo, st.session_state['indice_raw'], val_trama, val_genere,
                                 val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                             )
-                            testo_generato = chiedi_gpt(prompt, S_PROMPT)
-                            st.session_state[chiave] = verifica_e_correggi_fatti_online(
-                                testo_generato, sottocapitolo, lingua_sel
+                            st.session_state[chiave] = genera_sezione_con_ripetizione(
+                                prompt, S_PROMPT, sottocapitolo, lingua_sel
                             )
                         avanzamento.progress(100, text="Sottocapitoli completati.")
                         messaggio = f"Completati {len(da_generare)} sottocapitoli."
@@ -1322,9 +1494,8 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             sez_scelta, st.session_state['indice_raw'], val_trama, val_genere,
                             val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                         )
-                        testo_generato = chiedi_gpt(full_prompt, S_PROMPT)
-                        st.session_state[k_sessione] = verifica_e_correggi_fatti_online(
-                            testo_generato, sez_scelta, lingua_sel
+                        st.session_state[k_sessione] = genera_sezione_con_ripetizione(
+                            full_prompt, S_PROMPT, sez_scelta, lingua_sel
                         )
             with c2:
                 istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
@@ -1446,7 +1617,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
             }
             with st.spinner("Analisi completa del manoscritto in corso..."):
                 controllo_tecnico = analizza_coerenza_libro(
-                    st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama
+                    st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama, val_genere
                 )
                 valutazione_editoriale = valuta_manoscritto_completo(
                     st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo,
@@ -1487,33 +1658,48 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 
     # TAB 4: ESPORTAZIONE
     with tabs[3]:
+        sezioni_incomplete_export = sezioni_mancanti_per_esportazione(lista_cap_base, val_genere)
+        if sezioni_incomplete_export:
+            st.error(
+                "Esportazione bloccata: alcune sezioni dell'indice sono vuote o troppo brevi. "
+                "Completa il libro prima di creare Word o PDF."
+            )
+            st.caption("Sezioni da completare: " + "; ".join(sezioni_incomplete_export[:12]) + (" ..." if len(sezioni_incomplete_export) > 12 else ""))
+        else:
+            st.success("Controllo completezza superato: tutte le sezioni previste dall'indice sono presenti.")
         cw, cp = st.columns(2)
         with cw:
             if st.button(L["btn_word"]):
-                doc = Document(); doc.add_heading(val_titolo, 0)
-                for s in opzioni_editor:
-                    ke = f"txt_{s.replace(' ', '_').replace('.', '')}"
-                    if ke in st.session_state:
-                        doc.add_page_break(); doc.add_heading(s.upper(), level=1)
-                        img = st.session_state.get("immagini_capitoli", {}).get(s)
-                        if img:
-                            doc.add_picture(BytesIO(img["bytes"]), width=Inches(4.3))
-                            doc.add_paragraph(img.get("caption", ""))
-                        doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
-                bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                if sezioni_incomplete_export:
+                    st.error("Completa prima le sezioni mancanti: il Word non è stato creato.")
+                else:
+                    doc = Document(); doc.add_heading(val_titolo, 0)
+                    for s in opzioni_editor:
+                        ke = chiave_sezione(s)
+                        if st.session_state.get(ke, "").strip():
+                            doc.add_page_break(); doc.add_heading(s.upper(), level=1)
+                            img = st.session_state.get("immagini_capitoli", {}).get(s)
+                            if img:
+                                doc.add_picture(BytesIO(img["bytes"]), width=Inches(4.3))
+                                doc.add_paragraph(img.get("caption", ""))
+                            doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
+                    bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
             if st.button(L["btn_pdf"]):
-                pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
-                for s in opzioni_editor:
-                    kd = f"txt_{s.replace(' ', '_').replace('.', '')}"
-                    if kd in st.session_state:
-                        img = st.session_state.get("immagini_capitoli", {}).get(s)
-                        pdf.add_content(
-                            s.upper(), pulisci_testo_editoriale(st.session_state[kd]),
-                            image_bytes=img.get("bytes") if img else None,
-                            image_caption=img.get("caption") if img else None
-                        )
-                out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
+                if sezioni_incomplete_export:
+                    st.error("Completa prima le sezioni mancanti: il PDF non è stato creato.")
+                else:
+                    pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
+                    for s in opzioni_editor:
+                        kd = chiave_sezione(s)
+                        if st.session_state.get(kd, "").strip():
+                            img = st.session_state.get("immagini_capitoli", {}).get(s)
+                            pdf.add_content(
+                                s.upper(), pulisci_testo_editoriale(st.session_state[kd]),
+                                image_bytes=img.get("bytes") if img else None,
+                                image_caption=img.get("caption") if img else None
+                            )
+                    out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
 
     # TAB 5: FORMATTAZIONE E METADATI KDP
     with tabs[4]:
