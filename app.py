@@ -782,7 +782,7 @@ def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obie
             problemi.append(f"audit editoriale {voto_editoriale}/10: {difetti_editoriali}")
         if tentativo == 2:
             st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice non ha raggiunto 10/10 e richiede una verifica manuale: " + "; ".join(problemi)
-            return corrente
+            return ""
         revisione = prompt + f"""
 
 REVISIONE OBBLIGATORIA DELL'INDICE — TENTATIVO {tentativo + 1}
@@ -791,7 +791,7 @@ Riscrivi l'intero indice, senza commenti e senza la parola 'Indice' in apertura.
 non limitarti a rinominare i titoli. Mantieni soltanto argomenti attinenti al brief.
 """
         corrente = normalizza_indice_generato(chiedi_gpt(revisione, system_prompt))
-    return corrente
+    return ""
 
 
 def tipo_sezione_editoriale(sezione):
@@ -1806,15 +1806,26 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 10. ADATTAMENTO AL TIPO DI LIBRO E OUTPUT FINALE: Per manuali tecnici separa fondamenti, strumenti, procedure, verifiche e progetto applicativo. Per manuali pratici inserisci esercizi, checklist e risultati misurabili. Per business, marketing, economia e self-help inserisci framework, casi studio, piani d'azione e criteri di valutazione. Per saggi scientifici o storici separa contesto, tesi, prove, fonti e conclusioni. Per ricettari con un numero dichiarato di ricette, ogni Capitolo deve essere una ricetta e non sono ammessi Capitoli introduttivi su tecniche, ingredienti o sicurezza. Per test prep inserisci teoria, esercizi, simulazioni e soluzioni. Per narrativa costruisci sviluppo di trama, personaggi, conflitto e risoluzione, senza imporre procedure tecniche e con titoli di capitolo specifici del brief. In ogni caso prevedi un output finale coerente con il genere: progetto, piano, esercizio completato, ricetta, simulazione, decisione applicativa, sintesi o conclusione narrativa. Gli esempi devono essere concreti e verificabili secondo il tipo di libro.
 """
                 
-                st.session_state["indice_raw"] = genera_indice_controllato(
+                indice_generato = genera_indice_controllato(
                     prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.",
                     val_genere, val_titolo, val_trama, val_goal, lingua_sel, val_stile, val_narrativa, val_pov
                 )
                 st.session_state.pop("analisi_voto_indice", None)
-                sync_capitoli(); st.rerun()
+                if indice_generato:
+                    st.session_state["indice_raw"] = indice_generato
+                    sync_capitoli(); st.rerun()
+                st.session_state["indice_raw"] = ""
+                st.session_state["lista_capitoli"] = []
+                st.error(st.session_state.get("ultimo_controllo_indice", "Indice non approvato: riprova con un brief più specifico."))
                 
         # FIX ANTI-RESET PER L'INDICE: Salvataggio sicuro per prevenire sovrascritture da parte di Streamlit
         testo_corrente = st.session_state.get("indice_raw", "")
+        if st.session_state.get("ultimo_controllo_indice"):
+            esito_indice = st.session_state["ultimo_controllo_indice"]
+            if "10/10" in esito_indice:
+                st.success(esito_indice)
+            elif "richiede" in esito_indice or "non ha raggiunto" in esito_indice:
+                st.warning(esito_indice)
         testo_input = st.text_area("Indice Gerarchico:", value=testo_corrente, height=400)
         
         if testo_input != testo_corrente:
