@@ -60,6 +60,8 @@ def estrai_testo_da_files(caricati):
 # Nome Applicazione: AI di Antonino: Ebook Mondiale Creator PRO
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
+# Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
+VERSIONE_DEPLOY = "QA-2026-08-29-r3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
 try:
@@ -1538,6 +1540,7 @@ def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere=""):
 # 8. UI PRINCIPALE & GENERAZIONE PROMPT DINAMICO
 # ======================================================================================================================
 st.markdown(f'<div class="custom-title">AI di Antonino: {val_titolo if val_titolo else "Ebook Creator PRO"}</div>', unsafe_allow_html=True)
+st.caption(f"Versione app: {VERSIONE_DEPLOY}")
 
 sync_capitoli()
 lista_cap_base = st.session_state.get("lista_capitoli", [])
