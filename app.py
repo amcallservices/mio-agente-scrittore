@@ -341,6 +341,21 @@ def pulisci_testo_editoriale(testo):
 
 def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
     """GPT-4o-mini prepara il brief; GPT-Image-1 Mini genera il visual economico."""
+    contesto_basso = f"{titolo} {trama} {sezione}".lower()
+    if "fusion 360" in contesto_basso:
+        vincoli_dominio = (
+            "Per Fusion 360, se il testo descrive l'interfaccia, rappresenta barra degli strumenti in alto, "
+            "browser a sinistra, area di lavoro 3D centrale, timeline in basso e pannello contestuale a destra. "
+            "Se descrive una procedura CAD, mostra invece soltanto le fasi e gli oggetti realmente nominati."
+        )
+    elif any(x in contesto_basso for x in ("ricetta", "cucina", "ricettario")):
+        vincoli_dominio = "Per ricette e cucina, mostra ingredienti, utensili e passaggi culinari realmente descritti, senza testo nell'immagine."
+    elif any(x in contesto_basso for x in ("romanzo", "thriller", "fantasy", "rosa", "narrativo")):
+        vincoli_dominio = "Per narrativa, mostra una scena coerente con luogo, personaggi, atmosfera e azione del brano, senza inserire eventi non presenti."
+    elif any(x in contesto_basso for x in ("business", "marketing", "finanza", "economia")):
+        vincoli_dominio = "Per business ed economia, mostra relazioni, flussi, strumenti o situazioni operative citate, senza numeri o dati inventati."
+    else:
+        vincoli_dominio = "Adatta la rappresentazione al dominio del sottocapitolo: mostra esclusivamente oggetti, persone, processi o relazioni realmente descritti nel testo."
     descrizione = chiedi_gpt(
         f"Analizza esclusivamente il sottocapitolo '{sezione}' del libro '{titolo}'. "
         f"Argomento generale: {trama}. Genere: {genere}. Lingua: {lingua}.\n\n"
@@ -355,11 +370,11 @@ def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
         "Se descrive una procedura, mostra le fasi in sequenza con forme e frecce non testuali. "
         "VIETATO inserire parole, titoli, paragrafi, numeri, etichette, didascalie, loghi "
         "o schermate con testo nell'immagine. Restituisci solo il brief.\n\n"
-        f"Contenuto già scritto: {contenuto[-2500:]}",
+        f"{vincoli_dominio}\nContenuto già scritto: {contenuto[-2500:]}",
         "Sei un instructional designer tecnico: produci brief visivi accurati e verificabili."
     )
     try:
-        risposta = client.images.generate(model="gpt-image-1-mini", prompt=f"Crea una tavola illustrata didattica di alta qualità per un manuale tecnico. Sottocapitolo: {sezione}. Segui alla lettera questo brief visivo, senza aggiungere elementi non richiesti:\n{descrizione}\n\nLa scena deve avere corrispondenza uno-a-uno con il testo del sottocapitolo. Dai priorità a precisione concettuale, proporzioni, gerarchia visiva e leggibilità. Mostra oggetti e procedure reali, non una composizione astratta o una schermata software generica. Nessun testo o simbolo alfabetico nell'immagine, nessun titolo, nessuna didascalia, nessun logo. Usa solo forme, oggetti, numeri non presenti (vietati), frecce visive non testuali e relazioni spaziali. Composizione semplice ma dettagliata, sfondo bianco, tratto nero, scala di grigi, stile da manuale tecnico monocromatico, senza colori.", size="1024x1024", quality="medium")
+        risposta = client.images.generate(model="gpt-image-1-mini", prompt=f"Crea un'immagine didattica di alta qualità per il genere '{genere}' e il sottocapitolo '{sezione}'. Segui alla lettera questo brief visivo, senza aggiungere elementi non richiesti:\n{descrizione}\n\n{vincoli_dominio}\nLa scena deve avere corrispondenza uno-a-uno con il testo. Scegli composizione, livello di dettaglio e linguaggio visivo appropriati al dominio e al pubblico: diagramma o tavola tecnica per manuali, scena concreta per procedure, composizione narrativa per narrativa, visualizzazione concettuale per saggistica. Non creare immagini generiche o astratte e non inventare funzioni, dati, persone o oggetti. Nessun testo, lettera, numero, titolo, didascalia o logo nell'immagine. Mantieni sfondo bianco, tratto nero, scala di grigi e stile monocromatico pulito.", size="1024x1024", quality="medium")
         dato = risposta.data[0]
         raw = None
         if getattr(dato, "b64_json", None): raw = base64.b64decode(dato.b64_json)
@@ -367,7 +382,7 @@ def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
         if raw:
             # Riduce risoluzione/peso e converte sempre in bianco e nero prima di salvare.
             img = Image.open(BytesIO(raw)).convert("L")
-            img.thumbnail((720, 720), Image.Resampling.LANCZOS)
+            img.thumbnail((600, 600), Image.Resampling.LANCZOS)
             out = BytesIO(); img.save(out, format="PNG", optimize=True)
             return out.getvalue(), descrizione
         raise ValueError("Risposta immagini priva di dati utilizzabili")
