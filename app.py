@@ -466,16 +466,16 @@ with st.sidebar:
     val_stile = st.selectbox(L["lbl_style"], stili_estesi)
 
     direttive_indice_tipologia = {
-        "Standard": "Struttura lineare e chiara: introduzione, sviluppo progressivo, applicazione e sintesi finale. Mantieni titoli concreti e comprensibili.",
-        "Professionale Accademico": "Organizza l'indice con definizioni, quadro teorico, metodologia, analisi, evidenze, limiti, implicazioni e riferimenti. Separa concetti, metodo e risultati.",
-        "Persuasivo (Neuromarketing Applicato)": "Costruisci un percorso da problema a desiderio, soluzione, prove, obiezioni, benefici e azione. Ogni parte deve sostenere la promessa senza claim non verificabili.",
-        "Conversazionale ed Empatico": "Sequenzia l'indice come un accompagnamento graduale: difficoltà del lettore, comprensione, rassicurazione, esercitazione e autonomia. Inserisci momenti di verifica e domande guida.",
-        "Scientifico Divulgativo": "Procedi da basi e contesto a meccanismi, evidenze, esempi, applicazioni e limiti. Distingui fatti, ipotesi, fonti e semplificazioni divulgative.",
-        "Storytelling Immersivo": "Progetta un arco narrativo con situazione iniziale, personaggi, obiettivo, ostacoli, svolte, conseguenze e risoluzione. Ogni capitolo deve far avanzare conflitto o trasformazione.",
-        "Giornalistico d'Inchiesta": "Organizza il percorso da domanda iniziale a contesto, fonti, testimonianze, verifiche, contraddizioni, prove, responsabilità e conclusioni. Indica chiaramente cosa va documentato.",
-        "Socratico (Dialogico / Riflessivo)": "Costruisci l'indice tramite domande progressive: presupposti, dubbi, obiezioni, esempi, ragionamento e sintesi. Ogni capitolo deve sviluppare una domanda centrale e una risposta argomentata.",
-        "Epico ed Evocativo": "Crea una progressione ampia e memorabile con origine, chiamata, prove, trasformazione, conflitto e compimento, mantenendo coerenza con genere e obiettivo senza sacrificare chiarezza.",
-        "Minimalista ed Essenziale": "Riduci ogni parte al necessario: un obiettivo per capitolo, sottocapitoli non sovrapposti, titoli brevi e risultati concreti. Elimina digressioni, ripetizioni e contenuti ornamentali."
+        "Standard": "Crea un percorso lineare in 5-6 Parti e 15-18 Capitoli: basi, sviluppo progressivo, applicazione, verifica e sintesi. Ogni sottocapitolo deve avere un obiettivo concreto e un risultato leggibile.",
+        "Professionale Accademico": "Organizza l'indice in contesto, definizioni, quadro teorico, metodologia, analisi, evidenze, limiti, implicazioni e riferimenti. Separa chiaramente ipotesi, dati, metodo e risultati; prevedi criteri di valutazione e fonti.",
+        "Persuasivo (Neuromarketing Applicato)": "Costruisci il percorso da problema e consapevolezza a soluzione, prove, obiezioni, benefici, applicazione e azione. Inserisci casi, comparazioni e piani d'azione senza promesse garantite o claim non verificabili.",
+        "Conversazionale ed Empatico": "Sequenzia l'indice come un accompagnamento: situazione del lettore, ostacoli, spiegazione semplice, esercitazione guidata, verifica e autonomia. Usa domande guida, riepiloghi e passaggi graduali senza infantilizzare.",
+        "Scientifico Divulgativo": "Procedi da basi e contesto a meccanismi, evidenze, esempi, applicazioni e limiti. Indica dove servono fonti aggiornate, distingui fatti, ipotesi e analogie e inserisci esperimenti mentali o verifiche pratiche quando pertinenti.",
+        "Storytelling Immersivo": "Progetta un arco narrativo completo con situazione iniziale, personaggi, desiderio, conflitto, ostacoli, svolte, conseguenze, climax e risoluzione. Ogni capitolo deve modificare la situazione o approfondire un personaggio, evitando capitoli di riempimento.",
+        "Giornalistico d'Inchiesta": "Organizza il percorso da domanda iniziale a contesto, fonti primarie, testimonianze, verifiche indipendenti, contraddizioni, prove, responsabilità e conclusioni. Specifica quali fatti devono essere documentati e separa dati accertati da ipotesi.",
+        "Socratico (Dialogico / Riflessivo)": "Costruisci l'indice attraverso domande progressive: presupposti, definizioni, dubbi, obiezioni, esempi, conseguenze e sintesi. Ogni capitolo deve porre una domanda centrale e chiuderla con una risposta argomentata o un esercizio di riflessione.",
+        "Epico ed Evocativo": "Crea una progressione ampia con origine, chiamata, prove, alleati, opposizioni, trasformazione, crisi, compimento e significato finale. Mantieni immagini evocative nei titoli ma indica sempre un contenuto concreto e coerente con il genere.",
+        "Minimalista ed Essenziale": "Riduci il libro a 15-18 capitoli indispensabili, con un solo obiettivo per capitolo e sottocapitoli non sovrapposti. Usa titoli brevi e operativi, elimina digressioni e assegna a ogni sezione un risultato verificabile."
     }
     direttiva_indice_selezionata = direttive_indice_tipologia.get(val_stile, direttive_indice_tipologia["Standard"])
     
