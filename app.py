@@ -764,31 +764,36 @@ def audit_editoriale_indice_generato(indice, genere, titolo, trama, obiettivo, l
 
 
 def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obiettivo, lingua, stile, narrativa, pov):
-    """Genera l'indice e applica fino a due revisioni su vincoli oggettivi e qualità editoriale."""
+    """Un solo clic genera, valuta e rigenera automaticamente fino alla soglia editoriale richiesta."""
     corrente = normalizza_indice_generato(chiedi_gpt(prompt, system_prompt))
-    for tentativo in range(3):
+    massimo_tentativi = 5  # prima generazione + fino a quattro correzioni mirate nello stesso clic
+    for tentativo in range(massimo_tentativi):
         problemi = criticita_indice_generato(corrente, genere, titolo, trama, obiettivo)
         voto_editoriale, difetti_editoriali = (0, "")
         if not problemi:
             voto_editoriale, difetti_editoriali = audit_editoriale_indice_generato(
                 corrente, genere, titolo, trama, obiettivo, lingua, stile, narrativa, pov
             )
-            if voto_editoriale == 10:
-                esito = "Indice approvato: 10/10 nel controllo strutturale ed editoriale automatico."
+            if voto_editoriale >= 8:
+                esito = f"Indice approvato: {voto_editoriale}/10 nel controllo strutturale ed editoriale automatico."
                 if tentativo:
-                    esito = f"Indice corretto automaticamente al controllo {tentativo} e approvato 10/10."
+                    esito = f"Indice corretto automaticamente al controllo {tentativo} e approvato {voto_editoriale}/10."
                 st.session_state["ultimo_controllo_indice"] = esito
                 return corrente
             problemi.append(f"audit editoriale {voto_editoriale}/10: {difetti_editoriali}")
-        if tentativo == 2:
-            st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice non ha raggiunto 10/10 e richiede una verifica manuale: " + "; ".join(problemi)
+        if tentativo == massimo_tentativi - 1:
+            st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice non ha raggiunto la soglia minima di 8/10 e richiede una verifica manuale: " + "; ".join(problemi)
             return ""
         revisione = prompt + f"""
 
 REVISIONE OBBLIGATORIA DELL'INDICE — TENTATIVO {tentativo + 1}
 La bozza precedente non rispetta questi vincoli oggettivi/editoriali: {'; '.join(problemi)}.
-Riscrivi l'intero indice, senza commenti e senza la parola 'Indice' in apertura. Correggi tutti i punti segnalati;
-non limitarti a rinominare i titoli. Mantieni soltanto argomenti attinenti al brief.
+Usa i difetti elencati come requisiti di correzione concreti. Riscrivi l'intero indice, senza commenti e senza la parola 'Indice' in apertura.
+Correggi tutti i punti segnalati, inclusi grammatica, gerarchia, ripetizioni e aderenza al brief; non limitarti a rinominare i titoli.
+Mantieni soltanto argomenti attinenti al brief.
+
+INDICE RIFIUTATO DA CORREGGERE
+{corrente}
 """
         corrente = normalizza_indice_generato(chiedi_gpt(revisione, system_prompt))
     return ""
@@ -1822,7 +1827,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
         testo_corrente = st.session_state.get("indice_raw", "")
         if st.session_state.get("ultimo_controllo_indice"):
             esito_indice = st.session_state["ultimo_controllo_indice"]
-            if "10/10" in esito_indice:
+            if re.search(r"\b(?:8|9|10)/10\b", esito_indice):
                 st.success(esito_indice)
             elif "richiede" in esito_indice or "non ha raggiunto" in esito_indice:
                 st.warning(esito_indice)
