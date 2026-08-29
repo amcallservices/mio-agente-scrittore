@@ -769,17 +769,24 @@ def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obie
     massimo_tentativi = 5  # prima generazione + fino a quattro correzioni mirate nello stesso clic
     for tentativo in range(massimo_tentativi):
         problemi = criticita_indice_generato(corrente, genere, titolo, trama, obiettivo)
-        voto_editoriale, difetti_editoriali = (0, "")
-        if not problemi:
-            voto_editoriale, difetti_editoriali = audit_editoriale_indice_generato(
-                corrente, genere, titolo, trama, obiettivo, lingua, stile, narrativa, pov
-            )
-            if voto_editoriale >= 8:
-                esito = f"Indice approvato: {voto_editoriale}/10 nel controllo strutturale ed editoriale automatico."
-                if tentativo:
-                    esito = f"Indice corretto automaticamente al controllo {tentativo} e approvato {voto_editoriale}/10."
-                st.session_state["ultimo_controllo_indice"] = esito
-                return corrente
+        voto_editoriale, difetti_editoriali = audit_editoriale_indice_generato(
+            corrente, genere, titolo, trama, obiettivo, lingua, stile, narrativa, pov
+        )
+        difetti_bloccanti = (
+            "non sono stati riconosciuti capitoli", "capitoli senza almeno due sottocapitoli",
+            "sono richieste", "un capitolo del ricettario", "manca una sezione con quiz", "manca una sezione di simulazione",
+            "struttura troppo breve"
+        )
+        ha_blocchi = any(any(blocco in problema for blocco in difetti_bloccanti) for problema in problemi)
+        if voto_editoriale >= 8 and not ha_blocchi:
+            esito = f"Indice approvato: {voto_editoriale}/10 nel controllo strutturale ed editoriale automatico."
+            if problemi:
+                esito += " Note qualitative considerate: " + "; ".join(problemi)
+            if tentativo:
+                esito = f"Indice corretto automaticamente al controllo {tentativo} e approvato {voto_editoriale}/10."
+            st.session_state["ultimo_controllo_indice"] = esito
+            return corrente
+        if voto_editoriale < 8:
             problemi.append(f"audit editoriale {voto_editoriale}/10: {difetti_editoriali}")
         if tentativo == massimo_tentativi - 1:
             st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice non ha raggiunto la soglia minima di 8/10 e richiede una verifica manuale: " + "; ".join(problemi)
