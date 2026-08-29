@@ -308,10 +308,10 @@ def chiedi_gpt(prompt, system_prompt):
     except Exception as e: return f"ERRORE: {str(e)}"
 
 def verifica_e_correggi_fatti_online(testo, sezione, lingua):
-    """Verifica automaticamente le affermazioni aggiornabili usando la ricerca web OpenAI."""
+    """Verifica soltanto i fatti aggiornabili che meritano una ricerca online."""
     try:
         risposta = client.responses.create(
-            model="gpt-5.4-mini",
+            model="gpt-5-mini",
             tools=[{"type": "web_search_preview"}],
             input=(
                 f"Verifica il testo seguente in lingua {lingua} relativo alla sezione '{sezione}'. "
@@ -330,6 +330,40 @@ def verifica_e_correggi_fatti_online(testo, sezione, lingua):
     except Exception as e:
         st.warning(f"Verifica online non disponibile: {e}")
         return pulisci_testo_editoriale(testo)
+
+
+def richiede_verifica_fatti(testo, sezione=""):
+    """Evita ricerche inutili per scene, esercizi e spiegazioni stabili."""
+    campione = f"{sezione}\n{testo}".lower()
+    indicatori = (
+        "legge", "normativa", "regolamento", "decreto", "licenza", "prezzo", "tariffa",
+        "syllabus", "soglia di superamento", "punteggio minimo", "durata dell'esame",
+        "versione", "requisiti di sistema", "compatibilità", "aggiornamento software",
+        "aggiornata al", "in vigore", "20/", "€", "$"
+    )
+    return any(indicatore in campione for indicatore in indicatori)
+
+
+def audit_fatti_capitolo(capitolo, contenuti, lingua):
+    """Esegue un solo controllo online sul capitolo completo, senza riscrivere le singole sezioni."""
+    testo = "\n\n".join(f"SEZIONE: {nome}\n{contenuto}" for nome, contenuto in contenuti if contenuto.strip())
+    if not testo or not richiede_verifica_fatti(testo, capitolo):
+        return "Controllo fatti del capitolo non necessario: nessun dato variabile rilevato."
+    try:
+        risposta = client.responses.create(
+            model="gpt-5-mini",
+            tools=[{"type": "web_search_preview"}],
+            input=(
+                f"Controlla i soli fatti aggiornabili nel capitolo '{capitolo}', in lingua {lingua}. "
+                "Verifica esclusivamente regole, norme, date, soglie, prezzi, versioni software, licenze e specifiche. "
+                "Non riscrivere il capitolo e non citare fonti o URL. Restituisci soltanto: "
+                "ESITO: nessuna correzione necessaria oppure una lista di correzioni puntuali con sezione e formulazione da aggiornare.\n\n"
+                f"CAPITOLO:\n{testo}"
+            )
+        )
+        return pulisci_testo_editoriale(getattr(risposta, "output_text", "") or "Controllo non disponibile.")
+    except Exception as e:
+        return f"Controllo fatti del capitolo non disponibile: {e}"
 
 def pulisci_testo_editoriale(testo):
     """Rimuove fonti tecniche dal testo destinato ad anteprima ed esportazione."""
@@ -663,7 +697,9 @@ def genera_sezione_con_ripetizione(prompt, system_prompt, sezione, lingua, tenta
             testo = chiedi_gpt(prompt, system_prompt)
             if not testo or testo.startswith("ERRORE:"):
                 raise RuntimeError(testo or "Risposta vuota")
-            return verifica_e_correggi_fatti_online(testo, sezione, lingua)
+            # La stesura non effettua automaticamente una ricerca: la verifica
+            # viene attivata solo dal motore editoriale quando individua fatti variabili.
+            return pulisci_testo_editoriale(testo)
         except Exception as exc:
             ultimo_errore = exc
     raise RuntimeError(f"Impossibile completare la sezione dopo {tentativi} tentativi: {ultimo_errore}")
@@ -847,6 +883,10 @@ mostra il contenuto concreto richiesto dal titolo della sezione.
 """,
             system_prompt, sezione, lingua
         )
+    # Le ricerche web sono riservate a leggi, prezzi, versioni, requisiti e altri
+    # dati soggetti a cambiamento; i contenuti didattici stabili non consumano credito web.
+    if richiede_verifica_fatti(testo, sezione):
+        testo = verifica_e_correggi_fatti_online(testo, sezione, lingua)
     return testo
 
 # NUOVA FUNZIONE: Motore Decisionale per attivare i 3 Cervelli in base alla Sidebar
@@ -1157,10 +1197,10 @@ def blocchi_per_audit_manoscritto(contenuti, limite_caratteri=18000):
 
 
 def chiedi_audit_editoriale(prompt):
-    """Usa il modello di valutazione aggiornato senza mescolarlo alla stesura ordinaria."""
+    """Esegue l'audit editoriale completo con il modello rapido dedicato ai controlli."""
     try:
         risposta = client.responses.create(
-            model="gpt-5.4-mini",
+            model="gpt-5-mini",
             input=prompt
         )
         testo = getattr(risposta, "output_text", "") or ""
@@ -1745,6 +1785,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
             k_sessione = f"txt_{sez_scelta.replace(' ', '_').replace('.', '')}"
             sottocapitoli_capitolo = individua_sottocapitoli_del_capitolo(sez_scelta, lista_cap_base)
             if sottocapitoli_capitolo:
+                chiave_audit_capitolo = f"audit_fatti_{sez_scelta.replace(' ', '_').replace('.', '')}"
                 st.caption(f"Capitolo selezionato: verranno elaborati {len(sottocapitoli_capitolo)} sottocapitoli non ancora scritti.")
                 if st.button("📝 SCRIVI TUTTI I SOTTOCAPITOLI DEL CAPITOLO", use_container_width=True):
                     da_generare = []
@@ -1773,11 +1814,30 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                                 val_genere, val_goal, lingua_sel
                             )
                         avanzamento.progress(100, text="Sottocapitoli completati.")
+                        contenuti_capitolo = [
+                            (sottocapitolo, st.session_state.get(f"txt_{sottocapitolo.replace(' ', '_').replace('.', '')}", ""))
+                            for sottocapitolo in sottocapitoli_capitolo
+                        ]
+                        st.session_state[chiave_audit_capitolo] = audit_fatti_capitolo(
+                            sez_scelta, contenuti_capitolo, lingua_sel
+                        )
                         messaggio = f"Completati {len(da_generare)} sottocapitoli."
                         if gia_presenti:
                             messaggio += f" Conservati senza modifiche: {gia_presenti}."
                         st.success(messaggio)
                         st.rerun()
+                if st.button("🔎 CONTROLLA I FATTI DEL CAPITOLO", use_container_width=True):
+                    contenuti_capitolo = [
+                        (sottocapitolo, st.session_state.get(f"txt_{sottocapitolo.replace(' ', '_').replace('.', '')}", ""))
+                        for sottocapitolo in sottocapitoli_capitolo
+                    ]
+                    with st.spinner("Controllo online mirato dei soli dati aggiornabili del capitolo..."):
+                        st.session_state[chiave_audit_capitolo] = audit_fatti_capitolo(
+                            sez_scelta, contenuti_capitolo, lingua_sel
+                        )
+                if st.session_state.get(chiave_audit_capitolo):
+                    with st.expander("🔎 Esito del controllo fatti del capitolo", expanded=False):
+                        st.write(st.session_state[chiave_audit_capitolo])
             c1, c2, c3 = st.columns([2, 2, 1])
             with c1:
                 if st.button(L["btn_write"]):
