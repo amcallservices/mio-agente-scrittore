@@ -113,10 +113,10 @@ def estratti_fonti_pertinenti(sezione, argomento, limite=3500):
     return "\n\n".join(scelti) or st.session_state.get("scheda_fonti", "")[:limite]
 
 
-def notifica_sonora(evento, lingua="Italiano"):
+def notifica_sonora(evento, lingua="Italiano", ripeti=False):
     """Emette un segnale sonoro e un avviso testuale localizzato in alto a destra."""
     chiave = f"notifica_emessa_{evento}"
-    if st.session_state.get(chiave):
+    if not ripeti and st.session_state.get(chiave):
         return
     st.session_state[chiave] = True
     messaggi = {
@@ -140,9 +140,21 @@ def notifica_sonora(evento, lingua="Italiano"):
         "العربية": {"sidebar_pronta": "اكتمل الملخص: يمكنك إنشاء الفهرس.", "voto_indice_completato": "اكتمل تقييم الفهرس.", "avvio_scrittura_completa": "بدأت كتابة الكتاب كاملاً.", "errore_scrittura": "توقفت الكتابة: راجع الحالة.", "libro_completato": "اكتملت كتابة الكتاب.", "coerenza_completata": "اكتمل فحص الاتساق الكامل.", "word_pronto": "ملف Word جاهز للتنزيل.", "pdf_pronto": "ملف PDF جاهز للتنزيل.", "formattazione_completata": "اكتمل تنسيق المستند."},
         "中文": {"sidebar_pronta": "简介已完成：可以生成目录。", "voto_indice_completato": "目录评分已完成。", "avvio_scrittura_completa": "整本书写作已开始。", "errore_scrittura": "写作已中断：请检查状态。", "libro_completato": "整本书写作已完成。", "coerenza_completata": "完整一致性检查已完成。", "word_pronto": "Word 文件可供下载。", "pdf_pronto": "PDF 文件可供下载。", "formattazione_completata": "文档格式化已完成。"}
     }
-    messaggio = messaggi.get(lingua, messaggi["Italiano"]).get(evento, "Operazione completata.")
+    messaggi_prova = {
+        "Italiano": "Notifiche attive: messaggio e suono di prova.",
+        "English": "Notifications enabled: test message and sound.",
+        "Español": "Notificaciones activas: mensaje y sonido de prueba.",
+        "Français": "Notifications actives : message et son de test.",
+        "Deutsch": "Benachrichtigungen aktiv: Testmeldung und Ton.",
+        "Română": "Notificări active: mesaj și sunet de test.",
+        "Русский": "Уведомления активны: тестовое сообщение и звук.",
+        "العربية": "الإشعارات مفعلة: رسالة وصوت تجريبي.",
+        "中文": "通知已启用：测试消息和声音。",
+    }
+    messaggio = messaggi_prova.get(lingua, messaggi_prova["Italiano"]) if evento == "test_notifiche" else messaggi.get(lingua, messaggi["Italiano"]).get(evento, "Operazione completata.")
     icona = "⚠️" if evento == "errore_scrittura" else "✅"
-    st.toast(messaggio, icon=icona)
+    # Durata lunga: il messaggio resta visibile anche quando l'operazione termina velocemente.
+    st.toast(messaggio, icon=icona, duration="long")
     components.html("""
     <script>
     (() => {
@@ -173,7 +185,7 @@ def notifica_sonora(evento, lingua="Italiano"):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r13"
+VERSIONE_DEPLOY = "QA-2026-08-30-r15"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -2153,6 +2165,25 @@ Notificările sonore anunță când bara laterală este gata, la începutul sau 
     with tabs[0]:
         st.subheader(titolo_guida)
         st.markdown(testo_guida)
+        etichette_prova_notifiche = {
+            "Italiano": "🔔 PROVA NOTIFICHE", "English": "🔔 TEST NOTIFICATIONS", "Español": "🔔 PROBAR NOTIFICACIONES",
+            "Français": "🔔 TESTER LES NOTIFICATIONS", "Deutsch": "🔔 BENACHRICHTIGUNGEN TESTEN", "Română": "🔔 TESTEAZĂ NOTIFICĂRILE",
+            "Русский": "🔔 ПРОВЕРИТЬ УВЕДОМЛЕНИЯ", "العربية": "🔔 اختبار الإشعارات", "中文": "🔔 测试通知"
+        }
+        istruzioni_audio = {
+            "Italiano": "Se non senti il suono, controlla che la scheda del browser non sia silenziata e consenti la riproduzione audio.",
+            "English": "If you do not hear the sound, check that the browser tab is not muted and allow audio playback.",
+            "Español": "Si no oyes el sonido, comprueba que la pestaña no esté silenciada y permite la reproducción de audio.",
+            "Français": "Si vous n’entendez pas le son, vérifiez que l’onglet n’est pas muet et autorisez la lecture audio.",
+            "Deutsch": "Wenn Sie keinen Ton hören, prüfen Sie, ob der Browser-Tab stummgeschaltet ist, und erlauben Sie die Audiowiedergabe.",
+            "Română": "Dacă nu auzi sunetul, verifică dacă fila browserului nu este pe mut și permite redarea audio.",
+            "Русский": "Если звука нет, проверьте, не отключён ли звук у вкладки браузера, и разрешите воспроизведение аудио.",
+            "العربية": "إذا لم تسمع الصوت، تحقق من أن علامة تبويب المتصفح غير مكتومة واسمح بتشغيل الصوت.",
+            "中文": "如果听不到声音，请检查浏览器标签页是否被静音，并允许音频播放。"
+        }
+        st.caption(istruzioni_audio.get(lingua_sel, istruzioni_audio["Italiano"]))
+        if st.button(etichette_prova_notifiche.get(lingua_sel, etichette_prova_notifiche["Italiano"]), key="prova_notifiche"):
+            notifica_sonora("test_notifiche", lingua_sel, ripeti=True)
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
     with tabs[1]:
@@ -2288,7 +2319,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                         indice_da_valutare, val_titolo, val_trama, val_genere, val_stile,
                         val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                     )
-                    notifica_sonora("voto_indice_completato", lingua_sel)
+                    notifica_sonora("voto_indice_completato", lingua_sel, ripeti=True)
             if st.session_state.get("analisi_voto_indice"):
                 st.text_area(
                     "Analisi e voto dell'indice",
@@ -2363,7 +2394,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                     st.session_state["job_scrittura_attivo"] = True
                     st.session_state["job_scrittura_pausa"] = False
                     st.session_state.pop("job_scrittura_errore", None)
-                    notifica_sonora("avvio_scrittura_completa", lingua_sel)
+                    notifica_sonora("avvio_scrittura_completa", lingua_sel, ripeti=True)
 
             coda_scrittura = st.session_state.get("job_scrittura_coda", [])
             if st.session_state.get("job_scrittura_attivo") and coda_scrittura:
@@ -2399,7 +2430,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                         st.session_state["job_scrittura_attivo"] = False
                         st.session_state["job_scrittura_pausa"] = True
                         st.session_state["job_scrittura_errore"] = f"{sezione_corrente}: {exc}"
-                        notifica_sonora("errore_scrittura", lingua_sel)
+                        notifica_sonora("errore_scrittura", lingua_sel, ripeti=True)
                         st.error("Generazione sospesa per un errore. I contenuti precedenti sono salvi: controllali e poi riprendi.")
 
             if st.session_state.get("job_scrittura_pausa") and st.session_state.get("job_scrittura_coda"):
@@ -2656,7 +2687,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                     f"VALUTAZIONE EDITORIALE COMPLETA\n{valutazione_editoriale}"
                 )
                 st.session_state["report_coerenza_firma"] = firma_attuale_coerenza
-                notifica_sonora("coerenza_completata", lingua_sel)
+                notifica_sonora("coerenza_completata", lingua_sel, ripeti=True)
                 barra_coerenza.progress(100, text="Controllo coerenza completato.")
                 stato_coerenza.success("Controllo completo concluso.")
         if st.session_state.get("report_coerenza_libro"):
@@ -2699,7 +2730,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                             doc.add_paragraph(img.get("caption", ""))
                         doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
                 bw = BytesIO(); doc.save(bw); bw.seek(0)
-                notifica_sonora("word_pronto", lingua_sel)
+                notifica_sonora("word_pronto", lingua_sel, ripeti=True)
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}{suffisso}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
@@ -2717,7 +2748,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                             image_caption=img.get("caption") if img else None
                         )
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace')
-                notifica_sonora("pdf_pronto", lingua_sel)
+                notifica_sonora("pdf_pronto", lingua_sel, ripeti=True)
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}{suffisso}.pdf", mime="application/pdf")
 
@@ -2783,7 +2814,7 @@ Sette frasi chiave pertinenti, separate da virgole, senza spiegazioni aggiuntive
                         with st.spinner("Formattazione del documento in corso..."):
                             try:
                                 st.session_state["docx_formattato_kdp"] = formatta_manoscritto_kdp(manoscritto)
-                                notifica_sonora("formattazione_completata", lingua_sel)
+                                notifica_sonora("formattazione_completata", lingua_sel, ripeti=True)
                                 st.success("Formattazione completata.")
                             except Exception as e:
                                 st.error(f"Impossibile formattare il documento: {e}")
