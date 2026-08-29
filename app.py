@@ -5,6 +5,7 @@ import re
 import json
 import time
 import datetime
+import base64
 from fpdf import FPDF
 from openai import OpenAI
 from docx import Document
@@ -22,6 +23,7 @@ if "memoria_blindata" not in st.session_state:
     st.session_state["indice_raw"] = ""
     st.session_state["lista_capitoli"] = []
     st.session_state["conoscenza_extra"] = ""
+    st.session_state["immagini_capitoli"] = {}
 
 # ======================================================================================================================
 # FUNZIONI DI SUPPORTO PER ANALISI DOCUMENTI (NUOVO MODULO)
@@ -275,6 +277,26 @@ def chiedi_gpt(prompt, system_prompt):
         righe = [l for l in testo.split("\n") if not any(l.lower().startswith(p) for p in prefissi)]
         return "\n".join(righe).strip()
     except Exception as e: return f"ERRORE: {str(e)}"
+
+def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
+    """GPT-4o-mini prepara il brief; gpt-image-1 genera l'immagine didattica."""
+    descrizione = chiedi_gpt(
+        f"Crea un brief visivo tecnico per il capitolo '{sezione}' del libro '{titolo}'. "
+        f"Argomento: {trama}. Genere: {genere}. Lingua: {lingua}. "
+        "Descrivi composizione, etichette brevi, stile e funzione didattica. "
+        "Il visual deve essere concreto e leggibile. Restituisci solo il brief.\n"
+        f"Contenuto già scritto: {contenuto[-2500:]}",
+        "Sei un instructional designer tecnico: produci brief visivi accurati e verificabili."
+    )
+    try:
+        risposta = client.images.generate(model="gpt-image-1", prompt=f"Illustrazione didattica tecnica per un manuale professionale. {descrizione}. Stile pulito, sfondo chiaro, alta leggibilità, nessun logo.", size="1024x1024")
+        dato = risposta.data[0]
+        if getattr(dato, "b64_json", None): return base64.b64decode(dato.b64_json), descrizione
+        if getattr(dato, "url", None): return requests.get(dato.url, timeout=60).content, descrizione
+        raise ValueError("Risposta immagini priva di dati utilizzabili")
+    except Exception as e:
+        st.error(f"Errore nella generazione dell'immagine: {e}")
+        return None, None
 
 def analizza_qualita_prosa(testo):
     """
@@ -833,7 +855,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                         with st.spinner("Generazione Quiz didattico..."):
                             res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} dando del {val_pov} al lettore su:\n{st.session_state[k_sessione]}", "Learning Expert.")
                             st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + res_q; st.rerun()
-                
+
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE ESEMPI ---
                 trad_esempi = {
                     "Italiano": {"btn": "💡 10 ESEMPI", "titolo": "### 💡 10 ESEMPI PRATICI"},
@@ -904,6 +926,27 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ric}\n\n" + res_r
                             st.rerun()
 
+            st.divider()
+            st.subheader("🖼️ Immagine didattica del capitolo")
+            if st.button("🖼️ GENERA IMMAGINE DEL CAPITOLO", use_container_width=True):
+                if k_sessione not in st.session_state or not st.session_state[k_sessione].strip():
+                    st.warning("Genera prima il contenuto del capitolo.")
+                else:
+                    with st.spinner("Generazione immagine didattica..."):
+                        img_bytes, img_prompt = genera_immagine_capitolo(
+                            sez_scelta, val_titolo, val_genere, val_trama,
+                            st.session_state[k_sessione], lingua_sel
+                        )
+                        if img_bytes:
+                            st.session_state["immagini_capitoli"][sez_scelta] = {
+                                "bytes": img_bytes, "prompt": img_prompt,
+                                "caption": f"Illustrazione didattica: {sez_scelta}"
+                            }
+                            st.success("Immagine generata e associata al capitolo.")
+                            st.rerun()
+            if st.session_state.get("immagini_capitoli", {}).get(sez_scelta):
+                st.image(st.session_state["immagini_capitoli"][sez_scelta]["bytes"], caption="Immagine associata al capitolo", width=500)
+
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=st.session_state.get(k_sessione, ""), height=500)
             
             with st.expander("🔍 Linter Qualità & Analisi Sintattica Avanzata"):
@@ -928,7 +971,11 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
         for s in opzioni_editor:
             sk = f"txt_{s.replace(' ', '_').replace('.', '')}"
             if sk in st.session_state and st.session_state[sk].strip():
-                html_p += f"<h2>{s.upper()}</h2><p>{st.session_state[sk].replace(chr(10), '<br>')}</p>"
+                html_p += f"<h2>{s.upper()}</h2>"
+                img = st.session_state.get("immagini_capitoli", {}).get(s)
+                if img:
+                    st.image(img["bytes"], caption=img.get("caption", ""), width=700)
+                html_p += f"<p>{st.session_state[sk].replace(chr(10), '<br>')}</p>"
         st.markdown(html_p + "</div>", unsafe_allow_html=True)
 
     # TAB 4: ESPORTAZIONE
@@ -939,14 +986,21 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                 doc = Document(); doc.add_heading(val_titolo, 0)
                 for s in opzioni_editor:
                     ke = f"txt_{s.replace(' ', '_').replace('.', '')}"
-                    if ke in st.session_state: doc.add_page_break(); doc.add_heading(s.upper(), level=1); doc.add_paragraph(st.session_state[ke])
+                    if ke in st.session_state:
+                        doc.add_page_break(); doc.add_heading(s.upper(), level=1)
+                        img = st.session_state.get("immagini_capitoli", {}).get(s)
+                        if img:
+                            doc.add_picture(BytesIO(img["bytes"]), width=None)
+                            doc.add_paragraph(img.get("caption", ""))
+                        doc.add_paragraph(st.session_state[ke])
                 bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
             if st.button(L["btn_pdf"]):
                 pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
                 for s in opzioni_editor:
                     kd = f"txt_{s.replace(' ', '_').replace('.', '')}"
-                    if kd in st.session_state: pdf.add_content(s.upper(), st.session_state[kd])
+                    if kd in st.session_state:
+                        pdf.add_content(s.upper(), st.session_state[kd])
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
 else:
     st.info(L["welcome"] + " " + L["guide"])
