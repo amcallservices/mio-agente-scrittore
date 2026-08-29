@@ -464,6 +464,20 @@ with st.sidebar:
         "Minimalista ed Essenziale"
     ]
     val_stile = st.selectbox(L["lbl_style"], stili_estesi)
+
+    direttive_indice_tipologia = {
+        "Standard": "Struttura lineare e chiara: introduzione, sviluppo progressivo, applicazione e sintesi finale. Mantieni titoli concreti e comprensibili.",
+        "Professionale Accademico": "Organizza l'indice con definizioni, quadro teorico, metodologia, analisi, evidenze, limiti, implicazioni e riferimenti. Separa concetti, metodo e risultati.",
+        "Persuasivo (Neuromarketing Applicato)": "Costruisci un percorso da problema a desiderio, soluzione, prove, obiezioni, benefici e azione. Ogni parte deve sostenere la promessa senza claim non verificabili.",
+        "Conversazionale ed Empatico": "Sequenzia l'indice come un accompagnamento graduale: difficoltà del lettore, comprensione, rassicurazione, esercitazione e autonomia. Inserisci momenti di verifica e domande guida.",
+        "Scientifico Divulgativo": "Procedi da basi e contesto a meccanismi, evidenze, esempi, applicazioni e limiti. Distingui fatti, ipotesi, fonti e semplificazioni divulgative.",
+        "Storytelling Immersivo": "Progetta un arco narrativo con situazione iniziale, personaggi, obiettivo, ostacoli, svolte, conseguenze e risoluzione. Ogni capitolo deve far avanzare conflitto o trasformazione.",
+        "Giornalistico d'Inchiesta": "Organizza il percorso da domanda iniziale a contesto, fonti, testimonianze, verifiche, contraddizioni, prove, responsabilità e conclusioni. Indica chiaramente cosa va documentato.",
+        "Socratico (Dialogico / Riflessivo)": "Costruisci l'indice tramite domande progressive: presupposti, dubbi, obiezioni, esempi, ragionamento e sintesi. Ogni capitolo deve sviluppare una domanda centrale e una risposta argomentata.",
+        "Epico ed Evocativo": "Crea una progressione ampia e memorabile con origine, chiamata, prove, trasformazione, conflitto e compimento, mantenendo coerenza con genere e obiettivo senza sacrificare chiarezza.",
+        "Minimalista ed Essenziale": "Riduci ogni parte al necessario: un obiettivo per capitolo, sottocapitoli non sovrapposti, titoli brevi e risultati concreti. Elimina digressioni, ripetizioni e contenuti ornamentali."
+    }
+    direttiva_indice_selezionata = direttive_indice_tipologia.get(val_stile, direttive_indice_tipologia["Standard"])
     
     st.markdown("---")
     # --- AGGIUNTA "STORICO E DOCUMENTALE" AGLI STILI DI RACCONTO ---
@@ -827,6 +841,10 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
 - Obiettivo Emozionale/Pratico: {val_goal}
 
 {specifica_editoriale}
+
+=== DIRETTIVA SPECIFICA DELLA TIPOLOGIA DI SCRITTURA ===
+Tipologia selezionata: {val_stile}
+{direttiva_indice_selezionata}
 
 === SPECIFICA OPERATIVA PER LA PROGETTAZIONE DELL'INDICE ===
 Costruisci l'indice come un progetto editoriale eseguibile, non come un elenco generico.
