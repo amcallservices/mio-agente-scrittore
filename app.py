@@ -808,6 +808,54 @@ COERENZA CON IL BRIEF: breve verifica di titolo, pubblico, obiettivo, genere e s
         "Sei un editor senior specializzato in architettura di libri. Sei rigoroso, concreto e non usi valutazioni vaghe."
     ))
 
+def valuta_manoscritto_completo(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
+    """Esegue una valutazione editoriale dell'intero manoscritto rispetto al brief della sidebar."""
+    sezioni_analizzate = []
+    for sezione, contenuto in contenuti.items():
+        testo = pulisci_testo_editoriale(contenuto).strip()
+        if not testo:
+            sezioni_analizzate.append(f"SEZIONE: {sezione}\nSTATO: non ancora scritta")
+            continue
+        # Mantiene sia l'apertura sia la chiusura delle sezioni molto lunghe per una valutazione completa e sostenibile.
+        if len(testo) > 3500:
+            testo = f"{testo[:2600]}\n[... parte centrale omessa solo per l'analisi ...]\n{testo[-900:]}"
+        sezioni_analizzate.append(f"SEZIONE: {sezione}\nCONTENUTO:\n{testo}")
+    manoscritto = "\n\n".join(sezioni_analizzate)
+    prompt = f"""Valuta professionalmente il manoscritto seguente in lingua {lingua}.
+
+BRIEF DEL LIBRO
+Titolo: {titolo}
+Trama/argomento: {trama}
+Genere: {genere}
+Tipologia di scrittura: {stile}
+Stile di racconto: {narrativa}
+Punto di vista: {pov}
+Obiettivo: {obiettivo}
+Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
+
+INDICE
+{indice}
+
+MANOSCRITTO
+{manoscritto}
+
+Valuta l'intero libro confrontandolo con il brief e l'indice. Controlla: completezza delle sezioni, profondità delle spiegazioni, correttezza della progressione, pertinenza delle tematiche, copertura degli approfondimenti prioritari, coerenza di genere/stile/POV, ripetizioni, sezioni troppo generiche e passaggi che richiedono maggiore dettaglio.
+Non inventare difetti o contenuti che non emergono dal manoscritto. Distingui le sezioni non scritte dalle sezioni deboli. Non includere URL, fonti, Markdown o ragionamenti interni.
+
+Restituisci testo semplice in questo formato:
+VOTO COMPLESSIVO DEL LIBRO: X/10
+VERDETTO EDITORIALE: una sintesi concreta.
+ADERENZA ALLA SIDEBAR: valuta titolo, obiettivo, trama, genere, tipologia, stile, POV e approfondimenti.
+PROFONDITÀ DELLE TEMATICHE: indica gli argomenti trattati bene e quelli da approfondire.
+COERENZA E PROGRESSIONE: indica eventuali ripetizioni, salti o sovrapposizioni.
+SEZIONI DA MIGLIORARE: elenca solo sezioni specifiche con intervento richiesto.
+AZIONI PRIORITARIE: massimo 5 azioni concrete, ordinate per importanza.
+"""
+    return pulisci_testo_editoriale(chiedi_gpt(
+        prompt,
+        "Sei un direttore editoriale esperto. Valuti manoscritti in modo rigoroso, costruttivo e basato soltanto sul testo ricevuto."
+    ))
+
 def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, approfondimenti=""):
     """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
     return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
@@ -1177,8 +1225,10 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
     with tabs[1]:
         if not lista_cap_base: st.warning(L["msg_err_idx"])
         else:
-            sezioni_intero_libro = individua_sezioni_da_stendere(lista_cap_base)
-            st.caption(f"Stesura completa disponibile: {len(sezioni_intero_libro)} capitoli e sottocapitoli rilevati. I contenuti già scritti verranno conservati.")
+            # La stesura completa deve seguire esattamente tutte le sezioni disponibili nell'editor:
+            # prefazione, parti, capitoli, sottocapitoli e ringraziamenti.
+            sezioni_intero_libro = opzioni_editor
+            st.caption(f"Stesura completa disponibile: {len(sezioni_intero_libro)} sezioni rilevate. I contenuti già scritti verranno conservati.")
             if st.button("📚 SCRIVI TUTTO IL LIBRO", use_container_width=True, key="scrivi_tutto_libro"):
                 da_generare = []
                 gia_presenti = 0
@@ -1394,11 +1444,26 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 s: st.session_state.get(f"txt_{s.replace(' ', '_').replace('.', '')}", "")
                 for s in opzioni_editor
             }
-            st.session_state["report_coerenza_libro"] = analizza_coerenza_libro(
-                st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama
-            )
+            with st.spinner("Analisi completa del manoscritto in corso..."):
+                controllo_tecnico = analizza_coerenza_libro(
+                    st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama
+                )
+                valutazione_editoriale = valuta_manoscritto_completo(
+                    st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo,
+                    val_trama, val_genere, val_stile, val_narrativa, val_pov, val_goal,
+                    lingua_sel, val_approfondimenti
+                )
+                st.session_state["report_coerenza_libro"] = (
+                    f"CONTROLLO TECNICO\n{controllo_tecnico}\n\n"
+                    f"VALUTAZIONE EDITORIALE COMPLETA\n{valutazione_editoriale}"
+                )
         if st.session_state.get("report_coerenza_libro"):
-            st.info(st.session_state["report_coerenza_libro"])
+            st.text_area(
+                "Analisi completa del libro",
+                value=st.session_state["report_coerenza_libro"],
+                height=420,
+                key="output_report_coerenza_libro"
+            )
         html_p = f"<div class='preview-box'><h1 style='text-align:center;'>{val_titolo.upper()}</h1>"
         if val_autore: html_p += f"<h3 style='text-align:center;'>di {val_autore}</h3>"
         html_p += "<hr><br>"
