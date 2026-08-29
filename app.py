@@ -174,7 +174,17 @@ st.markdown("""
 
 section[data-testid="stSidebar"] { 
     min-width: 420px !important; max-width: 420px !important; 
-    background-color: #1e1e1e !important; border-right: 1px solid #333;
+    width: 420px !important; display: block !important; visibility: visible !important;
+    transform: none !important; background-color: #1e1e1e !important; border-right: 1px solid #333;
+}
+/* Sidebar fissa: impedisce il collasso accidentale della barra laterale. */
+section[data-testid="stSidebar"][aria-expanded="false"],
+[data-testid="stSidebar"][aria-expanded="false"] {
+    min-width: 420px !important; max-width: 420px !important; width: 420px !important;
+    display: block !important; visibility: visible !important; transform: none !important;
+}
+section[data-testid="stSidebar"] > div:first-child {
+    width: 420px !important; min-width: 420px !important; display: block !important;
 }
 section[data-testid="stSidebar"] .stMarkdown, section[data-testid="stSidebar"] label, 
 section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] h1,
