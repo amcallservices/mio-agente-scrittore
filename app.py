@@ -142,7 +142,7 @@ def notifica_sonora(evento):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r7"
+VERSIONE_DEPLOY = "QA-2026-08-30-r8"
 VERSIONE_AUDIT_COHERENZA = "2"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -2422,6 +2422,31 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
             st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo, val_trama,
             val_genere, val_stile, val_narrativa, val_pov, val_goal, val_risultato, val_approfondimenti
         )
+
+        # L'anteprima viene renderizzata prima dei controlli: resta consultabile mentre l'audit aggiorna la barra sotto.
+        html_p = f"<div class='preview-box'><h1 style='text-align:center;'>{val_titolo.upper()}</h1>"
+        if val_autore:
+            html_p += f"<h3 style='text-align:center;'>di {val_autore}</h3>"
+        html_p += "<hr><br>"
+        for s in opzioni_editor:
+            sk = f"txt_{s.replace(' ', '_').replace('.', '')}"
+            if sk in st.session_state and st.session_state[sk].strip():
+                html_p += f"<h2>{s.upper()}</h2>"
+                img = st.session_state.get("immagini_capitoli", {}).get(s)
+                if img:
+                    img_b64 = base64.b64encode(img["bytes"]).decode("ascii")
+                    caption = img.get("caption", "Immagine didattica")
+                    html_p += (
+                        f"<div style='text-align:center;margin:18px 0;'>"
+                        f"<img src='data:image/png;base64,{img_b64}' "
+                        f"style='max-width:58%;height:auto;max-height:360px;object-fit:contain;'>"
+                        f"<div style='font-size:13px;color:#555;font-style:italic;'>{caption}</div></div>"
+                    )
+                testo_preview = pulisci_testo_editoriale(st.session_state[sk])
+                html_p += f"<p>{testo_preview.replace(chr(10), '<br>')}</p>"
+        st.markdown(html_p + "</div>", unsafe_allow_html=True)
+        st.divider()
+        st.subheader("Controllo del manoscritto")
         if st.button("🔍 CONTROLLO COERENZA COMPLETO"):
             barra_coerenza = st.progress(0, text="Preparazione del controllo completo del manoscritto...")
             stato_coerenza = st.empty()
@@ -2461,26 +2486,6 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                     height=420,
                     key="output_report_coerenza_libro"
                 )
-        html_p = f"<div class='preview-box'><h1 style='text-align:center;'>{val_titolo.upper()}</h1>"
-        if val_autore: html_p += f"<h3 style='text-align:center;'>di {val_autore}</h3>"
-        html_p += "<hr><br>"
-        for s in opzioni_editor:
-            sk = f"txt_{s.replace(' ', '_').replace('.', '')}"
-            if sk in st.session_state and st.session_state[sk].strip():
-                html_p += f"<h2>{s.upper()}</h2>"
-                img = st.session_state.get("immagini_capitoli", {}).get(s)
-                if img:
-                    img_b64 = base64.b64encode(img["bytes"]).decode("ascii")
-                    caption = img.get("caption", "Immagine didattica")
-                    html_p += (
-                        f"<div style='text-align:center;margin:18px 0;'>"
-                        f"<img src='data:image/png;base64,{img_b64}' "
-                        f"style='max-width:58%;height:auto;max-height:360px;object-fit:contain;'>"
-                        f"<div style='font-size:13px;color:#555;font-style:italic;'>{caption}</div></div>"
-                    )
-                testo_preview = pulisci_testo_editoriale(st.session_state[sk])
-                html_p += f"<p>{testo_preview.replace(chr(10), '<br>')}</p>"
-        st.markdown(html_p + "</div>", unsafe_allow_html=True)
 
     # TAB 4: ESPORTAZIONE
     with tabs[4]:
