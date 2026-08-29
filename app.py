@@ -9,6 +9,7 @@ import base64
 from fpdf import FPDF
 from openai import OpenAI
 from docx import Document
+from docx.shared import Inches
 from io import BytesIO
 from collections import Counter
 import PyPDF2  # Libreria necessaria per leggere i PDF caricati
@@ -259,11 +260,28 @@ class EbookPDF(FPDF):
         self.multi_cell(0, 15, self.titolo.upper(), 0, 'C'); self.ln(20)
         self.set_font('Arial', 'I', 20); self.cell(0, 10, f"di {self.autore}", 0, 1, 'C')
         
-    def add_content(self, title, content):
+    def add_content(self, title, content, image_bytes=None, image_caption=None):
         self.add_page(); self.ln(15); self.set_font('Arial', 'B', 22)
         # FIX: Sostituito cell() con multi_cell() per il titolo, per mandare a capo i titoli lunghi!
         self.multi_cell(0, 15, self._clean(title).upper(), 0, 'L'); self.ln(10); self.set_font('Arial', '', 12)
         # multi_cell con w=0 ora calcola la larghezza rispettando il margine destro (15mm)
+        if image_bytes:
+            image_path = os.path.join(st.session_state.get("tmp_dir", os.path.abspath("tmp")), "ebook_creator_image.png")
+            os.makedirs(os.path.dirname(image_path), exist_ok=True)
+            with open(image_path, "wb") as f:
+                f.write(image_bytes)
+            try:
+                # Larghezza massima 170 mm: evita immagini enormi o tagliate.
+                self.image(image_path, x=20, w=170)
+                self.ln(4)
+                if image_caption:
+                    self.set_font('Arial', 'I', 9)
+                    self.multi_cell(0, 6, self._clean(image_caption), 0, 'C')
+                    self.ln(5)
+            finally:
+                try: os.remove(image_path)
+                except OSError: pass
+        self.set_font('Arial', '', 12)
         self.multi_cell(0, 10, self._clean(content))
 
 # ======================================================================================================================
@@ -979,7 +997,14 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                 html_p += f"<h2>{s.upper()}</h2>"
                 img = st.session_state.get("immagini_capitoli", {}).get(s)
                 if img:
-                    st.image(img["bytes"], caption=img.get("caption", ""), width=700)
+                    img_b64 = base64.b64encode(img["bytes"]).decode("ascii")
+                    caption = img.get("caption", "Immagine didattica")
+                    html_p += (
+                        f"<div style='text-align:center;margin:18px 0;'>"
+                        f"<img src='data:image/png;base64,{img_b64}' "
+                        f"style='max-width:82%;height:auto;max-height:520px;object-fit:contain;'>"
+                        f"<div style='font-size:13px;color:#555;font-style:italic;'>{caption}</div></div>"
+                    )
                 html_p += f"<p>{st.session_state[sk].replace(chr(10), '<br>')}</p>"
         st.markdown(html_p + "</div>", unsafe_allow_html=True)
 
@@ -995,7 +1020,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                         doc.add_page_break(); doc.add_heading(s.upper(), level=1)
                         img = st.session_state.get("immagini_capitoli", {}).get(s)
                         if img:
-                            doc.add_picture(BytesIO(img["bytes"]), width=None)
+                            doc.add_picture(BytesIO(img["bytes"]), width=Inches(5.8))
                             doc.add_paragraph(img.get("caption", ""))
                         doc.add_paragraph(st.session_state[ke])
                 bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -1005,7 +1030,12 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                 for s in opzioni_editor:
                     kd = f"txt_{s.replace(' ', '_').replace('.', '')}"
                     if kd in st.session_state:
-                        pdf.add_content(s.upper(), st.session_state[kd])
+                        img = st.session_state.get("immagini_capitoli", {}).get(s)
+                        pdf.add_content(
+                            s.upper(), st.session_state[kd],
+                            image_bytes=img.get("bytes") if img else None,
+                            image_caption=img.get("caption") if img else None
+                        )
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
 else:
     st.info(L["welcome"] + " " + L["guide"])
