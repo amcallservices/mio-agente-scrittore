@@ -155,10 +155,13 @@ def notifica_sonora(evento, lingua="Italiano", ripeti=False):
     icona = "⚠️" if evento == "errore_scrittura" else "✅"
     # Durata lunga: il messaggio resta visibile anche quando l'operazione termina velocemente.
     st.toast(messaggio, icon=icona, duration="long")
-    components.html("""
+    # Il token cambia a ogni evento: forza il browser a rieseguire l'audio anche per notifiche consecutive.
+    token_audio = uuid.uuid4().hex
+    html_audio = """
     <script>
     (() => {
       try {
+        const eventId = '__TOKEN_AUDIO__';
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         const ctx = new AudioCtx();
         [[988, 0.00, 0.15, 0.88], [1319, 0.16, 0.15, 0.92], [1760, 0.32, 0.42, 0.96]].forEach(([f, start, duration, volume]) => {
@@ -176,7 +179,8 @@ def notifica_sonora(evento, lingua="Italiano", ripeti=False):
       } catch (error) { console.log('Audio notification unavailable', error); }
     })();
     </script>
-    """, height=0)
+    """.replace("__TOKEN_AUDIO__", token_audio)
+    components.html(html_audio, height=0)
 
 # ======================================================================================================================
 # 1. ARCHITETTURA DI SISTEMA E SICUREZZA API
@@ -185,7 +189,7 @@ def notifica_sonora(evento, lingua="Italiano", ripeti=False):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r15"
+VERSIONE_DEPLOY = "QA-2026-08-30-r16"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
