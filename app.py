@@ -13,6 +13,7 @@ from docx.shared import Inches
 from io import BytesIO
 from collections import Counter
 import PyPDF2  # Libreria necessaria per leggere i PDF caricati
+from PIL import Image
 
 # ======================================================================================================================
 # 0. GESTIONE MEMORIA DI STATO E PREVENZIONE AUTO-RESET
@@ -271,8 +272,8 @@ class EbookPDF(FPDF):
             with open(image_path, "wb") as f:
                 f.write(image_bytes)
             try:
-                # Larghezza massima 170 mm: evita immagini enormi o tagliate.
-                self.image(image_path, x=20, w=170)
+                # Immagine compatta: lascia spazio alla prosa e mantiene proporzioni corrette.
+                self.image(image_path, x=48, w=115)
                 self.ln(4)
                 if image_caption:
                     self.set_font('Arial', 'I', 9)
@@ -339,7 +340,7 @@ def pulisci_testo_editoriale(testo):
     return testo.strip()
 
 def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
-    """GPT-4o-mini prepara il brief; gpt-image-1 genera l'immagine didattica."""
+    """GPT-4o-mini prepara il brief; GPT-Image-1 Mini genera il visual economico."""
     descrizione = chiedi_gpt(
         f"Crea un brief visivo tecnico per il capitolo '{sezione}' del libro '{titolo}'. "
         f"Argomento: {trama}. Genere: {genere}. Lingua: {lingua}. "
@@ -351,10 +352,17 @@ def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
         "Sei un instructional designer tecnico: produci brief visivi accurati e verificabili."
     )
     try:
-        risposta = client.images.generate(model="gpt-image-1", prompt=f"Illustrazione didattica tecnica per un manuale professionale. Rendi visivamente il concetto del capitolo: {descrizione}. Nessun testo o simbolo alfabetico nell'immagine, nessun titolo, nessuna didascalia, nessun logo. Usa forme, oggetti, frecce visive non testuali e relazioni spaziali. Stile pulito, sfondo chiaro, alta leggibilità.", size="1024x1024")
+        risposta = client.images.generate(model="gpt-image-1-mini", prompt=f"Illustrazione didattica tecnica compatta per un manuale professionale. Rendi visivamente il concetto del capitolo: {descrizione}. Nessun testo o simbolo alfabetico nell'immagine, nessun titolo, nessuna didascalia, nessun logo. Usa forme, oggetti, frecce visive non testuali e relazioni spaziali. Composizione semplice, pochi elementi essenziali, sfondo bianco, tratto nero, scala di grigi, stile da diagramma tecnico monocromatico, senza colori.", size="1024x1024", quality="low")
         dato = risposta.data[0]
-        if getattr(dato, "b64_json", None): return base64.b64decode(dato.b64_json), descrizione
-        if getattr(dato, "url", None): return requests.get(dato.url, timeout=60).content, descrizione
+        raw = None
+        if getattr(dato, "b64_json", None): raw = base64.b64decode(dato.b64_json)
+        elif getattr(dato, "url", None): raw = requests.get(dato.url, timeout=60).content
+        if raw:
+            # Riduce risoluzione/peso e converte sempre in bianco e nero prima di salvare.
+            img = Image.open(BytesIO(raw)).convert("L")
+            img.thumbnail((720, 720), Image.Resampling.LANCZOS)
+            out = BytesIO(); img.save(out, format="PNG", optimize=True)
+            return out.getvalue(), descrizione
         raise ValueError("Risposta immagini priva di dati utilizzabili")
     except Exception as e:
         st.error(f"Errore nella generazione dell'immagine: {e}")
@@ -1098,7 +1106,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                     html_p += (
                         f"<div style='text-align:center;margin:18px 0;'>"
                         f"<img src='data:image/png;base64,{img_b64}' "
-                        f"style='max-width:82%;height:auto;max-height:520px;object-fit:contain;'>"
+                        f"style='max-width:58%;height:auto;max-height:360px;object-fit:contain;'>"
                         f"<div style='font-size:13px;color:#555;font-style:italic;'>{caption}</div></div>"
                     )
                 testo_preview = pulisci_testo_editoriale(st.session_state[sk])
@@ -1117,7 +1125,7 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                         doc.add_page_break(); doc.add_heading(s.upper(), level=1)
                         img = st.session_state.get("immagini_capitoli", {}).get(s)
                         if img:
-                            doc.add_picture(BytesIO(img["bytes"]), width=Inches(5.8))
+                            doc.add_picture(BytesIO(img["bytes"]), width=Inches(4.3))
                             doc.add_paragraph(img.get("caption", ""))
                         doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
                 bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
