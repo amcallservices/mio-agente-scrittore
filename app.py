@@ -752,28 +752,65 @@ def criticita_indice_generato(indice, genere, titolo, trama, obiettivo):
     return problemi
 
 
-def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obiettivo):
-    """Genera l'indice e applica fino a due revisioni quando fallisce vincoli oggettivi."""
+def audit_editoriale_indice_generato(indice, genere, titolo, trama, obiettivo, lingua):
+    """Secondo filtro qualitativo: intercetta titoli grammaticalmente scorretti o solo apparentemente specifici."""
+    prompt = f"""Sei un editor senior estremamente rigoroso. Valuta SOLO l'indice qui sotto in lingua {lingua}.
+
+BRIEF
+Titolo: {titolo}
+Genere: {genere}
+Obiettivo: {obiettivo}
+Argomento: {trama}
+
+CONTROLLA: correttezza grammaticale dei titoli; precisione e concretezza; attinenza completa al brief;
+progressione logica; assenza di capitoli vuoti, generici o ripetitivi; convenzioni effettive del genere.
+Per narrativa e biografia, verifica in particolare che i titoli nominino elementi reali di trama e non frasi vaghe.
+Un voto 10 è consentito solo se l'indice è già pronto per passare alla stesura senza nessuna correzione.
+
+Rispondi ESATTAMENTE in questo formato, senza markdown:
+VOTO: numero intero da 0 a 10
+ESITO: APPROVATO oppure DA CORREGGERE
+DIFETTI: una riga sintetica; scrivi NESSUNO soltanto con voto 10
+
+INDICE
+{indice}
+"""
+    risposta = pulisci_testo_editoriale(chiedi_gpt(prompt, "Editor senior specializzato in architettura editoriale e correzione di bozze.")).strip()
+    match = re.search(r"(?im)^\s*voto\s*:\s*(10|[0-9])\b", risposta)
+    voto = int(match.group(1)) if match else 0
+    difetti = re.search(r"(?im)^\s*difetti\s*:\s*(.+)$", risposta)
+    return voto, (difetti.group(1).strip() if difetti else risposta)
+
+
+def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obiettivo, lingua):
+    """Genera l'indice e applica fino a due revisioni su vincoli oggettivi e qualità editoriale."""
     corrente = normalizza_indice_generato(chiedi_gpt(prompt, system_prompt))
     for tentativo in range(3):
         problemi = criticita_indice_generato(corrente, genere, titolo, trama, obiettivo)
+        voto_editoriale, difetti_editoriali = (0, "")
         if not problemi:
-            esito = "Indice strutturalmente coerente con i vincoli verificabili del brief."
-            if tentativo:
-                esito = f"Indice corretto automaticamente al controllo {tentativo}: vincoli verificabili superati."
-            st.session_state["ultimo_controllo_indice"] = esito
-            return corrente
+            voto_editoriale, difetti_editoriali = audit_editoriale_indice_generato(
+                corrente, genere, titolo, trama, obiettivo, lingua
+            )
+            if voto_editoriale == 10:
+                esito = "Indice approvato: 10/10 nel controllo strutturale ed editoriale automatico."
+                if tentativo:
+                    esito = f"Indice corretto automaticamente al controllo {tentativo} e approvato 10/10."
+                st.session_state["ultimo_controllo_indice"] = esito
+                return corrente
+            problemi.append(f"audit editoriale {voto_editoriale}/10: {difetti_editoriali}")
         if tentativo == 2:
-            st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice richiede una verifica manuale: " + "; ".join(problemi)
+            st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice non ha raggiunto 10/10 e richiede una verifica manuale: " + "; ".join(problemi)
             return corrente
         revisione = prompt + f"""
 
 REVISIONE OBBLIGATORIA DELL'INDICE — TENTATIVO {tentativo + 1}
-La bozza precedente non rispetta questi vincoli oggettivi: {'; '.join(problemi)}.
+La bozza precedente non rispetta questi vincoli oggettivi/editoriali: {'; '.join(problemi)}.
 Riscrivi l'intero indice, senza commenti e senza la parola 'Indice' in apertura. Correggi tutti i punti segnalati;
 non limitarti a rinominare i titoli. Mantieni soltanto argomenti attinenti al brief.
 """
         corrente = normalizza_indice_generato(chiedi_gpt(revisione, system_prompt))
+    return corrente
 
 
 def tipo_sezione_editoriale(sezione):
@@ -1790,7 +1827,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 
                 st.session_state["indice_raw"] = genera_indice_controllato(
                     prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.",
-                    val_genere, val_titolo, val_trama, val_goal
+                    val_genere, val_titolo, val_trama, val_goal, lingua_sel
                 )
                 st.session_state.pop("analisi_voto_indice", None)
                 sync_capitoli(); st.rerun()
