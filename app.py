@@ -657,7 +657,7 @@ def profilo_struttura_indice(genere, titolo, trama, obiettivo):
         quantità = f"esattamente {numero}" if numero else "un numero coerente con la richiesta"
         return f"""RICETTARIO: crea {quantità} ricette effettive, distribuite in parti tematiche coerenti. Ogni ricetta è un Capitolo autonomo e completo. Se è richiesto un numero preciso di ricette, crea esattamente quel numero di Capitoli e ciascun Capitolo deve avere il nome di una ricetta: non usare Capitoli per introduzione, ingredienti, attrezzatura, tecniche o consigli. Le Parti possono orientare il lettore senza aggiungere Capitoli introduttivi. Non creare sottocapitoli 1.1, 1.2 o 1.3 per espandere la stessa ricetta. Il numero delle ricette nell'indice deve coincidere con il numero richiesto."""
     if genere in {"Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Narrativo", "Romanzo Classico", "Contemporaneo", "Biografia"}:
-        return "NARRATIVA E BIOGRAFIA: organizza 3-6 Parti e un numero di capitoli proporzionato all'arco narrativo. Non imporre sottocapitoli a ogni capitolo: usali solo se sono necessari e non spezzano artificialmente scene o svolte. Ogni titolo deve nominare una scena, una scelta, un luogo, un personaggio, un oggetto o una conseguenza specifici del brief: evita titoli generici come 'Il ritorno', 'La scoperta', 'Il conflitto', 'Riflessioni' o 'La fine'."
+        return "NARRATIVA E BIOGRAFIA: organizza 3-6 Parti e un numero di capitoli proporzionato all'arco narrativo. Non imporre sottocapitoli a ogni capitolo: usali solo se sono necessari e non spezzano artificialmente scene o svolte. Ogni titolo deve nominare una scena, una scelta, un luogo, un personaggio, un oggetto o una conseguenza specifici del brief. Almeno un terzo dei titoli deve contenere parole concrete tratte dal titolo o dalla trama. Evita titoli generici come 'Il ritorno', 'La scoperta', 'L'incontro inaspettato', 'Il richiamo del passato', 'Riflessioni' o 'La fine'."
     if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
         return "QUIZ E TEST PREP: organizza fondamenti, esercitazione graduata, simulazioni e correzioni. Ogni unità deve indicare una competenza verificabile; non creare capitoli riempitivi."
     return "SAGGISTICA E MANUALI: usa 4-6 Parti, 15-18 capitoli effettivi e 3-5 sottocapitoli solo quando corrispondono a concetti o passaggi realmente distinti."
@@ -712,7 +712,11 @@ def criticita_indice_generato(indice, genere, titolo, trama, obiettivo):
             problemi.append("un capitolo del ricettario è introduttivo o tecnico invece di essere una ricetta")
 
     if genere in narrativi:
-        titoli_generici = {"il ritorno", "la scoperta", "l'inizio", "la fine", "il conflitto", "la scelta", "la crisi", "riflessioni", "sogni e memorie", "nuovi inizi"}
+        titoli_generici = {
+            "il ritorno", "la scoperta", "l'inizio", "la fine", "il conflitto", "la scelta", "la crisi",
+            "riflessioni", "sogni e memorie", "nuovi inizi", "l'incontro inaspettato", "il richiamo del passato",
+            "la dolcezza del ricordo", "il richiamo della tradizione", "riscoprire se stessi", "la verità", "il segreto"
+        }
         trovati = []
         for capitolo in capitoli:
             nome = re.sub(r"(?i)^(capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+\s*:\s*", "", capitolo).strip().lower()
@@ -720,6 +724,25 @@ def criticita_indice_generato(indice, genere, titolo, trama, obiettivo):
                 trovati.append(capitolo)
         if len(trovati) >= 2:
             problemi.append("titoli narrativi troppo generici: " + "; ".join(trovati[:3]))
+        parole_da_escludere = {
+            "della", "delle", "dello", "degli", "dalla", "nelle", "nello", "come", "con", "una", "uno", "per",
+            "che", "del", "dei", "gli", "le", "il", "la", "un", "e", "di", "da", "in", "su", "tra", "fra",
+            "storia", "romanzo", "guida", "raccontare", "lettore", "lettori", "obiettivo", "titolo", "libro"
+        }
+        parole_brief = {
+            parola for parola in re.findall(r"[a-zàèéìòóù]{4,}", f"{titolo} {trama}".lower())
+            if parola not in parole_da_escludere
+        }
+        titoli_con_ancora = 0
+        for capitolo in capitoli:
+            nome = re.sub(r"(?i)^(capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+\s*:\s*", "", capitolo).lower()
+            if any(parola in nome for parola in parole_brief):
+                titoli_con_ancora += 1
+        soglia = max(3, (len(capitoli) + 2) // 3)
+        if titoli_con_ancora < soglia:
+            problemi.append(
+                f"titoli narrativi poco ancorati agli elementi concreti del brief ({titoli_con_ancora}/{len(capitoli)} titoli specifici)"
+            )
     if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
         testo_minuscolo = testo.lower()
         if "quiz" not in testo_minuscolo and "domand" not in testo_minuscolo:
