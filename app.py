@@ -142,8 +142,8 @@ def notifica_sonora(evento):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r8"
-VERSIONE_AUDIT_COHERENZA = "2"
+VERSIONE_DEPLOY = "QA-2026-08-30-r10"
+VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
 try:
@@ -1494,6 +1494,26 @@ def chiedi_audit_editoriale(prompt):
         return f"ERRORE AUDIT: {str(e)}"
 
 
+def mappa_capitoli_e_sottocapitoli(indice):
+    """Restituisce una mappa leggibile sottocapitolo -> capitolo padre per rendere il report azionabile."""
+    capitolo_corrente = ""
+    righe_mappa = []
+    pattern_capitolo = re.compile(
+        r"(?i)^(?:capitolo|chapter|kapitel|cap[ií]tulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+.*"
+    )
+    pattern_sottocapitolo = re.compile(r"^\d+\.\d+(?:\.\d+)?\s+.+")
+    for riga in (indice or "").splitlines():
+        voce = riga.strip()
+        if not voce:
+            continue
+        if pattern_capitolo.match(voce):
+            capitolo_corrente = voce
+        elif pattern_sottocapitolo.match(voce):
+            if capitolo_corrente:
+                righe_mappa.append(f"{voce}  →  {capitolo_corrente}")
+    return "\n".join(righe_mappa) or "Nessun sottocapitolo mappabile nell'indice."
+
+
 def valuta_manoscritto_completo(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti="", avanzamento=None):
     """Valuta ogni porzione del manoscritto, poi crea una sintesi basata sugli esiti effettivi."""
     sezioni_scritte = [s for s, c in contenuti.items() if pulisci_testo_editoriale(c).strip()]
@@ -1512,6 +1532,7 @@ Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 Approfondimenti prioritari: {approfondimenti.strip() or "Nessuno"}"""
     blocchi = blocchi_per_audit_manoscritto(contenuti)
     totale_blocchi = len(blocchi)
+    mappa_indice = mappa_capitoli_e_sottocapitoli(indice)
     # La versione dell'audit invalida in modo sicuro i vecchi report quando cambiano le regole di valutazione.
     firma_base = hashlib.sha256(
         f"{VERSIONE_AUDIT_COHERENZA}\n{brief}\n{indice}".encode("utf-8")
@@ -1600,6 +1621,9 @@ Elenco sezioni non scritte: {', '.join(sezioni_vuote) if sezioni_vuote else 'nes
 AUDIT DI TUTTI I BLOCCHI DEL MANOSCRITTO
 {audit_compilati}
 
+MAPPA UFFICIALE CAPITOLI E SOTTOCAPITOLI
+{mappa_indice}
+
 Se ci sono sezioni non scritte, dichiara con chiarezza che la valutazione riguarda un manoscritto parziale e non assegnare un voto finale al libro completo. Altrimenti assegna un voto da 1 a 10.
 Non inserire URL, fonti, Markdown o ragionamenti interni. Restituisci esattamente queste voci:
 STATO DEL MANOSCRITTO:
@@ -1615,7 +1639,9 @@ PROMPT PRONTI PER RIGENERA CON AI:
 REGOLE OBBLIGATORIE PER "SEZIONI DA MIGLIORARE" E PER I PROMPT:
 - Elenca soltanto problemi realmente emersi dagli audit.
 - Ogni voce deve identificare la destinazione con il titolo esatto dell'indice: prima il capitolo, poi il sottocapitolo specifico quando il difetto è locale.
+- Usa la MAPPA UFFICIALE: un sottocapitolo (es. 4.2) non può mai essere indicato come capitolo di riferimento.
 - Non scrivere mai indicazioni generiche quali "migliorare il capitolo" senza identificare il punto esatto.
+- Riunisci tutti i difetti della stessa sezione in un unico blocco e in un solo prompt completo. Non creare cinque prompt separati per lo stesso sottocapitolo.
 - Non accorpare sottocapitoli diversi nella stessa voce se richiedono interventi differenti.
 - Se non rilevi criticità, scrivi "NESSUNA SEZIONE DA RIGENERARE" in entrambe le voci.
 
@@ -1954,25 +1980,131 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 - NO SUPERFICIALITÀ: Non dare risposte generiche o banali. Ogni paragrafo deve trasudare competenza profonda, spiegando i meccanismi interni, le ragioni nascoste e i dettagli tecnici dell'argomento.
 """
 
-    tabs = st.tabs(["📘 1. Come usare Scrittore Site"] + L["tabs"] + ["🛠️ 6. Formattazione"])
+    guide_localizzate = {
+        "Italiano": ("Come usare Scrittore Site", """1. Compila la barra laterale: titolo, autore, lingua, genere, stile, obiettivo, argomento e risultato finale. Usa Approfondimenti per priorità, vincoli ed esempi obbligatori.
+
+2. Apri Indice e premi Genera Indice Professionale. Se lo modifichi a mano, usa Salva e Sincronizza Capitoli. Voto Indice lo valuta; Rigenera indice seguendo il voto propone una nuova versione da applicare soltanto se ti convince.
+
+3. In Scrittura e Quiz scegli una sezione. Scrivi contenuto genera una sezione, Scrivi tutti i sottocapitoli del capitolo genera il blocco scelto e Scrivi tutto il libro completa le sezioni vuote. Pausa interrompe il lavoro prima della sezione successiva e Riprendi generazione lo continua.
+
+4. Rigenera con AI modifica solo la sezione scelta seguendo la tua istruzione. Quiz aggiunge domande, 10 Esempi aggiunge esempi, 10 Ricette è per i ricettari; Controlla i fatti e Report sintattico verificano qualità e leggibilità. Carica un'immagine inserisce la tua immagine in anteprima, Word e PDF.
+
+5. In Anteprima leggi il libro e usa Controllo coerenza completo. La barra mostra l'avanzamento; il report indica capitolo, sottocapitolo, priorità e prompt da copiare in Rigenera con AI.
+
+6. In Esporta scarichi Word o PDF anche come bozza. In Formattazione carichi un manoscritto, crei metadati KDP e formatti un DOCX 6×9.
+
+Notifiche sonore: sentirai il segnale quando la sidebar è pronta, quando parte o termina Scrivi tutto il libro, in caso di errore, al termine di Voto Indice, Controllo coerenza, formattazione ed esportazione. Controlla sempre testo e file finale prima di pubblicare."""),
+        "English": ("How to use Scrittore Site", """1. Complete the sidebar: title, author, language, genre, style, goal, topic and desired final result. Use Further details for priorities, constraints and required examples.
+
+2. Open Index and press Generate Professional Index. If you edit it manually, use Save and Sync Chapters. Index Score evaluates it; Regenerate index following the score creates a proposal that you apply only if you approve it.
+
+3. In Write & Quiz choose a section. Write content creates one section, Write all subsections of the chapter creates the selected block, and Write the whole book completes empty sections. Pause stops before the next section; Resume continues.
+
+4. Regenerate with AI changes only the selected section using your instruction. Quiz adds questions, 10 Examples adds examples, 10 Recipes is for cookbooks; Check facts and Syntax Report check quality and readability. Upload image places your image in Preview, Word and PDF.
+
+5. In Preview, read the book and use Full consistency check. The progress bar shows completion; the report identifies chapter, subsection, priority and a prompt to copy into Regenerate with AI.
+
+6. In Export, download Word or PDF, also as a draft. In Formatting, upload a manuscript, create KDP metadata and format a 6×9 DOCX.
+
+Sound notifications alert you when the sidebar is ready, full-book writing starts or ends, an error occurs, and Index Score, consistency check, formatting or export finish. Always review the text and final file before publishing."""),
+        "Español": ("Cómo usar Scrittore Site", """1. Completa la barra lateral: título, autor, idioma, género, estilo, objetivo, tema y resultado final deseado. Usa Profundizaciones para prioridades, límites y ejemplos obligatorios.
+
+2. Abre Índice y pulsa Generar índice profesional. Si lo modificas manualmente, usa Guardar y sincronizar capítulos. Voto del índice lo evalúa; Regenerar índice según el voto crea una propuesta que aplicas solo si la apruebas.
+
+3. En Escritura y cuestionarios elige una sección. Escribir contenido crea una sección; Escribir todos los subcapítulos crea el bloque elegido; Escribir todo el libro completa las secciones vacías. Pausa detiene el proceso y Reanudar lo continúa.
+
+4. Regenerar con IA modifica solo la sección elegida. Cuestionario añade preguntas, 10 ejemplos añade ejemplos y 10 recetas es para recetarios. Verificar hechos y Reporte sintáctico revisan calidad y legibilidad. Cargar imagen la añade a Vista previa, Word y PDF.
+
+5. En Vista previa lee el libro y usa Control completo de coherencia. La barra muestra el avance; el informe indica capítulo, subcapítulo, prioridad y un prompt para Regenerar con IA.
+
+6. En Exportar descargas Word o PDF, también como borrador. En Formato cargas un manuscrito, creas metadatos KDP y formateas un DOCX de 6×9.
+
+Las notificaciones sonoras avisan cuando la barra lateral está lista, al iniciar o terminar el libro completo, ante un error y al finalizar las verificaciones, el formato o la exportación. Revisa siempre el texto final antes de publicar."""),
+        "Français": ("Comment utiliser Scrittore Site", """1. Remplissez la barre latérale : titre, auteur, langue, genre, style, objectif, sujet et résultat final souhaité. Utilisez Approfondissements pour les priorités, contraintes et exemples obligatoires.
+
+2. Ouvrez Index puis cliquez sur Générer un index professionnel. Après une modification manuelle, utilisez Enregistrer et synchroniser les chapitres. Note de l’index l’évalue ; Régénérer selon la note crée une proposition à appliquer seulement si elle vous convient.
+
+3. Dans Écriture et quiz, choisissez une section. Écrire le contenu crée une section ; Écrire tous les sous-chapitres crée le bloc choisi ; Écrire tout le livre complète les sections vides. Pause interrompt et Reprendre continue.
+
+4. Régénérer avec l’IA modifie uniquement la section choisie. Quiz ajoute des questions, 10 exemples ajoute des exemples, 10 recettes est destiné aux livres de recettes. Vérifier les faits et Rapport syntaxique contrôlent qualité et lisibilité. Importer une image l’ajoute à l’aperçu, au Word et au PDF.
+
+5. Dans Aperçu, lisez le livre puis lancez le contrôle complet de cohérence. La barre indique la progression ; le rapport donne chapitre, sous-chapitre, priorité et prompt à copier dans Régénérer avec l’IA.
+
+6. Dans Exporter, téléchargez Word ou PDF, même comme brouillon. Dans Mise en forme, importez un manuscrit, créez les métadonnées KDP et formatez un DOCX 6×9.
+
+Les notifications sonores signalent que la barre latérale est prête, le début ou la fin de l’écriture complète, une erreur et la fin des contrôles, de la mise en forme ou de l’export. Vérifiez toujours le texte final avant publication."""),
+        "Deutsch": ("Scrittore Site verwenden", """1. Füllen Sie die Seitenleiste aus: Titel, Autor, Sprache, Genre, Stil, Ziel, Thema und gewünschtes Endergebnis. Nutzen Sie Vertiefungen für Prioritäten, Vorgaben und Pflichtbeispiele.
+
+2. Öffnen Sie Index und klicken Sie auf Professionellen Index erstellen. Nach manuellen Änderungen wählen Sie Speichern und Kapitel synchronisieren. Indexbewertung prüft die Struktur; Index nach Bewertung neu erstellen erzeugt einen Vorschlag, den Sie nur bei Zustimmung übernehmen.
+
+3. Wählen Sie unter Schreiben & Quiz einen Abschnitt. Inhalt schreiben erstellt einen Abschnitt, Alle Unterkapitel schreiben den gewählten Block und Ganzes Buch schreiben füllt leere Abschnitte. Pause hält vor dem nächsten Abschnitt an; Fortsetzen setzt fort.
+
+4. Mit KI neu erstellen ändert nur den ausgewählten Abschnitt. Quiz fügt Fragen hinzu, 10 Beispiele fügt Beispiele hinzu und 10 Rezepte ist für Kochbücher. Fakten prüfen und Syntaxbericht prüfen Qualität und Lesbarkeit. Bild hochladen fügt Ihr Bild in Vorschau, Word und PDF ein.
+
+5. Lesen Sie das Buch in Vorschau und starten Sie die vollständige Kohärenzprüfung. Der Balken zeigt den Fortschritt; der Bericht nennt Kapitel, Unterkapitel, Priorität und einen Prompt für Mit KI neu erstellen.
+
+6. Unter Export laden Sie Word oder PDF auch als Entwurf herunter. Unter Formatierung laden Sie ein Manuskript hoch, erstellen KDP-Metadaten und formatieren eine DOCX-Datei im Format 6×9.
+
+Tonbenachrichtigungen informieren über eine fertige Seitenleiste, Start oder Ende des ganzen Buchs, Fehler sowie Ende von Bewertung, Prüfung, Formatierung oder Export. Prüfen Sie Text und Enddatei immer vor der Veröffentlichung."""),
+        "Română": ("Cum se folosește Scrittore Site", """1. Completează bara laterală: titlu, autor, limbă, gen, stil, obiectiv, subiect și rezultat final dorit. Folosește Aprofundări pentru priorități, condiții și exemple obligatorii.
+
+2. Deschide Index și apasă Generare index profesional. Dacă îl modifici manual, folosește Salvează și sincronizează capitolele. Nota indexului îl evaluează; Regenerare după notă creează o propunere pe care o aplici doar dacă o aprobi.
+
+3. În Scriere și chestionare alege o secțiune. Scrie conținut creează o secțiune, Scrie toate subcapitolele creează blocul ales, iar Scrie toată cartea completează secțiunile goale. Pauză oprește procesul; Reia îl continuă.
+
+4. Regenerează cu IA modifică doar secțiunea aleasă. Chestionar adaugă întrebări, 10 exemple adaugă exemple, iar 10 rețete este pentru cărți de bucate. Verifică faptele și Raport sintactic verifică calitatea și lizibilitatea. Încarcă imagine o introduce în previzualizare, Word și PDF.
+
+5. În Previzualizare citește cartea și folosește Control complet de coerență. Bara arată progresul; raportul indică capitolul, subcapitolul, prioritatea și un prompt pentru Regenerare cu IA.
+
+6. În Export descarci Word sau PDF, inclusiv ca schiță. În Formatare încarci manuscrisul, creezi metadate KDP și formatezi un DOCX 6×9.
+
+Notificările sonore anunță când bara laterală este gata, la începutul sau sfârșitul cărții, la erori și la finalul verificărilor, formatării sau exportului. Verifică mereu textul și fișierul final înainte de publicare."""),
+        "Русский": ("Как пользоваться Scrittore Site", """1. Заполните боковую панель: название, автора, язык, жанр, стиль, цель, тему и желаемый итог. Используйте раздел «Углубления» для приоритетов, ограничений и обязательных примеров.
+
+2. Откройте «Индекс» и нажмите создание профессионального индекса. После ручных изменений используйте сохранение и синхронизацию глав. Оценка индекса проверяет структуру; повторная генерация по оценке создаёт предложение, которое применяется только с вашего согласия.
+
+3. В разделе «Написание и тесты» выберите секцию. Написать содержание создаёт одну секцию, написать все подразделы создаёт выбранный блок, а написать всю книгу заполняет пустые секции. Пауза останавливает работу, продолжить — возобновляет.
+
+4. Перегенерировать с ИИ меняет только выбранную секцию. Тест добавляет вопросы, 10 примеров — примеры, 10 рецептов предназначен для кулинарных книг. Проверка фактов и синтаксический отчёт проверяют качество и читаемость. Загрузка изображения добавляет его в предпросмотр, Word и PDF.
+
+5. В предпросмотре прочитайте книгу и запустите полную проверку согласованности. Полоса показывает прогресс; отчёт указывает главу, подраздел, приоритет и запрос для перегенерации с ИИ.
+
+6. В экспорте скачивайте Word или PDF, в том числе черновик. В форматировании загружайте рукопись, создавайте метаданные KDP и форматируйте DOCX 6×9.
+
+Звуковые уведомления сообщают о готовности боковой панели, начале или завершении всей книги, ошибках и окончании оценки, проверки, форматирования или экспорта. Всегда проверяйте текст и итоговый файл перед публикацией."""),
+        "العربية": ("كيفية استخدام Scrittore Site", """1. املأ الشريط الجانبي: العنوان، المؤلف، اللغة، النوع، الأسلوب، الهدف، الموضوع والنتيجة النهائية المطلوبة. استخدم قسم التفاصيل الإضافية للأولويات والقيود والأمثلة المطلوبة.
+
+2. افتح الفهرس واضغط إنشاء فهرس احترافي. بعد التعديل اليدوي استخدم حفظ ومزامنة الفصول. تقييم الفهرس يراجعه؛ إعادة إنشاء الفهرس وفق التقييم تنشئ اقتراحاً تطبقه فقط عند الموافقة.
+
+3. في الكتابة والاختبارات اختر قسماً. كتابة المحتوى تنشئ قسماً واحداً، وكتابة كل الأقسام الفرعية تنشئ الكتلة المختارة، وكتابة الكتاب كاملاً تكمل الأقسام الفارغة. الإيقاف المؤقت يوقف العمل والاستئناف يتابعه.
+
+4. إعادة الإنشاء بالذكاء الاصطناعي تعدل القسم المختار فقط. الاختبار يضيف أسئلة، و10 أمثلة تضيف أمثلة، و10 وصفات مخصصة لكتب الطبخ. فحص الحقائق والتقرير النحوي يفحصان الجودة وسهولة القراءة. تحميل صورة يضيفها إلى المعاينة وWord وPDF.
+
+5. في المعاينة اقرأ الكتاب واستخدم فحص الاتساق الكامل. شريط التقدم يوضح الحالة؛ ويحدد التقرير الفصل والقسم الفرعي والأولوية وموجهاً جاهزاً لإعادة الإنشاء بالذكاء الاصطناعي.
+
+6. في التصدير نزّل Word أو PDF حتى كمسودة. في التنسيق حمّل مخطوطة، وأنشئ بيانات KDP الوصفية ونسّق DOCX بمقاس 6×9.
+
+تنبّهك الإشعارات الصوتية عند جاهزية الشريط الجانبي، وبدء أو انتهاء كتابة الكتاب، وعند الخطأ، وانتهاء التقييم أو الفحص أو التنسيق أو التصدير. راجع النص والملف النهائي دائماً قبل النشر."""),
+        "中文": ("如何使用 Scrittore Site", """1. 填写侧边栏：书名、作者、语言、类型、写作风格、目标、主题和期望最终成果。使用“补充说明”填写重点、限制和必须包含的示例。
+
+2. 打开“目录”，点击“生成专业目录”。手动修改后，使用“保存并同步章节”。“目录评分”会进行评估；“按评分重新生成目录”会创建一个方案，只有在你认可后才应用。
+
+3. 在“写作与测验”中选择一个部分。“写内容”生成一个部分；“写本章所有小节”生成所选章节；“写整本书”补全空白部分。暂停会在下一部分前停止，继续会恢复生成。
+
+4. “用 AI 重新生成”只修改所选部分。测验会添加题目，10 个示例会添加示例，10 个食谱用于食谱书。事实检查和句法报告检查质量与可读性。上传图片会将你的图片加入预览、Word 和 PDF。
+
+5. 在“预览”中阅读图书，并使用“完整一致性检查”。进度条显示完成情况；报告会列出章节、小节、优先级，以及可复制到“用 AI 重新生成”的提示词。
+
+6. 在“导出”中下载 Word 或 PDF，也可以导出草稿。在“格式化”中上传手稿、生成 KDP 元数据并格式化 6×9 DOCX。
+
+声音通知会在侧边栏准备好、整本书开始或结束、发生错误以及目录评分、一致性检查、格式化或导出完成时提醒你。发布前务必检查文本和最终文件。""")
+    }
+    titolo_guida, testo_guida = guide_localizzate.get(lingua_sel, guide_localizzate["Italiano"])
+    tabs = st.tabs([f"📘 1. {titolo_guida}"] + L["tabs"] + ["🛠️ 6. Formattazione"])
 
     with tabs[0]:
-        st.subheader("Guida passo passo")
-        st.markdown("""
-1. Compila la barra laterale: titolo, autore, lingua, genere, stile, obiettivo, argomento e risultato finale desiderato. Usa Approfondimenti solo per le priorità del libro. Quando i campi obbligatori sono completi, sentirai un avviso e potrai creare l'indice.
-
-2. Apri Indice e premi Genera Indice Professionale. Se modifichi l'indice a mano, premi Salva e Sincronizza Capitoli. Voto Indice controlla la struttura; Rigenera indice seguendo il voto crea una proposta migliorata da applicare solo se ti convince.
-
-3. In Scrittura e Quiz scegli una sezione. Scrivi contenuto genera una sola sezione; Scrivi tutti i sottocapitoli del capitolo genera il blocco scelto; Scrivi tutto il libro completa tutte le sezioni vuote. Pausa ferma il lavoro prima della sezione successiva e Riprendi generazione lo continua.
-
-4. Per correggere una parte, selezionala e usa Rigenera con AI: inserisci un'istruzione concreta e verrà modificata solo quella sezione. Quiz aggiunge domande; 10 Esempi aggiunge esempi; 10 Ricette è riservato ai ricettari. Controlla i fatti del capitolo verifica dati aggiornabili; Genera Report Sintattico controlla la leggibilità. Carica un'immagine inserisce una tua immagine nella sezione, nell'anteprima e nelle esportazioni.
-
-5. In Anteprima leggi il libro e usa Controllo coerenza completo. Il report indica le sezioni da migliorare e fornisce prompt pronti da copiare in Rigenera con AI. Verifica anche che il libro raggiunga il risultato finale desiderato.
-
-6. In Esporta scarichi Word o PDF, anche come bozza. In Formattazione carichi un manoscritto, generi metadati KDP, formatti un DOCX 6×9 e scarichi il Word finale.
-
-Notifiche sonore: sentirai il segnale quando la sidebar è pronta, quando parte o termina Scrivi tutto il libro, in caso di errore, quando finiscono Voto Indice, Controllo coerenza, formattazione ed esportazione. Il suono avvisa soltanto: prima di pubblicare controlla sempre testo e file finale.
-        """)
+        st.subheader(titolo_guida)
+        st.markdown(testo_guida)
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
     with tabs[1]:
