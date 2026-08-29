@@ -6,6 +6,7 @@ import json
 import time
 import datetime
 import base64
+import hashlib
 from fpdf import FPDF
 from openai import OpenAI
 from docx import Document
@@ -929,53 +930,111 @@ COERENZA CON IL BRIEF: breve verifica di titolo, pubblico, obiettivo, genere e s
         "Sei un editor senior specializzato in architettura di libri. Sei rigoroso, concreto e non usi valutazioni vaghe."
     ))
 
-def valuta_manoscritto_completo(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
-    """Esegue una valutazione editoriale dell'intero manoscritto rispetto al brief della sidebar."""
-    sezioni_analizzate = []
+def firma_controllo_coerenza(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, approfondimenti):
+    """Identifica con certezza la versione del manoscritto su cui è stato prodotto il report."""
+    parti = [indice, titolo, trama, genere, stile, narrativa, pov, obiettivo, approfondimenti]
+    parti.extend(f"{sezione}\n{contenuto}" for sezione, contenuto in contenuti.items())
+    return hashlib.sha256("\n\u241e\n".join(str(p or "") for p in parti).encode("utf-8")).hexdigest()
+
+
+def blocchi_per_audit_manoscritto(contenuti, limite_caratteri=18000):
+    """Divide il testo intero in blocchi consecutivi, senza omettere la parte centrale delle sezioni."""
+    blocchi, corrente = [], ""
     for sezione, contenuto in contenuti.items():
         testo = pulisci_testo_editoriale(contenuto).strip()
         if not testo:
-            sezioni_analizzate.append(f"SEZIONE: {sezione}\nSTATO: non ancora scritta")
             continue
-        # Mantiene sia l'apertura sia la chiusura delle sezioni molto lunghe per una valutazione completa e sostenibile.
-        if len(testo) > 3500:
-            testo = f"{testo[:2600]}\n[... parte centrale omessa solo per l'analisi ...]\n{testo[-900:]}"
-        sezioni_analizzate.append(f"SEZIONE: {sezione}\nCONTENUTO:\n{testo}")
-    manoscritto = "\n\n".join(sezioni_analizzate)
-    prompt = f"""Valuta professionalmente il manoscritto seguente in lingua {lingua}.
+        unita = f"SEZIONE: {sezione}\nTESTO:\n{testo}\n\n"
+        while unita:
+            spazio = limite_caratteri - len(corrente)
+            if spazio <= 300:
+                blocchi.append(corrente)
+                corrente, spazio = "", limite_caratteri
+            if len(unita) <= spazio:
+                corrente += unita
+                unita = ""
+            else:
+                punto_taglio = unita.rfind("\n", 0, spazio)
+                if punto_taglio < max(500, spazio // 2):
+                    punto_taglio = spazio
+                corrente += unita[:punto_taglio]
+                blocchi.append(corrente)
+                corrente, unita = "", unita[punto_taglio:]
+    if corrente.strip():
+        blocchi.append(corrente)
+    return blocchi
 
-BRIEF DEL LIBRO
-Titolo: {titolo}
+
+def chiedi_audit_editoriale(prompt):
+    """Usa il modello di valutazione aggiornato senza mescolarlo alla stesura ordinaria."""
+    try:
+        risposta = client.responses.create(
+            model="gpt-5.4-mini",
+            input=prompt
+        )
+        testo = getattr(risposta, "output_text", "") or ""
+        return pulisci_testo_editoriale(testo).strip()
+    except Exception as e:
+        return f"ERRORE AUDIT: {str(e)}"
+
+
+def valuta_manoscritto_completo(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
+    """Valuta ogni porzione del manoscritto, poi crea una sintesi basata sugli esiti effettivi."""
+    sezioni_scritte = [s for s, c in contenuti.items() if pulisci_testo_editoriale(c).strip()]
+    sezioni_vuote = [s for s, c in contenuti.items() if not pulisci_testo_editoriale(c).strip()]
+    if not sezioni_scritte:
+        return "VALUTAZIONE NON ESEGUIBILE: non è ancora presente testo da analizzare. Genera almeno una sezione e riprova."
+
+    brief = f"""Titolo: {titolo}
 Trama/argomento: {trama}
 Genere: {genere}
 Tipologia di scrittura: {stile}
 Stile di racconto: {narrativa}
 Punto di vista: {pov}
 Obiettivo: {obiettivo}
-Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
+Approfondimenti prioritari: {approfondimenti.strip() or "Nessuno"}"""
+    blocchi = blocchi_per_audit_manoscritto(contenuti)
+    esiti_blocchi = []
+    for numero, blocco in enumerate(blocchi, 1):
+        esito = chiedi_audit_editoriale(f"""Sei un editor rigoroso. Analizza il BLOCCO {numero} di {len(blocchi)} di un manoscritto in lingua {lingua}.
+
+BRIEF
+{brief}
 
 INDICE
 {indice}
 
-MANOSCRITTO
-{manoscritto}
+BLOCCO DA VALUTARE
+{blocco}
 
-Valuta l'intero libro confrontandolo con il brief e l'indice. Controlla: completezza delle sezioni, profondità delle spiegazioni, correttezza della progressione, pertinenza delle tematiche, copertura degli approfondimenti prioritari, coerenza di genere/stile/POV, ripetizioni, sezioni troppo generiche e passaggi che richiedono maggiore dettaglio.
-Non inventare difetti o contenuti che non emergono dal manoscritto. Distingui le sezioni non scritte dalle sezioni deboli. Non includere URL, fonti, Markdown o ragionamenti interni.
+Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti. Non inventare difetti, non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette: SEZIONI ESAMINATE, PUNTI FORTI, PROBLEMI SPECIFICI, INTERVENTI PROPOSTI.""")
+        esiti_blocchi.append(f"AUDIT BLOCCO {numero}\n{esito}")
 
-Restituisci testo semplice in questo formato:
-VOTO COMPLESSIVO DEL LIBRO: X/10
-VERDETTO EDITORIALE: una sintesi concreta.
-ADERENZA ALLA SIDEBAR: valuta titolo, obiettivo, trama, genere, tipologia, stile, POV e approfondimenti.
-PROFONDITÀ DELLE TEMATICHE: indica gli argomenti trattati bene e quelli da approfondire.
-COERENZA E PROGRESSIONE: indica eventuali ripetizioni, salti o sovrapposizioni.
-SEZIONI DA MIGLIORARE: elenca solo sezioni specifiche con intervento richiesto.
-AZIONI PRIORITARIE: massimo 5 azioni concrete, ordinate per importanza.
-"""
-    return pulisci_testo_editoriale(chiedi_gpt(
-        prompt,
-        "Sei un direttore editoriale esperto. Valuti manoscritti in modo rigoroso, costruttivo e basato soltanto sul testo ricevuto."
-    ))
+    audit_compilati = "\n\n".join(esiti_blocchi)
+    sintesi = chiedi_audit_editoriale(f"""Sei un direttore editoriale. Prepara la valutazione finale di un manoscritto in lingua {lingua}, basandoti esclusivamente sul brief, sui dati oggettivi e sugli audit qui sotto. Non inventare contenuti non riportati.
+
+BRIEF
+{brief}
+
+DATI OGGETTIVI
+Sezioni scritte: {len(sezioni_scritte)}
+Sezioni non scritte: {len(sezioni_vuote)}
+Elenco sezioni non scritte: {', '.join(sezioni_vuote) if sezioni_vuote else 'nessuna'}
+
+AUDIT DI TUTTI I BLOCCHI DEL MANOSCRITTO
+{audit_compilati}
+
+Se ci sono sezioni non scritte, dichiara con chiarezza che la valutazione riguarda un manoscritto parziale e non assegnare un voto finale al libro completo. Altrimenti assegna un voto da 1 a 10.
+Non inserire URL, fonti, Markdown o ragionamenti interni. Restituisci esattamente queste voci:
+STATO DEL MANOSCRITTO:
+VOTO COMPLESSIVO DEL LIBRO:
+VERDETTO EDITORIALE:
+ADERENZA ALLA SIDEBAR:
+PROFONDITÀ DELLE TEMATICHE:
+COERENZA E PROGRESSIONE:
+SEZIONI DA MIGLIORARE:
+AZIONI PRIORITARIE:""")
+    return sintesi
 
 def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, approfondimenti=""):
     """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
@@ -1610,11 +1669,15 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
     # TAB 3: ANTEPRIMA
     with tabs[2]:
         st.subheader(L["preview_tit"])
+        contenuti_libro = {
+            s: st.session_state.get(f"txt_{s.replace(' ', '_').replace('.', '')}", "")
+            for s in opzioni_editor
+        }
+        firma_attuale_coerenza = firma_controllo_coerenza(
+            st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo, val_trama,
+            val_genere, val_stile, val_narrativa, val_pov, val_goal, val_approfondimenti
+        )
         if st.button("🔍 CONTROLLO COERENZA COMPLETO"):
-            contenuti_libro = {
-                s: st.session_state.get(f"txt_{s.replace(' ', '_').replace('.', '')}", "")
-                for s in opzioni_editor
-            }
             with st.spinner("Analisi completa del manoscritto in corso..."):
                 controllo_tecnico = analizza_coerenza_libro(
                     st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama, val_genere
@@ -1628,13 +1691,17 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     f"CONTROLLO TECNICO\n{controllo_tecnico}\n\n"
                     f"VALUTAZIONE EDITORIALE COMPLETA\n{valutazione_editoriale}"
                 )
+                st.session_state["report_coerenza_firma"] = firma_attuale_coerenza
         if st.session_state.get("report_coerenza_libro"):
-            st.text_area(
-                "Analisi completa del libro",
-                value=st.session_state["report_coerenza_libro"],
-                height=420,
-                key="output_report_coerenza_libro"
-            )
+            if st.session_state.get("report_coerenza_firma") != firma_attuale_coerenza:
+                st.warning("Analisi non aggiornata: il testo, l'indice o il brief sono cambiati dopo l'ultimo controllo. Premi di nuovo il pulsante per ottenere il report della versione corrente.")
+            else:
+                st.text_area(
+                    "Analisi completa del libro",
+                    value=st.session_state["report_coerenza_libro"],
+                    height=420,
+                    key="output_report_coerenza_libro"
+                )
         html_p = f"<div class='preview-box'><h1 style='text-align:center;'>{val_titolo.upper()}</h1>"
         if val_autore: html_p += f"<h3 style='text-align:center;'>di {val_autore}</h3>"
         html_p += "<hr><br>"
