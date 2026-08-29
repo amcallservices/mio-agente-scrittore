@@ -732,34 +732,50 @@ punteggi o istruzioni su come prepararsi. Distribuisci i quesiti sui contenuti o
 e del brief; non ripetere le domande già prodotte qui sotto.
 Domande già prodotte: {' | '.join(domande_precedenti) or 'nessuna'}
 """
-        blocco = genera_sezione_con_ripetizione(prompt_base + vincolo, system_prompt, sezione, lingua)
-        if conta_domande_test_prep(blocco) != (fine - inizio + 1):
-            blocco = genera_sezione_con_ripetizione(
-                prompt_base + vincolo + "\nCORREZIONE OBBLIGATORIA: restituisci solo il numero esatto di DOMANDA richiesto, senza testo introduttivo.",
-                system_prompt, sezione, lingua
+        blocco, nuove_domande = "", []
+        for tentativo_blocco in range(3):
+            correzione = ""
+            if tentativo_blocco:
+                correzione = (
+                    "\nCORREZIONE OBBLIGATORIA: la bozza precedente era incompleta o ripeteva quesiti già usati. "
+                    "Sostituiscila interamente con domande nuove, numerate nel formato richiesto e senza testo introduttivo."
+                )
+            candidato = genera_sezione_con_ripetizione(prompt_base + vincolo + correzione, system_prompt, sezione, lingua)
+            domande_candidate = domande_normalizzate_test_prep(candidato)
+            conteggio_corretto = conta_domande_test_prep(candidato) == (fine - inizio + 1)
+            senza_duplicati = not (set(domande_candidate) & set(domande_precedenti))
+            if conteggio_corretto and senza_duplicati:
+                blocco, nuove_domande = candidato, domande_candidate
+                break
+            blocco, nuove_domande = candidato, domande_candidate
+        if conta_domande_test_prep(blocco) != (fine - inizio + 1) or (set(nuove_domande) & set(domande_precedenti)):
+            st.session_state["avviso_simulazione_test_prep"] = (
+                f"La simulazione '{sezione}' richiede una verifica: il blocco {inizio}-{fine} non ha superato "
+                "il controllo automatico di quantità o unicità. Il controllo coerenza indicherà le correzioni necessarie."
             )
-        if conta_domande_test_prep(blocco) != (fine - inizio + 1):
-            raise RuntimeError(f"La simulazione '{sezione}' non contiene il blocco completo di domande {inizio}-{fine}.")
-        nuove_domande = domande_normalizzate_test_prep(blocco)
-        if set(nuove_domande) & set(domande_precedenti):
-            raise RuntimeError(f"La simulazione '{sezione}' contiene domande duplicate nel blocco {inizio}-{fine}.")
         blocchi_domande.append(blocco)
         domande_precedenti.extend(nuove_domande)
 
     corpo_domande = "\n\n".join(blocchi_domande)
-    chiave = genera_sezione_con_ripetizione(
-        f"""Crea la chiave delle soluzioni per la simulazione '{sezione}' in lingua {lingua}.
+    prompt_chiave = f"""Crea la chiave delle soluzioni per la simulazione '{sezione}' in lingua {lingua}.
 Le domande seguenti sono già state redatte. Fornisci ESATTAMENTE una riga di soluzione per ogni
 DOMANDA da 01 a {totale:02d}, con questo formato: SOLUZIONE 01: lettera corretta - spiegazione breve e concreta.
 Non riscrivere le domande, non aggiungere nuove domande, non usare link o fonti e non omettere numeri.
 
 DOMANDE DELLA SIMULAZIONE
 {corpo_domande}
-""",
-        system_prompt, sezione, lingua
-    )
+"""
+    chiave = ""
+    for tentativo_chiave in range(3):
+        correzione = "" if not tentativo_chiave else "\nCORREZIONE OBBLIGATORIA: inserisci tutte e sole le soluzioni numerate richieste."
+        chiave = genera_sezione_con_ripetizione(prompt_chiave + correzione, system_prompt, sezione, lingua)
+        if len(re.findall(r"(?im)^\s*soluzione\s+\d{1,3}\s*[:.-]", chiave or "")) == totale:
+            break
     if len(re.findall(r"(?im)^\s*soluzione\s+\d{1,3}\s*[:.-]", chiave or "")) != totale:
-        raise RuntimeError(f"La simulazione '{sezione}' non contiene le {totale} soluzioni commentate richieste.")
+        st.session_state["avviso_simulazione_test_prep"] = (
+            f"La simulazione '{sezione}' richiede una verifica: la chiave delle soluzioni non ha il conteggio previsto. "
+            "Il controllo coerenza indicherà le correzioni necessarie."
+        )
     return (
         f"SIMULAZIONE: DOMANDE\n\n{corpo_domande}\n\n"
         f"SOLUZIONI COMMENTATE - CONSULTALE SOLO DOPO AVER COMPLETATO LA PROVA\n\n{chiave}"
