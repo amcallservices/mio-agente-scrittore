@@ -660,6 +660,14 @@ Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in
 - Non scrivere e non ripetere mai '{sezione}' come intestazione. Inizia direttamente con il contenuto.
 - Non inserire URL, link, citazioni, note bibliografiche o sezioni fonti.
 - Se sono disponibili fonti esterne, usale solo per ragionare e integrare concetti pertinenti, senza citarle nel testo finale.
+
+=== PROFONDITÀ ADATTIVA E SPIEGAZIONE PASSO PASSO ===
+- Scrivi un testo professionale, completo e proporzionato alla complessità della sezione: amplia dove sono necessari metodo, procedura, decisioni tecniche o esempi; evita invece di allungare con frasi motivazionali, ripetizioni o riassunti inutili.
+- Per una procedura o una funzione software, segui questa sequenza: scopo pratico; prerequisiti e strumenti; passaggi numerati nell'ordine esatto; cosa osservare dopo ogni passaggio; controllo del risultato; errori frequenti e correzioni; esempio realistico di applicazione.
+- Per un concetto teorico, segui questa sequenza: definizione chiara; perché è importante; come si applica; esempio concreto; limiti, eccezioni o errori da evitare.
+- Non saltare passaggi impliciti. Spiega ogni azione in modo che un lettore del livello dichiarato possa ripeterla autonomamente.
+- Quando è utile, includi checklist, tabella, caso pratico o criterio verificabile all'interno della spiegazione, senza trasformarli in capitoli separati.
+- Mantieni paragrafi leggibili e sottotitoli brevi solo quando migliorano la consultazione; non usare formule generiche come "semplice", "intuitivo" o "fondamentale" senza spiegare concretamente il perché.
 """
 
 def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
