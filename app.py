@@ -766,6 +766,37 @@ Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in
 - Mantieni paragrafi leggibili e sottotitoli brevi solo quando migliorano la consultazione; non usare formule generiche come "semplice", "intuitivo" o "fondamentale" senza spiegare concretamente il perché.
 """
 
+def valuta_indice_editoriale(indice, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua):
+    """Valuta l'indice rispetto al brief compilato nella sidebar."""
+    prompt = f"""Valuta professionalmente il seguente indice editoriale in lingua {lingua}.
+
+DATI DEL BRIEF
+Titolo: {titolo}
+Trama/argomento: {trama}
+Genere: {genere}
+Tipologia di scrittura: {stile}
+Stile di racconto: {narrativa}
+Punto di vista: {pov}
+Obiettivo del libro: {obiettivo}
+
+INDICE DA VALUTARE
+{indice}
+
+Esamina esclusivamente: attinenza al brief, ordine logico, completezza, progressione del lettore, assenza di ripetizioni, distinzione tra capitoli e sottocapitoli, concretezza dei titoli e capacità di sostenere un libro completo.
+Non valutare il libro non ancora scritto e non inventare informazioni mancanti.
+
+Restituisci testo semplice, senza Markdown e senza URL, in questo formato:
+VOTO COMPLESSIVO: X/10
+VERDETTO: una frase chiara.
+PUNTI DI FORZA: 3-5 osservazioni concrete.
+MIGLIORAMENTI CONSIGLIATI: soltanto modifiche necessarie e direttamente applicabili; se l'indice è già valido, scrivi "Nessuna modifica strutturale necessaria".
+COERENZA CON IL BRIEF: breve verifica di titolo, pubblico, obiettivo, genere e stile.
+"""
+    return pulisci_testo_editoriale(chiedi_gpt(
+        prompt,
+        "Sei un editor senior specializzato in architettura di libri. Sei rigoroso, concreto e non usi valutazioni vaghe."
+    ))
+
 def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
     """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
     return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
@@ -1092,6 +1123,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 """
                 
                 st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
+                st.session_state.pop("analisi_voto_indice", None)
                 sync_capitoli(); st.rerun()
                 
         # FIX ANTI-RESET PER L'INDICE: Salvataggio sicuro per prevenire sovrascritture da parte di Streamlit
@@ -1104,8 +1136,25 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 pass
             else:
                 st.session_state["indice_raw"] = testo_input
+                st.session_state.pop("analisi_voto_indice", None)
                 
         if st.button(L["btn_sync"]): sync_capitoli(); st.rerun()
+
+        indice_da_valutare = st.session_state.get("indice_raw", "").strip()
+        if indice_da_valutare:
+            if st.button("⭐ VOTO INDICE", use_container_width=True, key="voto_indice"):
+                with st.spinner("Analisi editoriale dell'indice in corso..."):
+                    st.session_state["analisi_voto_indice"] = valuta_indice_editoriale(
+                        indice_da_valutare, val_titolo, val_trama, val_genere, val_stile,
+                        val_narrativa, val_pov, val_goal, lingua_sel
+                    )
+            if st.session_state.get("analisi_voto_indice"):
+                st.text_area(
+                    "Analisi e voto dell'indice",
+                    value=st.session_state["analisi_voto_indice"],
+                    height=320,
+                    key="output_voto_indice"
+                )
 
     # TAB 2: SCRITTURA E QUIZ (E ORA ANCHE RICETTE)
     with tabs[1]:
