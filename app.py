@@ -390,6 +390,24 @@ def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
         st.error(f"Errore nella generazione dell'immagine: {e}")
         return None, None
 
+def normalizza_immagine_caricata(file_caricato):
+    """Prepara un'immagine caricata dall'utente per anteprima, Word e PDF."""
+    try:
+        sorgente = Image.open(BytesIO(file_caricato.getvalue()))
+        if sorgente.mode in ("RGBA", "LA"):
+            sfondo = Image.new("RGB", sorgente.size, "white")
+            sfondo.paste(sorgente, mask=sorgente.getchannel("A"))
+            sorgente = sfondo
+        else:
+            sorgente = sorgente.convert("RGB")
+        sorgente.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
+        output = BytesIO()
+        sorgente.save(output, format="PNG", optimize=True)
+        return output.getvalue()
+    except Exception as e:
+        st.error(f"Il file caricato non è un'immagine valida: {e}")
+        return None
+
 def analizza_qualita_prosa(testo):
     """
     Motore Linter NLP Potenziato: analizza densità, lunghezza frasi e vocabolario.
@@ -1075,26 +1093,26 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
                             st.rerun()
 
             st.divider()
-            st.subheader("🖼️ Immagine didattica del capitolo")
-            if st.button("🖼️ GENERA IMMAGINE DEL CAPITOLO", use_container_width=True):
-                if k_sessione not in st.session_state or not st.session_state[k_sessione].strip():
-                    st.warning("Genera prima il contenuto del capitolo.")
-                else:
-                    with st.spinner("Generazione immagine didattica..."):
-                        img_bytes, img_prompt = genera_immagine_capitolo(
-                            sez_scelta, val_titolo, val_genere, val_trama,
-                            st.session_state[k_sessione], lingua_sel
-                        )
-                        if img_bytes:
-                            st.session_state.setdefault("immagini_capitoli", {})
-                            st.session_state["immagini_capitoli"][sez_scelta] = {
-                                "bytes": img_bytes, "prompt": img_prompt,
-                                "caption": f"Illustrazione didattica: {sez_scelta}"
-                            }
-                            st.success("Immagine generata e associata al capitolo.")
-                            st.rerun()
-            if st.session_state.get("immagini_capitoli", {}).get(sez_scelta):
-                st.image(st.session_state["immagini_capitoli"][sez_scelta]["bytes"], caption="Immagine associata al capitolo", width=500)
+            st.subheader("🖼️ Inserisci immagine del capitolo")
+            st.caption("Crea l'immagine esternamente e caricala qui: verrà inserita nell'anteprima, nel Word e nel PDF della sezione selezionata.")
+            file_immagine = st.file_uploader(
+                "Carica un'immagine PNG, JPG o WEBP",
+                type=["png", "jpg", "jpeg", "webp"],
+                key=f"upload_immagine_{k_sessione}"
+            )
+            if file_immagine:
+                img_bytes = normalizza_immagine_caricata(file_immagine)
+                if img_bytes:
+                    st.session_state.setdefault("immagini_capitoli", {})
+                    st.session_state["immagini_capitoli"][sez_scelta] = {
+                        "bytes": img_bytes,
+                        "caption": f"Immagine: {sez_scelta}",
+                        "nome_file": file_immagine.name
+                    }
+                    st.success(f"Immagine '{file_immagine.name}' associata a: {sez_scelta}.")
+            immagine_associata = st.session_state.get("immagini_capitoli", {}).get(sez_scelta)
+            if immagine_associata:
+                st.image(immagine_associata["bytes"], caption="Immagine associata al capitolo", width=420)
 
             testo_editor = pulisci_testo_editoriale(st.session_state.get(k_sessione, ""))
             st.session_state[k_sessione] = st.text_area(L["label_editor"], value=testo_editor, height=500)
