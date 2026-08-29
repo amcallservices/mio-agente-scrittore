@@ -625,6 +625,43 @@ def genera_contesto_avanzato(sezione_corrente):
             contesto += f"- Trattato in {s}:\n{testo_precedente[:1200]}\n"
     return contesto
 
+def individua_sottocapitoli_del_capitolo(capitolo, sezioni):
+    """Restituisce soltanto i sottocapitoli numerati appartenenti al capitolo selezionato."""
+    match = re.match(r"(?i)^(?:capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+(\d+)", capitolo.strip())
+    if not match:
+        return []
+    numero = match.group(1)
+    return [s for s in sezioni if re.match(rf"^{re.escape(numero)}\.\d+\s", s.strip())]
+
+def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa, pov, obiettivo, lingua):
+    """Costruisce il prompt comune usato dalla stesura singola e dalla stesura di un capitolo intero."""
+    memoria = genera_contesto_avanzato(sezione)
+    return f"""
+INDICE GENERALE (STUDIALO PER CAPIRE COSA NON DEVI ANTICIPARE):
+{indice}
+
+MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
+{memoria}
+
+=== PARAMETRI EDITORIALI SARTORIALI (DA APPLICARE TASSATIVAMENTE IN QUESTA SEZIONE) ===
+- Argomento Centrale / Trama: {trama}
+- Genere Letterario: {genere}
+- Tipologia di Scrittura: {stile}
+- Stile di Racconto: {narrativa}
+- Punto di Vista (POV): {pov}
+- Obiettivo Emozionale/Pratico: {obiettivo}
+
+AZIONE:
+Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in lingua {lingua}.
+- Se la sezione è un Capitolo, non anticipare né risolvere gli argomenti assegnati ai relativi sottocapitoli.
+- Rispetta integralmente i parametri editoriali e usa tassativamente il POV richiesto ({pov}).
+- Sii profondo ed esaustivo nell'ambito della sezione, senza rubare materiale alle altre.
+- Redigi contenuto concreto suggerito dal titolo, senza preamboli inutili.
+- Non scrivere e non ripetere mai '{sezione}' come intestazione. Inizia direttamente con il contenuto.
+- Non inserire URL, link, citazioni, note bibliografiche o sezioni fonti.
+- Se sono disponibili fonti esterne, usale solo per ragionare e integrare concetti pertinenti, senza citarle nel testo finale.
+"""
+
 def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
     """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
     return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
@@ -972,40 +1009,49 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
         else:
             sez_scelta = st.selectbox(L["lbl_sec"], opzioni_editor)
             k_sessione = f"txt_{sez_scelta.replace(' ', '_').replace('.', '')}"
+            sottocapitoli_capitolo = individua_sottocapitoli_del_capitolo(sez_scelta, lista_cap_base)
+            if sottocapitoli_capitolo:
+                st.caption(f"Capitolo selezionato: verranno elaborati {len(sottocapitoli_capitolo)} sottocapitoli non ancora scritti.")
+                if st.button("📝 SCRIVI TUTTI I SOTTOCAPITOLI DEL CAPITOLO", use_container_width=True):
+                    da_generare = []
+                    gia_presenti = 0
+                    for sottocapitolo in sottocapitoli_capitolo:
+                        chiave = f"txt_{sottocapitolo.replace(' ', '_').replace('.', '')}"
+                        if st.session_state.get(chiave, "").strip():
+                            gia_presenti += 1
+                        else:
+                            da_generare.append((sottocapitolo, chiave))
+                    if not da_generare:
+                        st.info("Tutti i sottocapitoli di questo capitolo sono già presenti: nessun contenuto è stato sovrascritto.")
+                    else:
+                        avanzamento = st.progress(0, text="Preparazione della stesura del capitolo...")
+                        for posizione, (sottocapitolo, chiave) in enumerate(da_generare, start=1):
+                            avanzamento.progress(
+                                int((posizione - 1) / len(da_generare) * 100),
+                                text=f"Scrittura di {sottocapitolo} ({posizione}/{len(da_generare)})..."
+                            )
+                            prompt = crea_prompt_stesura_sezione(
+                                sottocapitolo, st.session_state['indice_raw'], val_trama, val_genere,
+                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel
+                            )
+                            testo_generato = chiedi_gpt(prompt, S_PROMPT)
+                            st.session_state[chiave] = verifica_e_correggi_fatti_online(
+                                testo_generato, sottocapitolo, lingua_sel
+                            )
+                        avanzamento.progress(100, text="Sottocapitoli completati.")
+                        messaggio = f"Completati {len(da_generare)} sottocapitoli."
+                        if gia_presenti:
+                            messaggio += f" Conservati senza modifiche: {gia_presenti}."
+                        st.success(messaggio)
+                        st.rerun()
             c1, c2, c3 = st.columns([2, 2, 1])
             with c1:
                 if st.button(L["btn_write"]):
                     with st.spinner(L["msg_run"]):
-                        memoria = genera_contesto_avanzato(sez_scelta)
-                        
-                        # --- MODIFICA NEL FULL PROMPT PER RAFFORZARE LA REGOLA IN FASE DI GENERAZIONE ---
-                        full_prompt = f"""
-INDICE GENERALE (STUDIALO PER CAPIRE COSA NON DEVI ANTICIPARE): 
-{st.session_state['indice_raw']}
-
-MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi): 
-{memoria}
-
-=== PARAMETRI EDITORIALI SARTORIALI (DA APPLICARE TASSATIVAMENTE IN QUESTO CAPITOLO) ===
-- Argomento Centrale / Trama: {val_trama}
-- Genere Letterario: {val_genere}
-- Tipologia di Scrittura: {val_stile}
-- Stile di Racconto: {val_narrativa}
-- Punto di Vista (POV): {val_pov}
-- Obiettivo Emozionale/Pratico: {val_goal}
-
-AZIONE: 
-Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente in lingua {lingua_sel}.
-- REGOLA DEL SILENZIO STAMPA: Guarda l'Indice Generale qui sopra. Se '{sez_scelta}' è un Capitolo, TI È SEVERAMENTE VIETATO spiegare, anticipare o risolvere gli argomenti che hanno un Sottocapitolo (es. 1.1, 1.2). Lascia il vuoto informativo per loro. Il tuo compito ora è solo preparare il terreno (il "Perché").
-- Rispetta INTEGRALMENTE tutti i Parametri Editoriali Sartoriali elencati qui sopra. Ogni frase deve esserne permeata.
-- Usa TASSATIVAMENTE il punto di vista richiesto ({val_pov}).
-- Assicurati che NON ci siano simboli o punteggiature anomale (nessun asterisco di troppo, niente emoji). Il testo deve essere sintatticamente puro.
-- Sii estremamente profondo ed esaustivo nell'ambito della tua specifica sezione, senza rubare materiale alle altre.
-- Analizza il titolo '{sez_scelta}' e, come richiesto, REDIGI IL CONTENUTO CONCRETO suggerito dal titolo stesso, senza fare preamboli inutili.
-- DIVIETO DI INTESTAZIONE: Non scrivere e non ripetere MAI '{sez_scelta}' all'inizio della tua risposta. Inizia direttamente con la prima frase del paragrafo/contenuto.
-
-- UTILIZZO E RAGIONAMENTO SULLE FONTI: Se nella tua base di istruzioni ci sono "FONTI ESTERNE", non ignorarle. Trova i collegamenti e i concetti applicabili a '{sez_scelta}', ragionaci sopra criticamente e integrali nel discorso. Spiega, argomenta e dimostra padronanza del testo fornito.
-"""
+                        full_prompt = crea_prompt_stesura_sezione(
+                            sez_scelta, st.session_state['indice_raw'], val_trama, val_genere,
+                            val_stile, val_narrativa, val_pov, val_goal, lingua_sel
+                        )
                         testo_generato = chiedi_gpt(full_prompt, S_PROMPT)
                         st.session_state[k_sessione] = verifica_e_correggi_fatti_online(
                             testo_generato, sez_scelta, lingua_sel
