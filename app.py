@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import os
 import requests
 import re
@@ -54,6 +55,85 @@ def estrai_testo_da_files(caricati):
             st.error(f"Errore nella lettura di {file.name}: {e}")
     return testo_totale
 
+
+def firma_fonti_esterne(caricati):
+    """Riconosce i file caricati senza rileggerli a ogni aggiornamento della pagina."""
+    digest = hashlib.sha256()
+    for file in caricati or []:
+        contenuto = file.getvalue()
+        digest.update(file.name.encode("utf-8", "ignore"))
+        digest.update(str(len(contenuto)).encode("ascii"))
+        digest.update(hashlib.sha256(contenuto).digest())
+    return digest.hexdigest()
+
+
+def crea_scheda_fonti(testo, limite=2600):
+    """Sintesi locale e rapida delle fonti, senza chiamate API supplementari."""
+    paragrafi = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n|(?<=\.)\s{2,}", testo or "")]
+    paragrafi = [p for p in paragrafi if len(p) > 80]
+    scelti, usati = [], 0
+    for paragrafo in paragrafi:
+        if usati + len(paragrafo) > limite:
+            break
+        scelti.append(paragrafo)
+        usati += len(paragrafo)
+    return "\n".join(scelti) or (testo or "")[:limite]
+
+
+def estratti_fonti_pertinenti(sezione, argomento, limite=3500):
+    """Recupera soltanto i brani più attinenti al titolo della sezione."""
+    fonte = st.session_state.get("conoscenza_extra", "")
+    if not fonte:
+        return ""
+    parole = set(re.findall(r"[a-zA-ZÀ-ÖØ-öø-ÿ0-9]{4,}", f"{sezione} {argomento}".lower()))
+    paragrafi = [re.sub(r"\s+", " ", p).strip() for p in re.split(r"\n\s*\n|(?<=\.)\s{2,}", fonte)]
+    valutati = []
+    for posizione, paragrafo in enumerate(paragrafi):
+        if len(paragrafo) < 80:
+            continue
+        punteggio = len(parole & set(re.findall(r"[a-zA-ZÀ-ÖØ-öø-ÿ0-9]{4,}", paragrafo.lower())))
+        valutati.append((punteggio, posizione, paragrafo))
+    valutati.sort(key=lambda elemento: (-elemento[0], elemento[1]))
+    scelti, usati = [], 0
+    for punteggio, _, paragrafo in valutati:
+        if punteggio == 0 and scelti:
+            break
+        if usati + len(paragrafo) > limite:
+            continue
+        scelti.append(paragrafo)
+        usati += len(paragrafo)
+    return "\n\n".join(scelti) or st.session_state.get("scheda_fonti", "")[:limite]
+
+
+def notifica_sonora(evento):
+    """Tre note ascendenti, forti e locali, senza file audio esterni."""
+    chiave = f"notifica_emessa_{evento}"
+    if st.session_state.get(chiave):
+        return
+    st.session_state[chiave] = True
+    components.html("""
+    <script>
+    (() => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        const ctx = new AudioCtx();
+        [[988, 0.00, 0.15, 0.88], [1319, 0.16, 0.15, 0.92], [1760, 0.32, 0.42, 0.96]].forEach(([f, start, duration, volume]) => {
+          const oscillator = ctx.createOscillator();
+          const gain = ctx.createGain();
+          oscillator.frequency.value = f;
+          oscillator.type = 'sine';
+          gain.gain.setValueAtTime(0.001, ctx.currentTime + start);
+          gain.gain.exponentialRampToValueAtTime(volume, ctx.currentTime + start + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration);
+          oscillator.connect(gain); gain.connect(ctx.destination);
+          oscillator.start(ctx.currentTime + start);
+          oscillator.stop(ctx.currentTime + start + duration + 0.03);
+        });
+      } catch (error) { console.log('Audio notification unavailable', error); }
+    })();
+    </script>
+    """, height=0)
+
 # ======================================================================================================================
 # 1. ARCHITETTURA DI SISTEMA E SICUREZZA API
 # ======================================================================================================================
@@ -61,7 +141,7 @@ def estrai_testo_da_files(caricati):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-29-r4"
+VERSIONE_DEPLOY = "QA-2026-08-30-r5"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
 try:
@@ -1092,12 +1172,19 @@ with st.sidebar:
         if len(file_caricati) > 10:
             st.warning("Hai superato il limite di 10 file. Verranno analizzati i primi 10.")
             file_caricati = file_caricati[:10]
-        with st.spinner("Lettura e analisi fonti in corso..."):
-            st.session_state["conoscenza_extra"] = estrai_testo_da_files(file_caricati)
-            if st.session_state["conoscenza_extra"]:
-                st.success(f"Analizzati {len(file_caricati)} documenti. Pronti per l'uso!")
+        firma_fonti = firma_fonti_esterne(file_caricati)
+        if st.session_state.get("firma_fonti") != firma_fonti:
+            with st.spinner("Lettura e preparazione delle fonti in corso..."):
+                st.session_state["conoscenza_extra"] = estrai_testo_da_files(file_caricati)
+                st.session_state["scheda_fonti"] = crea_scheda_fonti(st.session_state["conoscenza_extra"])
+                st.session_state["firma_fonti"] = firma_fonti
+        if st.session_state.get("conoscenza_extra"):
+            st.success(f"Analizzati {len(file_caricati)} documenti. Le fonti vengono riutilizzate senza una nuova lettura.")
+            st.caption("Le fonti guidano il ragionamento: il testo finale non mostrerà automaticamente link o citazioni.")
     else:
         st.session_state["conoscenza_extra"] = ""
+        st.session_state.pop("scheda_fonti", None)
+        st.session_state.pop("firma_fonti", None)
     
     st.markdown("---")
     # --- AGGIUNTA "STORICO" AI GENERI ---
@@ -1150,7 +1237,7 @@ with st.sidebar:
     
     # Definizioni disponibili prima del loro primo utilizzo nella UI.
     # Restano presenti anche nel modulo di memoria sottostante per compatibilità.
-    def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, approfondimenti=""):
+    def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, risultato_finale="", approfondimenti=""):
         return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
 Titolo: {titolo}
 Genere: {genere}
@@ -1160,6 +1247,9 @@ Punto di vista: {pov}
 
 OBIETTIVO OPERATIVO:
 {obiettivo}
+
+RISULTATO FINALE DESIDERATO E VERIFICABILE:
+{risultato_finale or "Non dichiarato: definisci cosa il lettore deve saper fare o ottenere alla fine."}
 
 ARGOMENTO E CONFINI:
 {argomento}
@@ -1189,6 +1279,22 @@ gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare 
         return "\n".join(risultati)
 
     val_goal = st.text_input(L["lbl_goal"], placeholder="Es: Mantenere l'attenzione alta, far emozionare...")
+    etichette_risultato = {
+        "Italiano": "Risultato finale desiderato",
+        "English": "Desired final result",
+        "Español": "Resultado final deseado",
+        "Français": "Résultat final souhaité",
+        "Deutsch": "Gewünschtes Endergebnis",
+        "Română": "Rezultatul final dorit",
+        "Русский": "Желаемый итоговый результат",
+        "العربية": "النتيجة النهائية المطلوبة",
+        "中文": "期望的最终结果",
+    }
+    val_risultato = st.text_area(
+        etichette_risultato.get(lingua_sel, "Risultato finale desiderato"),
+        height=100,
+        placeholder="Es: Alla fine il lettore deve saper applicare il metodo in autonomia e verificare il risultato."
+    )
     val_trama = st.text_area(L["lbl_plot"], height=150)
     val_approfondimenti = st.text_area(
         "Approfondimenti (facoltativo)",
@@ -1196,8 +1302,11 @@ gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare 
         placeholder="Inserisci istruzioni, aspetti da trattare con maggiore attenzione, vincoli, esempi o temi obbligatori."
     )
     specifica_editoriale = costruisci_specifica_editoriale(
-        val_titolo, val_genere, val_stile, val_narrativa, val_pov, val_goal, val_trama, val_approfondimenti
+        val_titolo, val_genere, val_stile, val_narrativa, val_pov, val_goal, val_trama, val_risultato, val_approfondimenti
     )
+    sidebar_pronta = all([val_titolo.strip(), val_trama.strip(), val_goal.strip(), val_risultato.strip()])
+    if sidebar_pronta:
+        notifica_sonora("sidebar_pronta")
     
     # PULSANTE RESET BLINDATO: Unico modo per svuotare la session_state
     if st.button(L["btn_res"]):
@@ -1207,10 +1316,11 @@ gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare 
 # ======================================================================================================================
 # 7. LOGICA DI MEMORIA E COERENZA (EVITA RIPETIZIONI GLOBALI) E INTEGRAZIONE FONTI
 # ======================================================================================================================
-def genera_contesto_avanzato(sezione_corrente):
+def genera_contesto_avanzato(sezione_corrente, argomento=""):
     contesto = ""
-    if st.session_state.get("conoscenza_extra"):
-        contesto += f"=== FONTI ESTERNE DI RIFERIMENTO (USATE PER RAGIONAMENTO) ===\n{st.session_state['conoscenza_extra'][:8000]}\n\n"
+    estratti_fonti = estratti_fonti_pertinenti(sezione_corrente, argomento)
+    if estratti_fonti:
+        contesto += f"=== ESTRATTI PERTINENTI DELLE FONTI ESTERNE (SOLO PER RAGIONAMENTO) ===\n{estratti_fonti}\n\n"
         
     for s in st.session_state.get("lista_capitoli", []):
         if s == sezione_corrente: break
@@ -1241,7 +1351,7 @@ def individua_sezioni_da_stendere(sezioni):
 
 def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
     """Costruisce il prompt comune usato dalla stesura singola e dalla stesura di un capitolo intero."""
-    memoria = genera_contesto_avanzato(sezione)
+    memoria = genera_contesto_avanzato(sezione, trama)
     tipo_sezione = tipo_sezione_editoriale(sezione)
     profilo_genere = profilo_genere_stesura(genere)
     profilo_tipologia = profilo_tipologia_stesura(stile)
@@ -1267,6 +1377,7 @@ MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
 - Stile di Racconto: {narrativa}
 - Punto di Vista (POV): {pov}
 - Obiettivo Emozionale/Pratico: {obiettivo}
+- Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 - Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 === PROFILO EDITORIALE DA RISPETTARE ===
@@ -1312,12 +1423,13 @@ Tipologia di scrittura: {stile}
 Stile di racconto: {narrativa}
 Punto di vista: {pov}
 Obiettivo del libro: {obiettivo}
+Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 INDICE DA VALUTARE
 {indice}
 
-Esamina esclusivamente: attinenza al brief, copertura degli approfondimenti prioritari, ordine logico, completezza, progressione del lettore, assenza di ripetizioni, distinzione tra capitoli e sottocapitoli, concretezza dei titoli e capacità di sostenere un libro completo.
+Esamina esclusivamente: attinenza al brief, copertura degli approfondimenti prioritari, raggiungibilità del risultato finale desiderato, ordine logico, completezza, progressione del lettore, assenza di ripetizioni, distinzione tra capitoli e sottocapitoli, concretezza dei titoli e capacità di sostenere un libro completo.
 Non valutare il libro non ancora scritto e non inventare informazioni mancanti.
 
 Restituisci testo semplice, senza Markdown e senza URL, in questo formato:
@@ -1332,9 +1444,9 @@ COERENZA CON IL BRIEF: breve verifica di titolo, pubblico, obiettivo, genere e s
         "Sei un editor senior specializzato in architettura di libri. Sei rigoroso, concreto e non usi valutazioni vaghe."
     ))
 
-def firma_controllo_coerenza(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, approfondimenti):
+def firma_controllo_coerenza(indice, contenuti, titolo, trama, genere, stile, narrativa, pov, obiettivo, risultato_finale, approfondimenti):
     """Identifica con certezza la versione del manoscritto su cui è stato prodotto il report."""
-    parti = [indice, titolo, trama, genere, stile, narrativa, pov, obiettivo, approfondimenti]
+    parti = [indice, titolo, trama, genere, stile, narrativa, pov, obiettivo, risultato_finale, approfondimenti]
     parti.extend(f"{sezione}\n{contenuto}" for sezione, contenuto in contenuti.items())
     return hashlib.sha256("\n\u241e\n".join(str(p or "") for p in parti).encode("utf-8")).hexdigest()
 
@@ -1394,6 +1506,7 @@ Tipologia di scrittura: {stile}
 Stile di racconto: {narrativa}
 Punto di vista: {pov}
 Obiettivo: {obiettivo}
+Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 Approfondimenti prioritari: {approfondimenti.strip() or "Nessuno"}"""
     blocchi = blocchi_per_audit_manoscritto(contenuti)
     esiti_blocchi = []
@@ -1409,7 +1522,7 @@ INDICE
 BLOCCO DA VALUTARE
 {blocco}
 
-Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti. Non inventare difetti, non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette: SEZIONI ESAMINATE, PUNTI FORTI, PROBLEMI SPECIFICI, INTERVENTI PROPOSTI.""")
+Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, contributo al risultato finale desiderato, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti. Non inventare difetti, non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette: SEZIONI ESAMINATE, PUNTI FORTI, PROBLEMI SPECIFICI, INTERVENTI PROPOSTI.""")
         esiti_blocchi.append(f"AUDIT BLOCCO {numero}\n{esito}")
 
     audit_compilati = "\n\n".join(esiti_blocchi)
@@ -1435,10 +1548,15 @@ ADERENZA ALLA SIDEBAR:
 PROFONDITÀ DELLE TEMATICHE:
 COERENZA E PROGRESSIONE:
 SEZIONI DA MIGLIORARE:
-AZIONI PRIORITARIE:""")
+AZIONI PRIORITARIE:
+PROMPT PRONTI PER RIGENERA CON AI:
+Per ogni sezione da migliorare, usa obbligatoriamente questo blocco separato:
+SEZIONE: titolo esatto della sezione
+PROBLEMA: difetto concreto osservato
+PROMPT DA INCOLLARE: istruzione autonoma, pronta da copiare nel campo "Rigenera con AI" di quella sezione. Indica cosa mantenere, cosa aggiungere, cosa eliminare, genere, stile, POV e divieto di ripetere altre sezioni. Non proporre alcuna riscrittura automatica.""")
     return sintesi
 
-def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, approfondimenti=""):
+def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, risultato_finale="", approfondimenti=""):
     """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
     return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
 Titolo: {titolo}
@@ -1449,6 +1567,9 @@ Punto di vista: {pov}
 
 OBIETTIVO OPERATIVO:
 {obiettivo}
+
+RISULTATO FINALE DESIDERATO E VERIFICABILE:
+{risultato_finale or "Non dichiarato: definisci cosa il lettore deve saper fare o ottenere alla fine."}
 
 ARGOMENTO E CONFINI:
 {argomento}
@@ -1498,7 +1619,7 @@ def audit_simulazioni_test_prep(indice, contenuti, obiettivo, argomento):
             risultati.append(f"OK TEST PREP: struttura numerica della simulazione '{sezione}' valida.")
     return risultati
 
-def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere=""):
+def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere="", risultato_finale=""):
     """Controllo deterministico preliminare su struttura, copertura e ripetizioni."""
     risultati = ["REPORT CONTROLLO COERENZA DEL LIBRO"]
     testo = "\n".join(contenuti.values()) if contenuti else ""
@@ -1508,6 +1629,7 @@ def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere=""):
     risultati.append(f"Sottocapitoli rilevati: {len(sottocapitoli)}")
     if not indice.strip(): risultati.append("ERRORE: indice assente")
     if not obiettivo.strip(): risultati.append("AVVISO: obiettivo assente")
+    if not risultato_finale.strip(): risultati.append("AVVISO: risultato finale desiderato assente")
     if not argomento.strip(): risultati.append("AVVISO: argomento assente")
     sezioni_indice = st.session_state.get("lista_capitoli", [])
     if sezioni_indice:
@@ -1757,11 +1879,31 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 - NO SUPERFICIALITÀ: Non dare risposte generiche o banali. Ogni paragrafo deve trasudare competenza profonda, spiegando i meccanismi interni, le ragioni nascoste e i dettagli tecnici dell'argomento.
 """
 
-    tabs = st.tabs(L["tabs"] + ["🛠️ 5. Formattazione"])
+    tabs = st.tabs(["📘 1. Come usare Scrittore Site"] + L["tabs"] + ["🛠️ 6. Formattazione"])
+
+    with tabs[0]:
+        st.subheader("Guida passo passo")
+        st.markdown("""
+1. Compila la barra laterale: titolo, autore, lingua, genere, stile, obiettivo, argomento e risultato finale desiderato. Usa Approfondimenti solo per le priorità del libro. Quando i campi obbligatori sono completi, sentirai un avviso e potrai creare l'indice.
+
+2. Apri Indice e premi Genera Indice Professionale. Se modifichi l'indice a mano, premi Salva e Sincronizza Capitoli. Voto Indice controlla la struttura; Rigenera indice seguendo il voto crea una proposta migliorata da applicare solo se ti convince.
+
+3. In Scrittura e Quiz scegli una sezione. Scrivi contenuto genera una sola sezione; Scrivi tutti i sottocapitoli del capitolo genera il blocco scelto; Scrivi tutto il libro completa tutte le sezioni vuote. Pausa ferma il lavoro prima della sezione successiva e Riprendi generazione lo continua.
+
+4. Per correggere una parte, selezionala e usa Rigenera con AI: inserisci un'istruzione concreta e verrà modificata solo quella sezione. Quiz aggiunge domande; 10 Esempi aggiunge esempi; 10 Ricette è riservato ai ricettari. Controlla i fatti del capitolo verifica dati aggiornabili; Genera Report Sintattico controlla la leggibilità. Carica un'immagine inserisce una tua immagine nella sezione, nell'anteprima e nelle esportazioni.
+
+5. In Anteprima leggi il libro e usa Controllo coerenza completo. Il report indica le sezioni da migliorare e fornisce prompt pronti da copiare in Rigenera con AI. Verifica anche che il libro raggiunga il risultato finale desiderato.
+
+6. In Esporta scarichi Word o PDF, anche come bozza. In Formattazione carichi un manoscritto, generi metadati KDP, formatti un DOCX 6×9 e scarichi il Word finale.
+
+Notifiche sonore: sentirai il segnale quando la sidebar è pronta, quando parte o termina Scrivi tutto il libro, in caso di errore, quando finiscono Voto Indice, Controllo coerenza, formattazione ed esportazione. Il suono avvisa soltanto: prima di pubblicare controlla sempre testo e file finale.
+        """)
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
-    with tabs[0]:
-        if st.button(L["btn_idx"]):
+    with tabs[1]:
+        if not val_risultato.strip():
+            st.info("Completa il campo 'Risultato finale desiderato' nella barra laterale per generare l'indice.")
+        if st.button(L["btn_idx"], disabled=not val_risultato.strip()):
             with st.spinner("Creazione indice (Neuro-Analisi, Connessione Parametri e Strutturazione Logica in corso)..."):
                 
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE TERMINI INDICE ---
@@ -1791,6 +1933,7 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
 - Stile di Racconto: {val_narrativa}
 - Punto di Vista: {val_pov}
 - Obiettivo Emozionale/Pratico: {val_goal}
+- Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 - Approfondimenti prioritari: {val_approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 {specifica_editoriale}
@@ -1887,6 +2030,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                         indice_da_valutare, val_titolo, val_trama, val_genere, val_stile,
                         val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                     )
+                    notifica_sonora("voto_indice_completato")
             if st.session_state.get("analisi_voto_indice"):
                 st.text_area(
                     "Analisi e voto dell'indice",
@@ -1894,9 +2038,52 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     height=320,
                     key="output_voto_indice"
                 )
+                if st.button("🔄 RIGENERA INDICE SEGUENDO IL VOTO", use_container_width=True, key="rigenera_indice_voto"):
+                    with st.spinner("Creazione della proposta migliorata in corso..."):
+                        prompt_rigenerazione = f"""Riscrivi esclusivamente l'indice del libro sotto indicato, rigorosamente in lingua {lingua_sel}.
+
+BRIEF
+Titolo: {val_titolo}
+Argomento: {val_trama}
+Genere: {val_genere}
+Tipologia: {val_stile}
+Stile: {val_narrativa}
+POV: {val_pov}
+Obiettivo: {val_goal}
+Risultato finale desiderato: {val_risultato}
+Approfondimenti: {val_approfondimenti or "Nessuno"}
+
+INDICE ATTUALE
+{indice_da_valutare}
+
+VOTO E SUGGERIMENTI DELL'EDITOR
+{st.session_state["analisi_voto_indice"]}
+
+Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossari, bibliografie, risorse o checklist vuote. Mantieni solo argomenti pertinenti. Restituisci soltanto l'indice gerarchico pulito, senza spiegazioni, Markdown o URL."""
+                        proposta = genera_indice_controllato(
+                            prompt_rigenerazione,
+                            "Sei un editor senior. Correggi l'indice con precisione e conserva la coerenza con il brief.",
+                            val_genere, val_titolo, val_trama, val_goal, lingua_sel, val_stile, val_narrativa, val_pov
+                        )
+                        if proposta:
+                            st.session_state["indice_proposto_dal_voto"] = proposta
+                if st.session_state.get("indice_proposto_dal_voto"):
+                    st.text_area(
+                        "Proposta di indice migliorata (l'indice attuale è ancora al sicuro)",
+                        value=st.session_state["indice_proposto_dal_voto"],
+                        height=400,
+                        key="output_indice_proposto_dal_voto"
+                    )
+                    if st.button("✅ APPLICA E SINCRONIZZA LA PROPOSTA", use_container_width=True, key="applica_indice_voto"):
+                        st.session_state["indice_backup_prima_della_proposta"] = st.session_state.get("indice_raw", "")
+                        st.session_state["indice_raw"] = st.session_state["indice_proposto_dal_voto"]
+                        st.session_state.pop("indice_proposto_dal_voto", None)
+                        st.session_state.pop("analisi_voto_indice", None)
+                        sync_capitoli()
+                        st.rerun()
 
     # TAB 2: SCRITTURA E QUIZ (E ORA ANCHE RICETTE)
-    with tabs[1]:
+    with tabs[2]:
         if not lista_cap_base: st.warning(L["msg_err_idx"])
         else:
             # La stesura completa deve seguire esattamente tutte le sezioni disponibili nell'editor:
@@ -1918,6 +2105,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     st.session_state["job_scrittura_attivo"] = True
                     st.session_state["job_scrittura_pausa"] = False
                     st.session_state.pop("job_scrittura_errore", None)
+                    notifica_sonora("avvio_scrittura_completa")
 
             coda_scrittura = st.session_state.get("job_scrittura_coda", [])
             if st.session_state.get("job_scrittura_attivo") and coda_scrittura:
@@ -1953,6 +2141,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                         st.session_state["job_scrittura_attivo"] = False
                         st.session_state["job_scrittura_pausa"] = True
                         st.session_state["job_scrittura_errore"] = f"{sezione_corrente}: {exc}"
+                        notifica_sonora("errore_scrittura")
                         st.error("Generazione sospesa per un errore. I contenuti precedenti sono salvi: controllali e poi riprendi.")
 
             if st.session_state.get("job_scrittura_pausa") and st.session_state.get("job_scrittura_coda"):
@@ -1966,6 +2155,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     st.session_state.pop("job_scrittura_errore", None)
                     st.rerun()
             elif st.session_state.get("job_scrittura_attivo") is False and not st.session_state.get("job_scrittura_coda") and st.session_state.get("job_scrittura_totale"):
+                notifica_sonora("libro_completato")
                 st.success("Libro completato: tutte le sezioni previste sono state generate e salvate.")
             sez_scelta = st.selectbox(L["lbl_sec"], opzioni_editor)
             k_sessione = f"txt_{sez_scelta.replace(' ', '_').replace('.', '')}"
@@ -2147,7 +2337,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 if st.button("Genera Report Sintattico"): st.write(analizza_qualita_prosa(st.session_state.get(k_sessione, "")))
 
     # TAB 3: ANTEPRIMA
-    with tabs[2]:
+    with tabs[3]:
         st.subheader(L["preview_tit"])
         contenuti_libro = {
             s: st.session_state.get(f"txt_{s.replace(' ', '_').replace('.', '')}", "")
@@ -2155,12 +2345,12 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
         }
         firma_attuale_coerenza = firma_controllo_coerenza(
             st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo, val_trama,
-            val_genere, val_stile, val_narrativa, val_pov, val_goal, val_approfondimenti
+            val_genere, val_stile, val_narrativa, val_pov, val_goal, val_risultato, val_approfondimenti
         )
         if st.button("🔍 CONTROLLO COERENZA COMPLETO"):
             with st.spinner("Analisi completa del manoscritto in corso..."):
                 controllo_tecnico = analizza_coerenza_libro(
-                    st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama, val_genere
+                    st.session_state.get("indice_raw", ""), contenuti_libro, val_goal, val_trama, val_genere, val_risultato
                 )
                 valutazione_editoriale = valuta_manoscritto_completo(
                     st.session_state.get("indice_raw", ""), contenuti_libro, val_titolo,
@@ -2172,6 +2362,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     f"VALUTAZIONE EDITORIALE COMPLETA\n{valutazione_editoriale}"
                 )
                 st.session_state["report_coerenza_firma"] = firma_attuale_coerenza
+                notifica_sonora("coerenza_completata")
         if st.session_state.get("report_coerenza_libro"):
             if st.session_state.get("report_coerenza_firma") != firma_attuale_coerenza:
                 st.warning("Analisi non aggiornata: il testo, l'indice o il brief sono cambiati dopo l'ultimo controllo. Premi di nuovo il pulsante per ottenere il report della versione corrente.")
@@ -2204,7 +2395,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
         st.markdown(html_p + "</div>", unsafe_allow_html=True)
 
     # TAB 4: ESPORTAZIONE
-    with tabs[3]:
+    with tabs[4]:
         sezioni_incomplete_export = sezioni_mancanti_per_esportazione(lista_cap_base, val_genere)
         if sezioni_incomplete_export:
             st.warning(
@@ -2230,6 +2421,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             doc.add_paragraph(img.get("caption", ""))
                         doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
                 bw = BytesIO(); doc.save(bw); bw.seek(0)
+                notifica_sonora("word_pronto")
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}{suffisso}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
@@ -2247,11 +2439,12 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             image_caption=img.get("caption") if img else None
                         )
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace')
+                notifica_sonora("pdf_pronto")
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}{suffisso}.pdf", mime="application/pdf")
 
     # TAB 5: FORMATTAZIONE E METADATI KDP
-    with tabs[4]:
+    with tabs[5]:
         st.subheader("🛠️ Formattazione")
         st.caption("Carica un manoscritto DOCX o PDF per generare metadati; i file DOCX possono anche essere formattati per il formato KDP 6×9.")
         manoscritto = st.file_uploader(
@@ -2312,6 +2505,7 @@ Sette frasi chiave pertinenti, separate da virgole, senza spiegazioni aggiuntive
                         with st.spinner("Formattazione del documento in corso..."):
                             try:
                                 st.session_state["docx_formattato_kdp"] = formatta_manoscritto_kdp(manoscritto)
+                                notifica_sonora("formattazione_completata")
                                 st.success("Formattazione completata.")
                             except Exception as e:
                                 st.error(f"Impossibile formattare il documento: {e}")
