@@ -257,6 +257,8 @@ class EbookPDF(FPDF):
             self.cell(0, 10, f"{self.titolo} - {self.autore}", 0, 0, 'R'); self.ln(15)
             
     def footer(self):
+        if self.page_no() <= 1:
+            return
         self.set_y(-20); self.set_font('Arial', 'I', 9)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
         
@@ -597,7 +599,7 @@ def profilo_genere_stesura(genere):
         "Manuale Psicologico": "Spiega modelli e pratiche in modo accessibile, con limiti chiari. Non fare diagnosi, non promettere cura e invita a rivolgersi a professionisti quando necessario.",
         "Biografia": "Segui una cronologia significativa, usando fonti verificabili e distinguendo fatti, testimonianze e interpretazioni. Privilegia svolte e contesto rispetto a elenchi di date.",
         "Ricettario": "Ogni capitolo-ricetta deve contenere porzioni, tempi, ingredienti con dosi, procedimento numerato, segnali di riuscita, errore e correzione, variante e conservazione solo se verificata. Non duplicare la stessa ricetta in forma breve ed estesa.",
-        "Test Prep (Preparazione Esami)": "Spiega ciò che serve per l'esame, poi fornisci esercizi, soluzioni ragionate, errori tipici e criteri di autovalutazione. Non inventare regole d'esame non verificate.",
+        "Test Prep (Preparazione Esami)": "Spiega soltanto le competenze pertinenti alla prova, poi fornisci esercizi reali, soluzioni ragionate, errori tipici e criteri di autovalutazione. Quando una sezione promette quiz, test o simulazioni, deve contenere le domande effettive e non istruzioni generiche su come studiare. Mantieni separati quesiti e soluzioni, verifica il numero richiesto, evita duplicati e non inventare regole d'esame non verificate.",
         "Narrativo": "Sviluppa personaggi, conflitto, cause e conseguenze in scene concrete. Ogni capitolo deve avere una funzione narrativa distinta.",
         "Romanzo Classico": "Usa una costruzione narrativa solida, personaggi coerenti, ambientazione e temi sviluppati attraverso azioni e dialoghi; evita imitazioni di autori viventi.",
         "Contemporaneo": "Racconta conflitti e relazioni con voce naturale, dettagli specifici e temi attuali trattati attraverso la storia, non con prediche.",
@@ -665,6 +667,171 @@ def genera_sezione_con_ripetizione(prompt, system_prompt, sezione, lingua, tenta
         except Exception as exc:
             ultimo_errore = exc
     raise RuntimeError(f"Impossibile completare la sezione dopo {tentativi} tentativi: {ultimo_errore}")
+
+
+def capitolo_padre(indice, sezione):
+    """Restituisce il capitolo che contiene un sottocapitolo, utile per riconoscere le simulazioni."""
+    padre = ""
+    confronto = re.sub(r"\s+", " ", sezione.strip().lower())
+    for riga in (indice or "").splitlines():
+        pulita = riga.strip()
+        if re.match(r"(?i)^capitolo\s+\d+", pulita):
+            padre = pulita
+        if re.sub(r"\s+", " ", pulita.lower()) == confronto:
+            return padre
+    return padre
+
+
+def numero_domande_simulazione(indice, trama, obiettivo):
+    """Ricava un conteggio soltanto quando il brief lo dichiara; evita numeri inventati."""
+    testo = f"{indice}\n{trama}\n{obiettivo}"
+    corrispondenze = re.findall(
+        r"(?is)(?:simulazion\w*|test\s+completo|prova\s+completa).{0,90}?(\d{1,3})\s+(?:domand\w*|quesit\w*)"
+        r"|(\d{1,3})\s+(?:domand\w*|quesit\w*).{0,90}?(?:simulazion\w*|test\s+completo|prova\s+completa)",
+        testo
+    )
+    numeri = [int(a or b) for a, b in corrispondenze if (a or b)]
+    return max(numeri) if numeri else 0
+
+
+def sezione_simulazione_test_prep(sezione, indice, genere):
+    """Attiva il generatore a blocchi solo nella sezione che deve contenere i quesiti della simulazione."""
+    if genere != "Test Prep (Preparazione Esami)":
+        return False
+    titolo = sezione.lower()
+    padre = capitolo_padre(indice, sezione).lower()
+    è_simulazione = "simulazione" in titolo or "simulazione" in padre
+    è_contenuto_test = any(parola in titolo for parola in ("domande", "quesiti", "quiz", "esecuzione", "test"))
+    return è_simulazione and è_contenuto_test
+
+
+def conta_domande_test_prep(testo):
+    return len(re.findall(r"(?im)^\s*domanda\s+\d{1,3}\s*[:.-]", testo or ""))
+
+
+def domande_normalizzate_test_prep(testo):
+    domande = re.findall(r"(?im)^\s*domanda\s+\d{1,3}\s*[:.-]\s*(.+)$", testo or "")
+    return [re.sub(r"[^a-z0-9àèéìòóù ]", "", domanda.lower()).strip() for domanda in domande]
+
+
+def genera_simulazione_test_prep(prompt_base, system_prompt, sezione, indice, trama, obiettivo, lingua):
+    """Genera prove lunghe in blocchi verificabili, evitando simulazioni promesse ma incomplete."""
+    totale = numero_domande_simulazione(indice, trama, obiettivo)
+    if totale < 10:
+        return genera_sezione_con_ripetizione(prompt_base, system_prompt, sezione, lingua)
+
+    dimensione_blocco = 10
+    blocchi_domande, domande_precedenti = [], []
+    for inizio in range(1, totale + 1, dimensione_blocco):
+        fine = min(inizio + dimensione_blocco - 1, totale)
+        vincolo = f"""
+Questa è la parte domande della simulazione '{sezione}', gruppo {inizio}-{fine} di {totale}.
+Genera ESATTAMENTE {fine - inizio + 1} quesiti originali, numerati da DOMANDA {inizio:02d}: a DOMANDA {fine:02d}:.
+Per ogni domanda usa quattro opzioni A), B), C), D). NON scrivere risposte, soluzioni, commenti,
+punteggi o istruzioni su come prepararsi. Distribuisci i quesiti sui contenuti obbligatori dell'indice
+e del brief; non ripetere le domande già prodotte qui sotto.
+Domande già prodotte: {' | '.join(domande_precedenti) or 'nessuna'}
+"""
+        blocco = genera_sezione_con_ripetizione(prompt_base + vincolo, system_prompt, sezione, lingua)
+        if conta_domande_test_prep(blocco) != (fine - inizio + 1):
+            blocco = genera_sezione_con_ripetizione(
+                prompt_base + vincolo + "\nCORREZIONE OBBLIGATORIA: restituisci solo il numero esatto di DOMANDA richiesto, senza testo introduttivo.",
+                system_prompt, sezione, lingua
+            )
+        if conta_domande_test_prep(blocco) != (fine - inizio + 1):
+            raise RuntimeError(f"La simulazione '{sezione}' non contiene il blocco completo di domande {inizio}-{fine}.")
+        nuove_domande = domande_normalizzate_test_prep(blocco)
+        if set(nuove_domande) & set(domande_precedenti):
+            raise RuntimeError(f"La simulazione '{sezione}' contiene domande duplicate nel blocco {inizio}-{fine}.")
+        blocchi_domande.append(blocco)
+        domande_precedenti.extend(nuove_domande)
+
+    corpo_domande = "\n\n".join(blocchi_domande)
+    chiave = genera_sezione_con_ripetizione(
+        f"""Crea la chiave delle soluzioni per la simulazione '{sezione}' in lingua {lingua}.
+Le domande seguenti sono già state redatte. Fornisci ESATTAMENTE una riga di soluzione per ogni
+DOMANDA da 01 a {totale:02d}, con questo formato: SOLUZIONE 01: lettera corretta - spiegazione breve e concreta.
+Non riscrivere le domande, non aggiungere nuove domande, non usare link o fonti e non omettere numeri.
+
+DOMANDE DELLA SIMULAZIONE
+{corpo_domande}
+""",
+        system_prompt, sezione, lingua
+    )
+    if len(re.findall(r"(?im)^\s*soluzione\s+\d{1,3}\s*[:.-]", chiave or "")) != totale:
+        raise RuntimeError(f"La simulazione '{sezione}' non contiene le {totale} soluzioni commentate richieste.")
+    return (
+        f"SIMULAZIONE: DOMANDE\n\n{corpo_domande}\n\n"
+        f"SOLUZIONI COMMENTATE - CONSULTALE SOLO DOPO AVER COMPLETATO LA PROVA\n\n{chiave}"
+    )
+
+
+def criticita_specificita(testo, genere, sezione):
+    """Individua bozze genericamente motivazionali prima che finiscano nel manoscritto."""
+    pulito = pulisci_testo_editoriale(testo or "").strip()
+    parole = pulito.split()
+    if tipo_sezione_editoriale(sezione) == "parte":
+        return ""
+    if len(parole) < 150:
+        return "testo troppo breve per sviluppare l'argomento assegnato"
+
+    basso = pulito.lower()
+    formule_generiche = (
+        "è fondamentale", "e fondamentale", "è cruciale", "e cruciale", "in modo efficace",
+        "è importante", "e importante", "con sicurezza", "molto utile", "potente strumento"
+    )
+    genericita = sum(basso.count(formula) for formula in formule_generiche)
+    segnali_per_genere = {
+        "Saggio Scientifico": ("definiz", "evidenz", "limite", "esempio"),
+        "Quiz Scientifico": ("domanda", "risposta", "spiegazione", "errore"),
+        "Manuale Tecnico": ("passo", "verifica", "errore", "esempio"),
+        "Religioso / Teologico": ("testo", "tradizion", "interpret", "contesto"),
+        "Spirituale / Esoterico": ("pratica", "esperienza", "limite", "esercizio"),
+        "Meditazione / Mindfulness": ("esercizio", "respiro", "osserv", "durata"),
+        "Business & Marketing": ("caso", "metrica", "azione", "cliente"),
+        "Economia e Finanza": ("dato", "rischio", "scenario", "esempio"),
+        "Romanzo Rosa": ("dialog", "scena", "personagg", "relazione"),
+        "Thriller / Noir": ("scena", "indizio", "conflitto", "personagg"),
+        "Fantasy": ("scena", "personagg", "conflitto", "mondo"),
+        "Fantascienza": ("scena", "personagg", "conseguenz", "tecnolog"),
+        "Manuale Psicologico": ("esercizio", "esempio", "limite", "pratica"),
+        "Biografia": ("evento", "contesto", "periodo", "scelta"),
+        "Ricettario": ("ingredient", "procedimento", "cottura", "porzion"),
+        "Test Prep (Preparazione Esami)": ("domanda", "risposta", "esercizio", "errore"),
+        "Narrativo": ("scena", "personagg", "azione", "dialog"),
+        "Romanzo Classico": ("scena", "personagg", "azione", "dialog"),
+        "Contemporaneo": ("scena", "personagg", "azione", "dialog"),
+        "Self-Help": ("esercizio", "passo", "esempio", "verifica"),
+        "Manuale Pratico": ("passo", "material", "errore", "risultato"),
+        "Storico": ("evento", "contesto", "fonte", "periodo")
+    }
+    segnali = segnali_per_genere.get(genere, ())
+    trovati = sum(1 for segnale in segnali if segnale in basso)
+    if genericita >= 5 and trovati < 2:
+        return "eccesso di formule generiche senza esempi, scene, dati, procedure o strumenti specifici del genere"
+    return ""
+
+
+def genera_contenuto_editoriale(prompt, system_prompt, sezione, indice, trama, genere, obiettivo, lingua):
+    """Mantiene il flusso comune per tutti i generi e applica la logica speciale solo quando serve."""
+    if sezione_simulazione_test_prep(sezione, indice, genere):
+        return genera_simulazione_test_prep(prompt, system_prompt, sezione, indice, trama, obiettivo, lingua)
+    testo = genera_sezione_con_ripetizione(prompt, system_prompt, sezione, lingua)
+    criticita = criticita_specificita(testo, genere, sezione)
+    if criticita:
+        testo = genera_sezione_con_ripetizione(
+            prompt + f"""
+
+REVISIONE OBBLIGATORIA DI QUALITÀ
+La prima bozza è stata rifiutata perché presenta: {criticita}.
+Riscrivi integralmente la sezione. Ogni paragrafo deve aggiungere un fatto, una scena, una procedura,
+un esempio, un caso, un esercizio, un dato o una conseguenza specifica del genere '{genere}'.
+Elimina frasi motivazionali, definizioni vaghe e ripetizioni. Non descrivere ciò che il lettore potrebbe fare:
+mostra il contenuto concreto richiesto dal titolo della sezione.
+""",
+            system_prompt, sezione, lingua
+        )
+    return testo
 
 # NUOVA FUNZIONE: Motore Decisionale per attivare i 3 Cervelli in base alla Sidebar
 def valuta_approccio_neurologico(genere, stile, narrativa):
@@ -852,6 +1019,13 @@ def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa
     profilo_genere = profilo_genere_stesura(genere)
     profilo_tipologia = profilo_tipologia_stesura(stile)
     regola_struttura = profilo_struttura_indice(genere, "", trama, obiettivo)
+    direttiva_test_prep = ""
+    if genere == "Test Prep (Preparazione Esami)":
+        direttiva_test_prep = """
+- Se il titolo della sezione contiene quiz, test, domande, autovalutazione o esercizi, crea il materiale promesso: quesiti originali con quattro opzioni, risposta corretta e spiegazione della scelta. Non limitarti a spiegare come affrontare un quiz.
+- Se il titolo contiene simulazione, genera solo ciò che il titolo assegna alla sezione; la sezione che contiene domande o esecuzione sarà completata dal generatore in blocchi con quesiti e soluzioni separati.
+- Evita formule generiche sullo studio: ogni paragrafo deve introdurre una competenza d'esame, un errore concreto, una procedura, un quesito o una decisione verificabile.
+"""
     return f"""
 INDICE GENERALE (STUDIALO PER CAPIRE COSA NON DEVI ANTICIPARE):
 {indice}
@@ -879,6 +1053,7 @@ Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in
 - Se la sezione è una Parte, scrivi soltanto una breve apertura che spiega lo scopo della Parte e come usarla: non sviluppare o riassumere i capitoli che seguono.
 - Se la sezione è un Capitolo con sottocapitoli nell'indice, non anticipare né risolvere gli argomenti assegnati ai relativi sottocapitoli.
 - Se il genere è Ricettario, ogni Capitolo che porta il nome di un piatto è una sola ricetta completa: non aggiungere sottocapitoli autonomi e non ripetere una ricetta già presente nella Parte o in altre sezioni.
+{direttiva_test_prep}
 - Rispetta integralmente i parametri editoriali e usa tassativamente il POV richiesto ({pov}).
 - Tratta con priorità gli approfondimenti forniti, ma soltanto nelle sezioni cui sono pertinenti; non ripeterli artificialmente e non anticipare contenuti assegnati a sezioni successive.
 - Sii profondo ed esaustivo nell'ambito della sezione, senza rubare materiale alle altre.
@@ -1058,6 +1233,44 @@ Per ogni sezione ricava un risultato concreto, il livello del lettore, i concett
 gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare ripetizioni.
 """
 
+
+def audit_simulazioni_test_prep(indice, contenuti, obiettivo, argomento):
+    """Controlla che le simulazioni di un test prep contengano davvero quesiti e soluzioni completi."""
+    risultati = []
+    attese = numero_domande_simulazione(indice, argomento, obiettivo)
+    sezioni = [
+        sezione for sezione in contenuti
+        if sezione_simulazione_test_prep(sezione, indice, "Test Prep (Preparazione Esami)")
+    ]
+    if not sezioni:
+        return ["ERRORE TEST PREP: nell'indice non è stata individuata una sezione che contenga i quesiti di una simulazione."]
+    if not attese:
+        risultati.append("AVVISO TEST PREP: il brief non dichiara quante domande deve contenere ogni simulazione; il controllo non può validarne la completezza numerica.")
+
+    domande_fuori_simulazione = []
+    for sezione, testo in contenuti.items():
+        if sezione not in sezioni:
+            domande_fuori_simulazione.extend(domande_normalizzate_test_prep(testo))
+
+    for sezione in sezioni:
+        testo = contenuti.get(sezione, "")
+        domande = domande_normalizzate_test_prep(testo)
+        soluzioni = len(re.findall(r"(?im)^\s*soluzione\s+\d{1,3}\s*[:.-]", testo or ""))
+        risultati.append(f"Simulazione '{sezione}': domande rilevate {len(domande)}; soluzioni rilevate {soluzioni}.")
+        if attese and len(domande) != attese:
+            risultati.append(f"ERRORE TEST PREP: '{sezione}' richiede {attese} domande ma ne contiene {len(domande)}.")
+        if attese and soluzioni != attese:
+            risultati.append(f"ERRORE TEST PREP: '{sezione}' richiede {attese} soluzioni commentate ma ne contiene {soluzioni}.")
+        ripetute_interne = len(domande) - len(set(domande))
+        ripetute_esterne = len(set(domande) & set(domande_fuori_simulazione))
+        if ripetute_interne:
+            risultati.append(f"ERRORE TEST PREP: '{sezione}' contiene {ripetute_interne} domande duplicate al suo interno.")
+        if ripetute_esterne:
+            risultati.append(f"AVVISO TEST PREP: '{sezione}' riutilizza {ripetute_esterne} domande già presenti in quiz o altre sezioni.")
+        if (not attese or (len(domande) == attese and soluzioni == attese)) and not ripetute_interne:
+            risultati.append(f"OK TEST PREP: struttura numerica della simulazione '{sezione}' valida.")
+    return risultati
+
 def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere=""):
     """Controllo deterministico preliminare su struttura, copertura e ripetizioni."""
     risultati = ["REPORT CONTROLLO COERENZA DEL LIBRO"]
@@ -1089,6 +1302,8 @@ def analizza_coerenza_libro(indice, contenuti, obiettivo, argomento, genere=""):
         non_vegani = sorted(set(re.findall(termini_non_vegani, testo.lower())))
         if non_vegani:
             risultati.append("AVVISO RICETTARIO: verificare ingredienti non vegani rilevati: " + ", ".join(non_vegani))
+    if genere == "Test Prep (Preparazione Esami)":
+        risultati.extend(audit_simulazioni_test_prep(indice, contenuti, obiettivo, argomento))
     if len(testo.strip()) < 1000: risultati.append("AVVISO: contenuto ancora troppo breve per una verifica completa")
     frasi = [f.strip().lower() for f in re.split(r"[.!?]+", testo) if len(f.strip()) > 40]
     duplicati = len(frasi) - len(set(frasi))
@@ -1486,8 +1701,9 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             sezione_corrente, st.session_state['indice_raw'], val_trama, val_genere,
                             val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                         )
-                        st.session_state[chiave_sezione(sezione_corrente)] = genera_sezione_con_ripetizione(
-                            prompt, S_PROMPT, sezione_corrente, lingua_sel
+                        st.session_state[chiave_sezione(sezione_corrente)] = genera_contenuto_editoriale(
+                            prompt, S_PROMPT, sezione_corrente, st.session_state['indice_raw'], val_trama,
+                            val_genere, val_goal, lingua_sel
                         )
                         st.session_state["job_scrittura_coda"] = coda_scrittura[1:]
                         st.rerun()
@@ -1536,8 +1752,9 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                                 sottocapitolo, st.session_state['indice_raw'], val_trama, val_genere,
                                 val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                             )
-                            st.session_state[chiave] = genera_sezione_con_ripetizione(
-                                prompt, S_PROMPT, sottocapitolo, lingua_sel
+                            st.session_state[chiave] = genera_contenuto_editoriale(
+                                prompt, S_PROMPT, sottocapitolo, st.session_state['indice_raw'], val_trama,
+                                val_genere, val_goal, lingua_sel
                             )
                         avanzamento.progress(100, text="Sottocapitoli completati.")
                         messaggio = f"Completati {len(da_generare)} sottocapitoli."
@@ -1553,8 +1770,9 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             sez_scelta, st.session_state['indice_raw'], val_trama, val_genere,
                             val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                         )
-                        st.session_state[k_sessione] = genera_sezione_con_ripetizione(
-                            full_prompt, S_PROMPT, sez_scelta, lingua_sel
+                        st.session_state[k_sessione] = genera_contenuto_editoriale(
+                            full_prompt, S_PROMPT, sez_scelta, st.session_state['indice_raw'], val_trama,
+                            val_genere, val_goal, lingua_sel
                         )
             with c2:
                 istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
@@ -1727,9 +1945,9 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
     with tabs[3]:
         sezioni_incomplete_export = sezioni_mancanti_per_esportazione(lista_cap_base, val_genere)
         if sezioni_incomplete_export:
-            st.error(
-                "Esportazione bloccata: alcune sezioni dell'indice sono vuote o troppo brevi. "
-                "Completa il libro prima di creare Word o PDF."
+            st.warning(
+                "Esportazione disponibile come BOZZA: alcune sezioni dell'indice sono vuote o troppo brevi. "
+                "Il file non è ancora pronto per la pubblicazione."
             )
             st.caption("Sezioni da completare: " + "; ".join(sezioni_incomplete_export[:12]) + (" ..." if len(sezioni_incomplete_export) > 12 else ""))
         else:
@@ -1737,36 +1955,38 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
         cw, cp = st.columns(2)
         with cw:
             if st.button(L["btn_word"]):
+                doc = Document(); doc.add_heading(val_titolo, 0)
                 if sezioni_incomplete_export:
-                    st.error("Completa prima le sezioni mancanti: il Word non è stato creato.")
-                else:
-                    doc = Document(); doc.add_heading(val_titolo, 0)
-                    for s in opzioni_editor:
-                        ke = chiave_sezione(s)
-                        if st.session_state.get(ke, "").strip():
-                            doc.add_page_break(); doc.add_heading(s.upper(), level=1)
-                            img = st.session_state.get("immagini_capitoli", {}).get(s)
-                            if img:
-                                doc.add_picture(BytesIO(img["bytes"]), width=Inches(4.3))
-                                doc.add_paragraph(img.get("caption", ""))
-                            doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
-                    bw = BytesIO(); doc.save(bw); bw.seek(0); st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                    doc.add_paragraph("BOZZA NON COMPLETA - Non pronta per la pubblicazione.")
+                for s in opzioni_editor:
+                    ke = chiave_sezione(s)
+                    if st.session_state.get(ke, "").strip():
+                        doc.add_page_break(); doc.add_heading(s.upper(), level=1)
+                        img = st.session_state.get("immagini_capitoli", {}).get(s)
+                        if img:
+                            doc.add_picture(BytesIO(img["bytes"]), width=Inches(4.3))
+                            doc.add_paragraph(img.get("caption", ""))
+                        doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
+                bw = BytesIO(); doc.save(bw); bw.seek(0)
+                suffisso = "_BOZZA" if sezioni_incomplete_export else ""
+                st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}{suffisso}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
             if st.button(L["btn_pdf"]):
+                pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
                 if sezioni_incomplete_export:
-                    st.error("Completa prima le sezioni mancanti: il PDF non è stato creato.")
-                else:
-                    pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
-                    for s in opzioni_editor:
-                        kd = chiave_sezione(s)
-                        if st.session_state.get(kd, "").strip():
-                            img = st.session_state.get("immagini_capitoli", {}).get(s)
-                            pdf.add_content(
-                                s.upper(), pulisci_testo_editoriale(st.session_state[kd]),
-                                image_bytes=img.get("bytes") if img else None,
-                                image_caption=img.get("caption") if img else None
-                            )
-                    out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
+                    pdf.add_content("BOZZA NON COMPLETA", "Questo file è una bozza di lavoro. Alcune sezioni previste dall'indice non sono ancora state completate; non usarlo per la pubblicazione.")
+                for s in opzioni_editor:
+                    kd = chiave_sezione(s)
+                    if st.session_state.get(kd, "").strip():
+                        img = st.session_state.get("immagini_capitoli", {}).get(s)
+                        pdf.add_content(
+                            s.upper(), pulisci_testo_editoriale(st.session_state[kd]),
+                            image_bytes=img.get("bytes") if img else None,
+                            image_caption=img.get("caption") if img else None
+                        )
+                out_p = pdf.output(dest='S').encode('latin-1', 'replace')
+                suffisso = "_BOZZA" if sezioni_incomplete_export else ""
+                st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}{suffisso}.pdf", mime="application/pdf")
 
     # TAB 5: FORMATTAZIONE E METADATI KDP
     with tabs[4]:
