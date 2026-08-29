@@ -106,12 +106,36 @@ def estratti_fonti_pertinenti(sezione, argomento, limite=3500):
     return "\n\n".join(scelti) or st.session_state.get("scheda_fonti", "")[:limite]
 
 
-def notifica_sonora(evento):
-    """Tre note ascendenti, forti e locali, senza file audio esterni."""
+def notifica_sonora(evento, lingua="Italiano"):
+    """Emette un segnale sonoro e un avviso testuale localizzato in alto a destra."""
     chiave = f"notifica_emessa_{evento}"
     if st.session_state.get(chiave):
         return
     st.session_state[chiave] = True
+    messaggi = {
+        "Italiano": {
+            "sidebar_pronta": "Brief completo: puoi generare l’indice.", "voto_indice_completato": "Voto dell’indice completato.",
+            "avvio_scrittura_completa": "Avviata la scrittura completa del libro.", "errore_scrittura": "La scrittura si è interrotta: controlla lo stato.",
+            "libro_completato": "Scrittura completa del libro terminata.", "coerenza_completata": "Controllo coerenza completo terminato.",
+            "word_pronto": "File Word pronto per il download.", "pdf_pronto": "File PDF pronto per il download.", "formattazione_completata": "Formattazione del documento completata."
+        },
+        "English": {
+            "sidebar_pronta": "Brief complete: you can generate the index.", "voto_indice_completato": "Index score completed.",
+            "avvio_scrittura_completa": "Full-book writing has started.", "errore_scrittura": "Writing stopped: check the status.",
+            "libro_completato": "Full-book writing completed.", "coerenza_completata": "Full consistency check completed.",
+            "word_pronto": "Word file ready to download.", "pdf_pronto": "PDF file ready to download.", "formattazione_completata": "Document formatting completed."
+        },
+        "Español": {"sidebar_pronta": "Brief completo: puedes generar el índice.", "voto_indice_completato": "Evaluación del índice completada.", "avvio_scrittura_completa": "Ha comenzado la escritura completa.", "errore_scrittura": "La escritura se interrumpió: revisa el estado.", "libro_completato": "Escritura completa terminada.", "coerenza_completata": "Control de coherencia completado.", "word_pronto": "Archivo Word listo para descargar.", "pdf_pronto": "Archivo PDF listo para descargar.", "formattazione_completata": "Formato del documento completado."},
+        "Français": {"sidebar_pronta": "Brief complet : vous pouvez générer l’index.", "voto_indice_completato": "Évaluation de l’index terminée.", "avvio_scrittura_completa": "Rédaction complète commencée.", "errore_scrittura": "La rédaction est interrompue : vérifiez l’état.", "libro_completato": "Rédaction complète terminée.", "coerenza_completata": "Contrôle de cohérence terminé.", "word_pronto": "Fichier Word prêt à télécharger.", "pdf_pronto": "Fichier PDF prêt à télécharger.", "formattazione_completata": "Mise en forme terminée."},
+        "Deutsch": {"sidebar_pronta": "Brief vollständig: Der Index kann erstellt werden.", "voto_indice_completato": "Indexbewertung abgeschlossen.", "avvio_scrittura_completa": "Vollständige Bucherstellung gestartet.", "errore_scrittura": "Schreiben wurde unterbrochen: Status prüfen.", "libro_completato": "Vollständige Bucherstellung abgeschlossen.", "coerenza_completata": "Vollständige Kohärenzprüfung abgeschlossen.", "word_pronto": "Word-Datei zum Download bereit.", "pdf_pronto": "PDF-Datei zum Download bereit.", "formattazione_completata": "Dokumentformatierung abgeschlossen."},
+        "Română": {"sidebar_pronta": "Brief complet: poți genera cuprinsul.", "voto_indice_completato": "Evaluarea cuprinsului s-a încheiat.", "avvio_scrittura_completa": "A început scrierea completă a cărții.", "errore_scrittura": "Scrierea s-a oprit: verifică starea.", "libro_completato": "Scrierea completă s-a încheiat.", "coerenza_completata": "Controlul complet de coerență s-a încheiat.", "word_pronto": "Fișierul Word este gata de descărcare.", "pdf_pronto": "Fișierul PDF este gata de descărcare.", "formattazione_completata": "Formatarea documentului s-a încheiat."},
+        "Русский": {"sidebar_pronta": "Бриф готов: можно создать оглавление.", "voto_indice_completato": "Оценка оглавления завершена.", "avvio_scrittura_completa": "Начато написание всей книги.", "errore_scrittura": "Написание остановлено: проверьте состояние.", "libro_completato": "Написание всей книги завершено.", "coerenza_completata": "Полная проверка согласованности завершена.", "word_pronto": "Файл Word готов к скачиванию.", "pdf_pronto": "Файл PDF готов к скачиванию.", "formattazione_completata": "Форматирование документа завершено."},
+        "العربية": {"sidebar_pronta": "اكتمل الملخص: يمكنك إنشاء الفهرس.", "voto_indice_completato": "اكتمل تقييم الفهرس.", "avvio_scrittura_completa": "بدأت كتابة الكتاب كاملاً.", "errore_scrittura": "توقفت الكتابة: راجع الحالة.", "libro_completato": "اكتملت كتابة الكتاب.", "coerenza_completata": "اكتمل فحص الاتساق الكامل.", "word_pronto": "ملف Word جاهز للتنزيل.", "pdf_pronto": "ملف PDF جاهز للتنزيل.", "formattazione_completata": "اكتمل تنسيق المستند."},
+        "中文": {"sidebar_pronta": "简介已完成：可以生成目录。", "voto_indice_completato": "目录评分已完成。", "avvio_scrittura_completa": "整本书写作已开始。", "errore_scrittura": "写作已中断：请检查状态。", "libro_completato": "整本书写作已完成。", "coerenza_completata": "完整一致性检查已完成。", "word_pronto": "Word 文件可供下载。", "pdf_pronto": "PDF 文件可供下载。", "formattazione_completata": "文档格式化已完成。"}
+    }
+    messaggio = messaggi.get(lingua, messaggi["Italiano"]).get(evento, "Operazione completata.")
+    icona = "⚠️" if evento == "errore_scrittura" else "✅"
+    st.toast(messaggio, icon=icona)
     components.html("""
     <script>
     (() => {
@@ -142,7 +166,7 @@ def notifica_sonora(evento):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r11"
+VERSIONE_DEPLOY = "QA-2026-08-30-r12"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -1321,7 +1345,7 @@ gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare 
     sidebar_pronta = not campi_sidebar_mancanti
     firma_sidebar_pronta = "|".join(str(valore).strip() for valore in campi_obbligatori_sidebar.values())
     if sidebar_pronta and st.session_state.get("firma_notifica_sidebar") != firma_sidebar_pronta:
-        notifica_sonora("sidebar_pronta")
+        notifica_sonora("sidebar_pronta", lingua_sel)
         st.session_state["firma_notifica_sidebar"] = firma_sidebar_pronta
     elif not sidebar_pronta:
         st.session_state.pop("firma_notifica_sidebar", None)
@@ -2256,7 +2280,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                         indice_da_valutare, val_titolo, val_trama, val_genere, val_stile,
                         val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                     )
-                    notifica_sonora("voto_indice_completato")
+                    notifica_sonora("voto_indice_completato", lingua_sel)
             if st.session_state.get("analisi_voto_indice"):
                 st.text_area(
                     "Analisi e voto dell'indice",
@@ -2331,7 +2355,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                     st.session_state["job_scrittura_attivo"] = True
                     st.session_state["job_scrittura_pausa"] = False
                     st.session_state.pop("job_scrittura_errore", None)
-                    notifica_sonora("avvio_scrittura_completa")
+                    notifica_sonora("avvio_scrittura_completa", lingua_sel)
 
             coda_scrittura = st.session_state.get("job_scrittura_coda", [])
             if st.session_state.get("job_scrittura_attivo") and coda_scrittura:
@@ -2367,7 +2391,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                         st.session_state["job_scrittura_attivo"] = False
                         st.session_state["job_scrittura_pausa"] = True
                         st.session_state["job_scrittura_errore"] = f"{sezione_corrente}: {exc}"
-                        notifica_sonora("errore_scrittura")
+                        notifica_sonora("errore_scrittura", lingua_sel)
                         st.error("Generazione sospesa per un errore. I contenuti precedenti sono salvi: controllali e poi riprendi.")
 
             if st.session_state.get("job_scrittura_pausa") and st.session_state.get("job_scrittura_coda"):
@@ -2381,7 +2405,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                     st.session_state.pop("job_scrittura_errore", None)
                     st.rerun()
             elif st.session_state.get("job_scrittura_attivo") is False and not st.session_state.get("job_scrittura_coda") and st.session_state.get("job_scrittura_totale"):
-                notifica_sonora("libro_completato")
+                notifica_sonora("libro_completato", lingua_sel)
                 st.success("Libro completato: tutte le sezioni previste sono state generate e salvate.")
             sez_scelta = st.selectbox(L["lbl_sec"], opzioni_editor)
             k_sessione = f"txt_{sez_scelta.replace(' ', '_').replace('.', '')}"
@@ -2624,7 +2648,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                     f"VALUTAZIONE EDITORIALE COMPLETA\n{valutazione_editoriale}"
                 )
                 st.session_state["report_coerenza_firma"] = firma_attuale_coerenza
-                notifica_sonora("coerenza_completata")
+                notifica_sonora("coerenza_completata", lingua_sel)
                 barra_coerenza.progress(100, text="Controllo coerenza completato.")
                 stato_coerenza.success("Controllo completo concluso.")
         if st.session_state.get("report_coerenza_libro"):
@@ -2667,7 +2691,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                             doc.add_paragraph(img.get("caption", ""))
                         doc.add_paragraph(pulisci_testo_editoriale(st.session_state[ke]))
                 bw = BytesIO(); doc.save(bw); bw.seek(0)
-                notifica_sonora("word_pronto")
+                notifica_sonora("word_pronto", lingua_sel)
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}{suffisso}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
@@ -2685,7 +2709,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                             image_caption=img.get("caption") if img else None
                         )
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace')
-                notifica_sonora("pdf_pronto")
+                notifica_sonora("pdf_pronto", lingua_sel)
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}{suffisso}.pdf", mime="application/pdf")
 
@@ -2751,7 +2775,7 @@ Sette frasi chiave pertinenti, separate da virgole, senza spiegazioni aggiuntive
                         with st.spinner("Formattazione del documento in corso..."):
                             try:
                                 st.session_state["docx_formattato_kdp"] = formatta_manoscritto_kdp(manoscritto)
-                                notifica_sonora("formattazione_completata")
+                                notifica_sonora("formattazione_completata", lingua_sel)
                                 st.success("Formattazione completata.")
                             except Exception as e:
                                 st.error(f"Impossibile formattare il documento: {e}")
