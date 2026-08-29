@@ -305,13 +305,15 @@ def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
     descrizione = chiedi_gpt(
         f"Crea un brief visivo tecnico per il capitolo '{sezione}' del libro '{titolo}'. "
         f"Argomento: {trama}. Genere: {genere}. Lingua: {lingua}. "
-        "Descrivi composizione, etichette brevi, stile e funzione didattica. "
-        "Il visual deve essere concreto e leggibile. Restituisci solo il brief.\n"
+        "Descrivi composizione, elementi visivi, stile e funzione didattica. "
+        "Rappresenta graficamente il concetto descritto, senza trasformarlo in testo. "
+        "VIETATO inserire parole, titoli, paragrafi, numeri, etichette, didascalie, loghi "
+        "o schermate con testo nell'immagine. Restituisci solo il brief.\n"
         f"Contenuto già scritto: {contenuto[-2500:]}",
         "Sei un instructional designer tecnico: produci brief visivi accurati e verificabili."
     )
     try:
-        risposta = client.images.generate(model="gpt-image-1", prompt=f"Illustrazione didattica tecnica per un manuale professionale. {descrizione}. Stile pulito, sfondo chiaro, alta leggibilità, nessun logo.", size="1024x1024")
+        risposta = client.images.generate(model="gpt-image-1", prompt=f"Illustrazione didattica tecnica per un manuale professionale. Rendi visivamente il concetto del capitolo: {descrizione}. Nessun testo o simbolo alfabetico nell'immagine, nessun titolo, nessuna didascalia, nessun logo. Usa forme, oggetti, frecce visive non testuali e relazioni spaziali. Stile pulito, sfondo chiaro, alta leggibilità.", size="1024x1024")
         dato = risposta.data[0]
         if getattr(dato, "b64_json", None): return base64.b64decode(dato.b64_json), descrizione
         if getattr(dato, "url", None): return requests.get(dato.url, timeout=60).content, descrizione
@@ -661,6 +663,20 @@ Non limitarti a fare un discorso generico: devi FORNIRE MATERIALMENTE ciò che i
 """
     # --- FINE NUOVE RIGHE ---
 
+    modulo_operativita_universale = """
+=== DIRETTIVA OBBLIGATORIA DI OPERATIVITÀ E DETTAGLIO ===
+Ogni sottocapitolo deve insegnare concretamente l'argomento, non limitarsi a descriverlo.
+Quando è pertinente, includi sempre: obiettivo, prerequisiti, strumenti, impostazioni,
+procedura numerata passo passo, valori o parametri, risultato atteso, errori frequenti,
+correzioni, esercizio pratico e criterio verificabile di completamento.
+Se la sezione tratta prompt, scrivi prompt completi e copiabili. Se tratta software,
+indica menu, comandi, pulsanti e sequenza esatta. Se tratta una procedura, eseguila
+materialmente nel testo con dati o esempi realistici. Distingui fatti, esempi ipotetici
+e indicazioni da verificare. Non promettere risultati garantiti e non usare formule vaghe.
+Nel capitolo principale mantieni la visione d'insieme; nel sottocapitolo sviluppa il
+dettaglio assegnato senza anticipare o ripetere gli altri sottocapitoli.
+"""
+
     # PROMPT POTENZIATO CON COERENZA POV, PULIZIA SINTATTICA E CONFORMITA' DI GENERE
     S_PROMPT = f"""
 Sei un esperto Madrelingua in {lingua_sel}, Editor e Luminare mondiale nel campo '{val_genere}'. 
@@ -671,6 +687,7 @@ Stai redigendo l'ebook '{val_titolo}'.
 {modulo_approfondimento_genere}
 {modulo_esempi_specifici}
 {modulo_aderenza_titolo_genere}
+{modulo_operativita_universale}
 
 PARAMETRI DI BASE (DA APPLICARE TASSATIVAMENTE IN OGNI SEZIONE):
 - Stile di Racconto: {val_narrativa}
@@ -788,6 +805,20 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
 - Obiettivo Emozionale/Pratico: {val_goal}
 
 {specifica_editoriale}
+
+=== SPECIFICA OPERATIVA PER LA PROGETTAZIONE DELL'INDICE ===
+Costruisci l'indice come un progetto editoriale eseguibile, non come un elenco generico.
+Ricava dal brief il risultato finale promesso, il pubblico e il livello di partenza, i problemi
+concreti, il metodo didattico, i deliverable e i limiti del libro.
+Definisci una sequenza dal livello iniziale al risultato finale. Ogni Parte deve avere una
+funzione distinta; ogni Capitolo deve avere un obiettivo autonomo; ogni sottocapitolo deve
+avere un confine preciso, un risultato concreto e almeno un deliverable coerente: procedura,
+prompt copiabile, esempio eseguibile, checklist, tabella, esercizio, caso studio o criterio
+di verifica. Non creare sottocapitoli ripetitivi.
+Distribuisci gli argomenti dell'obiettivo e della trama senza anticipare tutto nell'introduzione.
+Per strumenti o software soggetti ad aggiornamento, separa principi stabili, funzioni da verificare
+e applicazioni. Mantieni coerenza con genere, tipologia, stile, POV, obiettivo e argomento.
+L'indice deve permettere di scrivere sezioni dettagliate senza riempitivi.
 """
                 if st.session_state.get("conoscenza_extra"):
                     prompt_idx += f"\n\nFONTI ESTERNE E RAGIONAMENTO:\nUsa queste informazioni fornite dall'utente per strutturare l'indice in modo logico e autorevole. \n{st.session_state['conoscenza_extra'][:4000]}\n"
