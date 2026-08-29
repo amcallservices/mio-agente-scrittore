@@ -647,7 +647,7 @@ with st.sidebar:
     
     # Definizioni disponibili prima del loro primo utilizzo nella UI.
     # Restano presenti anche nel modulo di memoria sottostante per compatibilità.
-    def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
+    def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, approfondimenti=""):
         return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
 Titolo: {titolo}
 Genere: {genere}
@@ -660,6 +660,9 @@ OBIETTIVO OPERATIVO:
 
 ARGOMENTO E CONFINI:
 {argomento}
+
+APPROFONDIMENTI PRIORITARI (FACOLTATIVI):
+{approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 Per ogni sezione ricava un risultato concreto, il livello del lettore, i concetti necessari,
 gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare ripetizioni.
@@ -684,8 +687,13 @@ gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare 
 
     val_goal = st.text_input(L["lbl_goal"], placeholder="Es: Mantenere l'attenzione alta, far emozionare...")
     val_trama = st.text_area(L["lbl_plot"], height=150)
+    val_approfondimenti = st.text_area(
+        "Approfondimenti (facoltativo)",
+        height=130,
+        placeholder="Inserisci istruzioni, aspetti da trattare con maggiore attenzione, vincoli, esempi o temi obbligatori."
+    )
     specifica_editoriale = costruisci_specifica_editoriale(
-        val_titolo, val_genere, val_stile, val_narrativa, val_pov, val_goal, val_trama
+        val_titolo, val_genere, val_stile, val_narrativa, val_pov, val_goal, val_trama, val_approfondimenti
     )
     
     # PULSANTE RESET BLINDATO: Unico modo per svuotare la session_state
@@ -728,7 +736,7 @@ def individua_sezioni_da_stendere(sezioni):
         if re.match(regex_capitolo, sezione.strip()) or re.match(regex_sottocapitolo, sezione.strip())
     ]
 
-def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa, pov, obiettivo, lingua):
+def crea_prompt_stesura_sezione(sezione, indice, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
     """Costruisce il prompt comune usato dalla stesura singola e dalla stesura di un capitolo intero."""
     memoria = genera_contesto_avanzato(sezione)
     return f"""
@@ -745,11 +753,13 @@ MEMORIA CONTENUTI PRECEDENTI (Per non ripetersi):
 - Stile di Racconto: {narrativa}
 - Punto di Vista (POV): {pov}
 - Obiettivo Emozionale/Pratico: {obiettivo}
+- Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 AZIONE:
 Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in lingua {lingua}.
 - Se la sezione è un Capitolo, non anticipare né risolvere gli argomenti assegnati ai relativi sottocapitoli.
 - Rispetta integralmente i parametri editoriali e usa tassativamente il POV richiesto ({pov}).
+- Tratta con priorità gli approfondimenti forniti, ma soltanto nelle sezioni cui sono pertinenti; non ripeterli artificialmente e non anticipare contenuti assegnati a sezioni successive.
 - Sii profondo ed esaustivo nell'ambito della sezione, senza rubare materiale alle altre.
 - Redigi contenuto concreto suggerito dal titolo, senza preamboli inutili.
 - Non scrivere e non ripetere mai '{sezione}' come intestazione. Inizia direttamente con il contenuto.
@@ -766,7 +776,7 @@ Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in
 - Mantieni paragrafi leggibili e sottotitoli brevi solo quando migliorano la consultazione; non usare formule generiche come "semplice", "intuitivo" o "fondamentale" senza spiegare concretamente il perché.
 """
 
-def valuta_indice_editoriale(indice, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua):
+def valuta_indice_editoriale(indice, titolo, trama, genere, stile, narrativa, pov, obiettivo, lingua, approfondimenti=""):
     """Valuta l'indice rispetto al brief compilato nella sidebar."""
     prompt = f"""Valuta professionalmente il seguente indice editoriale in lingua {lingua}.
 
@@ -778,11 +788,12 @@ Tipologia di scrittura: {stile}
 Stile di racconto: {narrativa}
 Punto di vista: {pov}
 Obiettivo del libro: {obiettivo}
+Approfondimenti prioritari: {approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 INDICE DA VALUTARE
 {indice}
 
-Esamina esclusivamente: attinenza al brief, ordine logico, completezza, progressione del lettore, assenza di ripetizioni, distinzione tra capitoli e sottocapitoli, concretezza dei titoli e capacità di sostenere un libro completo.
+Esamina esclusivamente: attinenza al brief, copertura degli approfondimenti prioritari, ordine logico, completezza, progressione del lettore, assenza di ripetizioni, distinzione tra capitoli e sottocapitoli, concretezza dei titoli e capacità di sostenere un libro completo.
 Non valutare il libro non ancora scritto e non inventare informazioni mancanti.
 
 Restituisci testo semplice, senza Markdown e senza URL, in questo formato:
@@ -797,7 +808,7 @@ COERENZA CON IL BRIEF: breve verifica di titolo, pubblico, obiettivo, genere e s
         "Sei un editor senior specializzato in architettura di libri. Sei rigoroso, concreto e non usi valutazioni vaghe."
     ))
 
-def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento):
+def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, approfondimenti=""):
     """Crea una specifica strutturata che indice e capitoli possono applicare in modo coerente."""
     return f"""=== SPECIFICA EDITORIALE STRUTTURATA ===
 Titolo: {titolo}
@@ -811,6 +822,9 @@ OBIETTIVO OPERATIVO:
 
 ARGOMENTO E CONFINI:
 {argomento}
+
+APPROFONDIMENTI PRIORITARI (FACOLTATIVI):
+{approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 Per ogni sezione ricava un risultato concreto, il livello del lettore, i concetti necessari,
 gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare ripetizioni.
@@ -1075,8 +1089,11 @@ PARAMETRI EDITORIALI (L'indice deve essere costruito su misura e strettamente at
 - Stile di Racconto: {val_narrativa}
 - Punto di Vista: {val_pov}
 - Obiettivo Emozionale/Pratico: {val_goal}
+- Approfondimenti prioritari: {val_approfondimenti.strip() or "Nessun approfondimento aggiuntivo fornito."}
 
 {specifica_editoriale}
+
+Gli approfondimenti prioritari devono essere considerati prima di distribuire gli altri argomenti nell'indice. Trasformali in capitoli o sottocapitoli soltanto quando sono pertinenti al libro e assegna loro una collocazione logica, senza creare duplicazioni o voci generiche.
 
 === DIRETTIVA SPECIFICA DELLA TIPOLOGIA DI SCRITTURA ===
 Tipologia selezionata: {val_stile}
@@ -1146,7 +1163,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                 with st.spinner("Analisi editoriale dell'indice in corso..."):
                     st.session_state["analisi_voto_indice"] = valuta_indice_editoriale(
                         indice_da_valutare, val_titolo, val_trama, val_genere, val_stile,
-                        val_narrativa, val_pov, val_goal, lingua_sel
+                        val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                     )
             if st.session_state.get("analisi_voto_indice"):
                 st.text_area(
@@ -1186,7 +1203,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                         try:
                             prompt = crea_prompt_stesura_sezione(
                                 sezione, st.session_state['indice_raw'], val_trama, val_genere,
-                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel
+                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                             )
                             testo_generato = chiedi_gpt(prompt, S_PROMPT)
                             if testo_generato.startswith("ERRORE:"):
@@ -1235,7 +1252,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             )
                             prompt = crea_prompt_stesura_sezione(
                                 sottocapitolo, st.session_state['indice_raw'], val_trama, val_genere,
-                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel
+                                val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                             )
                             testo_generato = chiedi_gpt(prompt, S_PROMPT)
                             st.session_state[chiave] = verifica_e_correggi_fatti_online(
@@ -1253,7 +1270,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     with st.spinner(L["msg_run"]):
                         full_prompt = crea_prompt_stesura_sezione(
                             sez_scelta, st.session_state['indice_raw'], val_trama, val_genere,
-                            val_stile, val_narrativa, val_pov, val_goal, lingua_sel
+                            val_stile, val_narrativa, val_pov, val_goal, lingua_sel, val_approfondimenti
                         )
                         testo_generato = chiedi_gpt(full_prompt, S_PROMPT)
                         st.session_state[k_sessione] = verifica_e_correggi_fatti_online(
