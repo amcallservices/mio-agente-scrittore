@@ -142,7 +142,7 @@ def notifica_sonora(evento):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r10"
+VERSIONE_DEPLOY = "QA-2026-08-30-r11"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -1306,9 +1306,25 @@ gli esempi o le procedure da produrre e ciò che deve restare fuori per evitare 
     specifica_editoriale = costruisci_specifica_editoriale(
         val_titolo, val_genere, val_stile, val_narrativa, val_pov, val_goal, val_trama, val_risultato, val_approfondimenti
     )
-    sidebar_pronta = all([val_titolo.strip(), val_trama.strip(), val_goal.strip(), val_risultato.strip()])
-    if sidebar_pronta:
+    campi_obbligatori_sidebar = {
+        L["lbl_tit"]: val_titolo,
+        L["lbl_auth"]: val_autore,
+        L["lbl_gen"]: val_genere,
+        L["lbl_style"]: val_stile,
+        L["lbl_narrative"]: val_narrativa,
+        L["lbl_pov"]: val_pov,
+        L["lbl_goal"]: val_goal,
+        etichette_risultato.get(lingua_sel, "Risultato finale desiderato"): val_risultato,
+        L["lbl_plot"]: val_trama,
+    }
+    campi_sidebar_mancanti = [etichetta for etichetta, valore in campi_obbligatori_sidebar.items() if not str(valore).strip()]
+    sidebar_pronta = not campi_sidebar_mancanti
+    firma_sidebar_pronta = "|".join(str(valore).strip() for valore in campi_obbligatori_sidebar.values())
+    if sidebar_pronta and st.session_state.get("firma_notifica_sidebar") != firma_sidebar_pronta:
         notifica_sonora("sidebar_pronta")
+        st.session_state["firma_notifica_sidebar"] = firma_sidebar_pronta
+    elif not sidebar_pronta:
+        st.session_state.pop("firma_notifica_sidebar", None)
     
     # PULSANTE RESET BLINDATO: Unico modo per svuotare la session_state
     if st.button(L["btn_res"]):
@@ -2108,9 +2124,12 @@ Notificările sonore anunță când bara laterală este gata, la începutul sau 
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
     with tabs[1]:
-        if not val_risultato.strip():
-            st.info("Completa il campo 'Risultato finale desiderato' nella barra laterale per generare l'indice.")
-        if st.button(L["btn_idx"], disabled=not val_risultato.strip()):
+        if not sidebar_pronta:
+            st.info(
+                "Completa tutti i campi obbligatori della barra laterale prima di generare l'indice. "
+                "Mancano: " + ", ".join(campi_sidebar_mancanti) + "."
+            )
+        if st.button(L["btn_idx"], disabled=not sidebar_pronta):
             with st.spinner("Creazione indice (Neuro-Analisi, Connessione Parametri e Strutturazione Logica in corso)..."):
                 
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE TERMINI INDICE ---
