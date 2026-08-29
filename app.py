@@ -17,6 +17,7 @@ from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml import OxmlElement, ns
 from io import BytesIO
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import PyPDF2  # Libreria necessaria per leggere i PDF caricati
 from PIL import Image
 
@@ -1509,9 +1510,11 @@ Obiettivo: {obiettivo}
 Risultato finale desiderato: {val_risultato or "Non dichiarato"}
 Approfondimenti prioritari: {approfondimenti.strip() or "Nessuno"}"""
     blocchi = blocchi_per_audit_manoscritto(contenuti)
-    esiti_blocchi = []
-    for numero, blocco in enumerate(blocchi, 1):
-        esito = chiedi_audit_editoriale(f"""Sei un editor rigoroso. Analizza il BLOCCO {numero} di {len(blocchi)} di un manoscritto in lingua {lingua}.
+    firma_base = hashlib.sha256(f"{brief}\n{indice}".encode("utf-8")).hexdigest()
+    cache_blocchi = st.session_state.setdefault("cache_audit_blocchi", {})
+
+    def prompt_audit_blocco(numero, blocco):
+        return f"""Sei un editor rigoroso. Analizza il BLOCCO {numero} di {len(blocchi)} di un manoscritto in lingua {lingua}.
 
 BRIEF
 {brief}
@@ -1522,10 +1525,39 @@ INDICE
 BLOCCO DA VALUTARE
 {blocco}
 
-Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, contributo al risultato finale desiderato, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti. Non inventare difetti, non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette: SEZIONI ESAMINATE, PUNTI FORTI, PROBLEMI SPECIFICI, INTERVENTI PROPOSTI.""")
-        esiti_blocchi.append(f"AUDIT BLOCCO {numero}\n{esito}")
+Valuta soltanto le prove contenute nel blocco: aderenza al titolo e al brief, contributo al risultato finale desiderato, pertinenza, profondità, chiarezza, progressione locale, eventuali ripetizioni e istruzioni mancanti. Non inventare difetti, non fare verifiche online e non citare fonti. Restituisci testo semplice, senza Markdown, con queste etichette: SEZIONI ESAMINATE, PUNTI FORTI, PROBLEMI SPECIFICI, INTERVENTI PROPOSTI."""
+
+    esiti_per_numero, da_analizzare = {}, []
+    for numero, blocco in enumerate(blocchi, 1):
+        firma_blocco = hashlib.sha256(f"{firma_base}\n{blocco}".encode("utf-8")).hexdigest()
+        if firma_blocco in cache_blocchi:
+            esiti_per_numero[numero] = cache_blocchi[firma_blocco]
+        else:
+            da_analizzare.append((numero, blocco, firma_blocco))
+
+    # I blocchi nuovi vengono controllati in parallelo; quelli già esaminati sono riutilizzati.
+    if da_analizzare:
+        with ThreadPoolExecutor(max_workers=3) as esecutore:
+            lavori = {
+                esecutore.submit(chiedi_audit_editoriale, prompt_audit_blocco(numero, blocco)): (numero, firma_blocco)
+                for numero, blocco, firma_blocco in da_analizzare
+            }
+            for lavoro in as_completed(lavori):
+                numero, firma_blocco = lavori[lavoro]
+                try:
+                    esito = lavoro.result()
+                except Exception as errore:
+                    esito = f"ERRORE AUDIT: {errore}"
+                cache_blocchi[firma_blocco] = esito
+                esiti_per_numero[numero] = esito
+
+    esiti_blocchi = [f"AUDIT BLOCCO {numero}\n{esiti_per_numero[numero]}" for numero in range(1, len(blocchi) + 1)]
 
     audit_compilati = "\n\n".join(esiti_blocchi)
+    firma_completa = hashlib.sha256(f"{firma_base}\n{audit_compilati}".encode("utf-8")).hexdigest()
+    cache_sintesi = st.session_state.setdefault("cache_sintesi_audit", {})
+    if firma_completa in cache_sintesi:
+        return cache_sintesi[firma_completa]
     sintesi = chiedi_audit_editoriale(f"""Sei un direttore editoriale. Prepara la valutazione finale di un manoscritto in lingua {lingua}, basandoti esclusivamente sul brief, sui dati oggettivi e sugli audit qui sotto. Non inventare contenuti non riportati.
 
 BRIEF
@@ -1554,6 +1586,7 @@ Per ogni sezione da migliorare, usa obbligatoriamente questo blocco separato:
 SEZIONE: titolo esatto della sezione
 PROBLEMA: difetto concreto osservato
 PROMPT DA INCOLLARE: istruzione autonoma, pronta da copiare nel campo "Rigenera con AI" di quella sezione. Indica cosa mantenere, cosa aggiungere, cosa eliminare, genere, stile, POV e divieto di ripetere altre sezioni. Non proporre alcuna riscrittura automatica.""")
+    cache_sintesi[firma_completa] = sintesi
     return sintesi
 
 def costruisci_specifica_editoriale(titolo, genere, stile, narrativa, pov, obiettivo, argomento, risultato_finale="", approfondimenti=""):
@@ -1670,7 +1703,9 @@ sync_capitoli()
 lista_cap_base = st.session_state.get("lista_capitoli", [])
 opzioni_editor = [L["preface"]] + lista_cap_base + [L["ack"]]
 
-if val_titolo and val_trama:
+# La guida deve essere disponibile anche al primo avvio, prima che l'utente compili il brief.
+interfaccia_editor_disponibile = True
+if interfaccia_editor_disponibile:
     
     # VALUTAZIONE DINAMICA: L'IA decide se usare o meno la manipolazione cerebrale
     usa_tre_cervelli = valuta_approccio_neurologico(val_genere, val_stile, val_narrativa)
@@ -2397,7 +2432,9 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
     # TAB 4: ESPORTAZIONE
     with tabs[4]:
         sezioni_incomplete_export = sezioni_mancanti_per_esportazione(lista_cap_base, val_genere)
-        if sezioni_incomplete_export:
+        if not lista_cap_base:
+            st.warning("Esportazione non disponibile: genera e sincronizza prima l'indice del libro.")
+        elif sezioni_incomplete_export:
             st.warning(
                 "Esportazione disponibile come BOZZA: alcune sezioni dell'indice sono vuote o troppo brevi. "
                 "Il file non è ancora pronto per la pubblicazione."
@@ -2407,7 +2444,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
             st.success("Controllo completezza superato: tutte le sezioni previste dall'indice sono presenti.")
         cw, cp = st.columns(2)
         with cw:
-            if st.button(L["btn_word"]):
+            if st.button(L["btn_word"], disabled=not lista_cap_base):
                 doc = Document(); doc.add_heading(val_titolo, 0)
                 if sezioni_incomplete_export:
                     doc.add_paragraph("BOZZA NON COMPLETA - Non pronta per la pubblicazione.")
@@ -2425,7 +2462,7 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                 suffisso = "_BOZZA" if sezioni_incomplete_export else ""
                 st.download_button(L["btn_word"], data=bw, file_name=f"{val_titolo}{suffisso}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
         with cp:
-            if st.button(L["btn_pdf"]):
+            if st.button(L["btn_pdf"], disabled=not lista_cap_base):
                 pdf = EbookPDF(val_titolo, val_autore); pdf.cover_page()
                 if sezioni_incomplete_export:
                     pdf.add_content("BOZZA NON COMPLETA", "Questo file è una bozza di lavoro. Alcune sezioni previste dall'indice non sono ancora state completate; non usarlo per la pubblicazione.")
