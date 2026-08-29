@@ -342,17 +342,24 @@ def pulisci_testo_editoriale(testo):
 def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
     """GPT-4o-mini prepara il brief; GPT-Image-1 Mini genera il visual economico."""
     descrizione = chiedi_gpt(
-        f"Crea un brief visivo tecnico per il capitolo '{sezione}' del libro '{titolo}'. "
-        f"Argomento: {trama}. Genere: {genere}. Lingua: {lingua}. "
-        "Descrivi composizione, elementi visivi, stile e funzione didattica. "
-        "Rappresenta graficamente il concetto descritto, senza trasformarlo in testo. "
+        f"Analizza esclusivamente il sottocapitolo '{sezione}' del libro '{titolo}'. "
+        f"Argomento generale: {trama}. Genere: {genere}. Lingua: {lingua}.\n\n"
+        "Crea un brief visivo strutturato e concreto con queste voci: "
+        "CONCETTO CENTRALE; ELEMENTI OBBLIGATORI (solo quelli realmente descritti); "
+        "POSIZIONE E RELAZIONI SPAZIALI; AZIONE O PROCEDURA DA MOSTRARE; "
+        "DETTAGLI TECNICI DA RENDERE VISIBILI; ELEMENTI DA ESCLUDERE. "
+        "Ogni elemento dell'immagine deve corrispondere a un'informazione del testo. "
+        "Non creare una schermata CAD generica e non inventare pannelli, icone o funzioni. "
+        "Se il testo descrive un'interfaccia, rappresenta chiaramente le zone nominate "
+        "(browser, area di modellazione, barra strumenti, pannello proprietà) nella posizione coerente. "
+        "Se descrive una procedura, mostra le fasi in sequenza con forme e frecce non testuali. "
         "VIETATO inserire parole, titoli, paragrafi, numeri, etichette, didascalie, loghi "
-        "o schermate con testo nell'immagine. Restituisci solo il brief.\n"
+        "o schermate con testo nell'immagine. Restituisci solo il brief.\n\n"
         f"Contenuto già scritto: {contenuto[-2500:]}",
         "Sei un instructional designer tecnico: produci brief visivi accurati e verificabili."
     )
     try:
-        risposta = client.images.generate(model="gpt-image-1-mini", prompt=f"Illustrazione didattica tecnica compatta per un manuale professionale. Rendi visivamente il concetto del capitolo: {descrizione}. Nessun testo o simbolo alfabetico nell'immagine, nessun titolo, nessuna didascalia, nessun logo. Usa forme, oggetti, frecce visive non testuali e relazioni spaziali. Composizione semplice, pochi elementi essenziali, sfondo bianco, tratto nero, scala di grigi, stile da diagramma tecnico monocromatico, senza colori.", size="1024x1024", quality="low")
+        risposta = client.images.generate(model="gpt-image-1-mini", prompt=f"Crea una tavola illustrata didattica di alta qualità per un manuale tecnico. Sottocapitolo: {sezione}. Segui alla lettera questo brief visivo, senza aggiungere elementi non richiesti:\n{descrizione}\n\nLa scena deve avere corrispondenza uno-a-uno con il testo del sottocapitolo. Dai priorità a precisione concettuale, proporzioni, gerarchia visiva e leggibilità. Mostra oggetti e procedure reali, non una composizione astratta o una schermata software generica. Nessun testo o simbolo alfabetico nell'immagine, nessun titolo, nessuna didascalia, nessun logo. Usa solo forme, oggetti, numeri non presenti (vietati), frecce visive non testuali e relazioni spaziali. Composizione semplice ma dettagliata, sfondo bianco, tratto nero, scala di grigi, stile da manuale tecnico monocromatico, senza colori.", size="1024x1024", quality="medium")
         dato = risposta.data[0]
         raw = None
         if getattr(dato, "b64_json", None): raw = base64.b64decode(dato.b64_json)
