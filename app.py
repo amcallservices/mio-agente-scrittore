@@ -377,7 +377,13 @@ def pulisci_testo_editoriale(testo):
     testo = re.sub(r"(?is)(?:^|\n)\s{0,3}(?:#+\s*)?(?:fonti verificate|fonti consultate|riferimenti bibliografici|sources|references)\s*:?.*$", "", testo)
     testo = re.sub(r"\[([^\]]+)\]\(https?://[^)]+\)", r"\1", testo)
     testo = re.sub(r"https?://[^\s)\]>]+", "", testo)
-    testo = re.sub(r"\s*\([^\n()]{0,180}(?:\.com|\.org|\.gov|\.edu|doi\.org|utm_source|consultato il)[^\n()]*\)", "", testo, flags=re.I)
+    # Elimina le attribuzioni residue prodotte dai modelli, incluse fonti senza URL
+    # completo come "(esempio.net)" o domini nazionali. Le parentesi tecniche normali
+    # restano invece intatte.
+    testo = re.sub(
+        r"\s*\([^\n()]{0,180}(?:\b[a-z0-9-]+\.)+(?:com|org|net|gov|edu|io|co\.uk|it|fr|de|es|ai|info|biz|co)[^\n()]*\)",
+        "", testo, flags=re.I
+    )
     testo = re.sub(r"(?im)^\s*\[?(?:informazione|fatto|esempio|fonte)[^\n]{0,120}(?:da verificare|verificato|ipotetico|di carattere generale)[^\n]*\]?\s*$", "", testo)
     testo = re.sub(r"(?m)^\s*[-_*]{3,}\s*$", "", testo)
     testo = re.sub(r"\n{3,}", "\n\n", testo)
@@ -1017,10 +1023,10 @@ def genera_contenuto_editoriale(prompt, system_prompt, sezione, indice, trama, g
     """Mantiene il flusso comune per tutti i generi e applica la logica speciale solo quando serve."""
     if sezione_simulazione_test_prep(sezione, indice, genere):
         return genera_simulazione_test_prep(prompt, system_prompt, sezione, indice, trama, obiettivo, lingua)
-    testo = genera_sezione_con_ripetizione(prompt, system_prompt, sezione, lingua)
+    testo = pulisci_testo_editoriale(genera_sezione_con_ripetizione(prompt, system_prompt, sezione, lingua))
     criticita = criticita_specificita(testo, genere, sezione)
     if criticita:
-        testo = genera_sezione_con_ripetizione(
+        testo = pulisci_testo_editoriale(genera_sezione_con_ripetizione(
             prompt + f"""
 
 REVISIONE OBBLIGATORIA DI QUALIT√Ä
@@ -1031,7 +1037,7 @@ Elimina frasi motivazionali, definizioni vaghe e ripetizioni. Non descrivere ci√
 mostra il contenuto concreto richiesto dal titolo della sezione.
 """,
             system_prompt, sezione, lingua
-        )
+        ))
     # Le ricerche web sono riservate a leggi, prezzi, versioni, requisiti e altri
     # dati soggetti a cambiamento; i contenuti didattici stabili non consumano credito web.
     generi_con_verifica_estesa = {
@@ -1040,7 +1046,7 @@ mostra il contenuto concreto richiesto dal titolo della sezione.
     }
     if genere in generi_con_verifica_estesa or richiede_verifica_fatti(testo, sezione):
         testo = verifica_e_correggi_fatti_online(testo, sezione, lingua)
-    return testo
+    return pulisci_testo_editoriale(testo)
 
 # NUOVA FUNZIONE: Motore Decisionale per attivare i 3 Cervelli in base alla Sidebar
 def valuta_approccio_neurologico(genere, stile, narrativa):
