@@ -655,12 +655,102 @@ def profilo_struttura_indice(genere, titolo, trama, obiettivo):
     if genere == "Ricettario":
         numero = estrai_numero_ricette(titolo, trama, obiettivo)
         quantità = f"esattamente {numero}" if numero else "un numero coerente con la richiesta"
-        return f"""RICETTARIO: crea {quantità} ricette effettive, distribuite in parti tematiche coerenti. Ogni ricetta è un Capitolo autonomo e completo. Non creare sottocapitoli 1.1, 1.2 o 1.3 per espandere la stessa ricetta e non inserire una versione breve della ricetta nella Parte: la Parte contiene soltanto una breve introduzione di orientamento. Il numero delle ricette nell'indice deve coincidere con il numero richiesto."""
+        return f"""RICETTARIO: crea {quantità} ricette effettive, distribuite in parti tematiche coerenti. Ogni ricetta è un Capitolo autonomo e completo. Se è richiesto un numero preciso di ricette, crea esattamente quel numero di Capitoli e ciascun Capitolo deve avere il nome di una ricetta: non usare Capitoli per introduzione, ingredienti, attrezzatura, tecniche o consigli. Le Parti possono orientare il lettore senza aggiungere Capitoli introduttivi. Non creare sottocapitoli 1.1, 1.2 o 1.3 per espandere la stessa ricetta. Il numero delle ricette nell'indice deve coincidere con il numero richiesto."""
     if genere in {"Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Narrativo", "Romanzo Classico", "Contemporaneo", "Biografia"}:
-        return "NARRATIVA E BIOGRAFIA: organizza 3-6 Parti e un numero di capitoli proporzionato all'arco narrativo. Non imporre sottocapitoli a ogni capitolo: usali solo se sono necessari e non spezzano artificialmente scene o svolte."
+        return "NARRATIVA E BIOGRAFIA: organizza 3-6 Parti e un numero di capitoli proporzionato all'arco narrativo. Non imporre sottocapitoli a ogni capitolo: usali solo se sono necessari e non spezzano artificialmente scene o svolte. Ogni titolo deve nominare una scena, una scelta, un luogo, un personaggio, un oggetto o una conseguenza specifici del brief: evita titoli generici come 'Il ritorno', 'La scoperta', 'Il conflitto', 'Riflessioni' o 'La fine'."
     if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
         return "QUIZ E TEST PREP: organizza fondamenti, esercitazione graduata, simulazioni e correzioni. Ogni unità deve indicare una competenza verificabile; non creare capitoli riempitivi."
     return "SAGGISTICA E MANUALI: usa 4-6 Parti, 15-18 capitoli effettivi e 3-5 sottocapitoli solo quando corrispondono a concetti o passaggi realmente distinti."
+
+
+def normalizza_indice_generato(indice):
+    """Rimuove solo rumore di formattazione, senza alterare l'architettura proposta."""
+    righe = []
+    for riga in (indice or "").splitlines():
+        pulita = re.sub(r"^\s*[-*#]+\s*", "", riga).strip()
+        if pulita.lower() in {"indice", "table of contents", "sommaire", "inhaltsverzeichnis"}:
+            continue
+        if pulita:
+            righe.append(pulita)
+    return "\n".join(righe).strip()
+
+
+def criticita_indice_generato(indice, genere, titolo, trama, obiettivo):
+    """Controllo deterministico leggero: intercetta gli errori che il modello tende a ripetere."""
+    testo = normalizza_indice_generato(indice)
+    righe = testo.splitlines()
+    capitoli = [riga for riga in righe if re.match(r"(?i)^(capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+", riga)]
+    parti = [riga for riga in righe if re.match(r"(?i)^(parte|part|partie|teil|partea|часть|الجزء|部分)\s+", riga)]
+    if not capitoli:
+        return ["non sono stati riconosciuti capitoli nel formato richiesto"]
+
+    problemi = []
+    narrativi = {"Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Narrativo", "Romanzo Classico", "Contemporaneo", "Biografia"}
+    if genere != "Ricettario" and len(parti) < 4:
+        problemi.append(f"struttura troppo breve: sono presenti solo {len(parti)} Parti")
+    minimo_capitoli = 12 if genere not in {"Ricettario"} else 0
+    if len(capitoli) < minimo_capitoli:
+        problemi.append(f"struttura troppo breve: sono presenti solo {len(capitoli)} Capitoli, ne servono almeno {minimo_capitoli}")
+    if genere not in narrativi and genere != "Ricettario":
+        capitoli_senza_sviluppo = []
+        for posizione, capitolo in enumerate(capitoli):
+            inizio = righe.index(capitolo)
+            fine = next((i for i in range(inizio + 1, len(righe)) if re.match(r"(?i)^(capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+", righe[i]) or re.match(r"(?i)^(parte|part|partie|teil|partea|часть|الجزء|部分)\s+", righe[i])), len(righe))
+            sottosezioni = sum(1 for riga in righe[inizio + 1:fine] if re.match(r"^\d+\.\d+\s+", riga))
+            if sottosezioni < 2:
+                capitoli_senza_sviluppo.append(capitolo)
+        if capitoli_senza_sviluppo:
+            problemi.append("capitoli senza almeno due sottocapitoli distinti: " + "; ".join(capitoli_senza_sviluppo[:3]))
+
+    if genere == "Ricettario":
+        richieste = estrai_numero_ricette(titolo, trama, obiettivo)
+        if richieste and len(capitoli) != richieste:
+            problemi.append(f"sono richieste {richieste} ricette, ma l'indice contiene {len(capitoli)} capitoli")
+        titoli_capitoli = " ".join(capitoli).lower()
+        non_ricette = ("introduzione", "ingredient", "attrezz", "tecniche", "consigli", "dispensa")
+        if any(parola in titoli_capitoli for parola in non_ricette):
+            problemi.append("un capitolo del ricettario è introduttivo o tecnico invece di essere una ricetta")
+
+    if genere in narrativi:
+        titoli_generici = {"il ritorno", "la scoperta", "l'inizio", "la fine", "il conflitto", "la scelta", "la crisi", "riflessioni", "sogni e memorie", "nuovi inizi"}
+        trovati = []
+        for capitolo in capitoli:
+            nome = re.sub(r"(?i)^(capitolo|chapter|kapitel|capítulo|chapitre|capitolul|глава|الفصل|章节)\s+\d+\s*:\s*", "", capitolo).strip().lower()
+            if nome in titoli_generici:
+                trovati.append(capitolo)
+        if len(trovati) >= 2:
+            problemi.append("titoli narrativi troppo generici: " + "; ".join(trovati[:3]))
+    if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
+        testo_minuscolo = testo.lower()
+        if "quiz" not in testo_minuscolo and "domand" not in testo_minuscolo:
+            problemi.append("manca una sezione con quiz o domande effettive")
+        if "simulaz" not in testo_minuscolo:
+            problemi.append("manca una sezione di simulazione")
+    return problemi
+
+
+def genera_indice_controllato(prompt, system_prompt, genere, titolo, trama, obiettivo):
+    """Genera l'indice e applica fino a due revisioni quando fallisce vincoli oggettivi."""
+    corrente = normalizza_indice_generato(chiedi_gpt(prompt, system_prompt))
+    for tentativo in range(3):
+        problemi = criticita_indice_generato(corrente, genere, titolo, trama, obiettivo)
+        if not problemi:
+            esito = "Indice strutturalmente coerente con i vincoli verificabili del brief."
+            if tentativo:
+                esito = f"Indice corretto automaticamente al controllo {tentativo}: vincoli verificabili superati."
+            st.session_state["ultimo_controllo_indice"] = esito
+            return corrente
+        if tentativo == 2:
+            st.session_state["ultimo_controllo_indice"] = "Attenzione: l'indice richiede una verifica manuale: " + "; ".join(problemi)
+            return corrente
+        revisione = prompt + f"""
+
+REVISIONE OBBLIGATORIA DELL'INDICE — TENTATIVO {tentativo + 1}
+La bozza precedente non rispetta questi vincoli oggettivi: {'; '.join(problemi)}.
+Riscrivi l'intero indice, senza commenti e senza la parola 'Indice' in apertura. Correggi tutti i punti segnalati;
+non limitarti a rinominare i titoli. Mantieni soltanto argomenti attinenti al brief.
+"""
+        corrente = normalizza_indice_generato(chiedi_gpt(revisione, system_prompt))
 
 
 def tipo_sezione_editoriale(sezione):
@@ -1672,10 +1762,13 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 
 9. COMPLETEZZA SENZA RIEMPITIVI: Rispetta il numero e il formato stabiliti dall'architettura adattiva. Ogni Capitolo deve avere una funzione autonoma. Crea sottocapitoli soltanto quando sviluppano aspetti distinti e non quando ripetono ingredienti, procedimenti, esempi o scene già assegnati. Prima di concludere, conta internamente le voci richieste e verifica che nessuna sia vuota o solo un titolo.
 
-10. ADATTAMENTO AL TIPO DI LIBRO E OUTPUT FINALE: Per manuali tecnici separa fondamenti, strumenti, procedure, verifiche e progetto applicativo. Per manuali pratici inserisci esercizi, checklist e risultati misurabili. Per business, marketing, economia e self-help inserisci framework, casi studio, piani d'azione e criteri di valutazione. Per saggi scientifici o storici separa contesto, tesi, prove, fonti e conclusioni. Per ricettari organizza tecniche, ingredienti, ricette, varianti e sicurezza. Per test prep inserisci teoria, esercizi, simulazioni e soluzioni. Per narrativa costruisci sviluppo di trama, personaggi, conflitto e risoluzione, senza imporre procedure tecniche. In ogni caso prevedi un output finale coerente con il genere: progetto, piano, esercizio completato, ricetta, simulazione, decisione applicativa, sintesi o conclusione narrativa. Gli esempi devono essere concreti e verificabili secondo il tipo di libro.
+10. ADATTAMENTO AL TIPO DI LIBRO E OUTPUT FINALE: Per manuali tecnici separa fondamenti, strumenti, procedure, verifiche e progetto applicativo. Per manuali pratici inserisci esercizi, checklist e risultati misurabili. Per business, marketing, economia e self-help inserisci framework, casi studio, piani d'azione e criteri di valutazione. Per saggi scientifici o storici separa contesto, tesi, prove, fonti e conclusioni. Per ricettari con un numero dichiarato di ricette, ogni Capitolo deve essere una ricetta e non sono ammessi Capitoli introduttivi su tecniche, ingredienti o sicurezza. Per test prep inserisci teoria, esercizi, simulazioni e soluzioni. Per narrativa costruisci sviluppo di trama, personaggi, conflitto e risoluzione, senza imporre procedure tecniche e con titoli di capitolo specifici del brief. In ogni caso prevedi un output finale coerente con il genere: progetto, piano, esercizio completato, ricetta, simulazione, decisione applicativa, sintesi o conclusione narrativa. Gli esempi devono essere concreti e verificabili secondo il tipo di libro.
 """
                 
-                st.session_state["indice_raw"] = chiedi_gpt(prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.")
+                st.session_state["indice_raw"] = genera_indice_controllato(
+                    prompt_idx, "Senior Book Architect esperto in flow logico-narrativo e design editoriale pulito.",
+                    val_genere, val_titolo, val_trama, val_goal
+                )
                 st.session_state.pop("analisi_voto_indice", None)
                 sync_capitoli(); st.rerun()
                 
