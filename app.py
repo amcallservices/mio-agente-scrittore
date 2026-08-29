@@ -189,7 +189,7 @@ def notifica_sonora(evento, lingua="Italiano", ripeti=False):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r16"
+VERSIONE_DEPLOY = "QA-2026-08-30-r17"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -2360,6 +2360,12 @@ Applica tutti i miglioramenti utili, senza introdurre capitoli generici, glossar
                         )
                         if proposta:
                             st.session_state["indice_proposto_dal_voto"] = proposta
+                        else:
+                            st.error(
+                                "La proposta di indice non ha superato il controllo automatico e non è stata applicata. "
+                                "Modifica il brief o l'indice attuale e riprova. " +
+                                st.session_state.get("ultimo_controllo_indice", "")
+                            )
                 if st.session_state.get("indice_proposto_dal_voto"):
                     st.text_area(
                         "Proposta di indice migliorata (l'indice attuale è ancora al sicuro)",
