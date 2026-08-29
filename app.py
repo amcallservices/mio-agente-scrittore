@@ -61,7 +61,7 @@ def estrai_testo_da_files(caricati):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-29-r3"
+VERSIONE_DEPLOY = "QA-2026-08-29-r4"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
 try:
@@ -669,7 +669,7 @@ def profilo_struttura_indice(genere, titolo, trama, obiettivo):
     if genere in {"Romanzo Rosa", "Thriller / Noir", "Fantasy", "Fantascienza", "Narrativo", "Romanzo Classico", "Contemporaneo", "Biografia"}:
         return "NARRATIVA E BIOGRAFIA: organizza 3-6 Parti e un numero di capitoli proporzionato all'arco narrativo. Non imporre sottocapitoli a ogni capitolo: usali solo se sono necessari e non spezzano artificialmente scene o svolte. Ogni titolo deve nominare una scena, una scelta, un luogo, un personaggio, un oggetto o una conseguenza specifici del brief. Almeno un terzo dei titoli deve contenere parole concrete tratte dal titolo o dalla trama. Evita titoli generici come 'Il ritorno', 'La scoperta', 'L'incontro inaspettato', 'Il richiamo del passato', 'Riflessioni' o 'La fine'."
     if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
-        return "QUIZ E TEST PREP: organizza fondamenti, esercitazione graduata, simulazioni e correzioni. Ogni unità deve indicare una competenza verificabile; non creare capitoli riempitivi."
+        return "QUIZ E TEST PREP: organizza fondamenti, esercitazione graduata, quiz/domande commentate, almeno una simulazione esplicitamente nominata e correzioni. Nella lingua scelta usa le parole equivalenti a ‘quiz/questions’ e ‘simulation’, così che lo scopo delle sezioni sia leggibile. Ogni unità deve indicare una competenza verificabile; non creare capitoli riempitivi."
     return "SAGGISTICA E MANUALI: usa 4-6 Parti, 15-18 capitoli effettivi e 3-5 sottocapitoli solo quando corrispondono a concetti o passaggi realmente distinti."
 
 
@@ -761,9 +761,11 @@ def criticita_indice_generato(indice, genere, titolo, trama, obiettivo):
             )
     if genere in {"Quiz Scientifico", "Test Prep (Preparazione Esami)"}:
         testo_minuscolo = testo.lower()
-        if "quiz" not in testo_minuscolo and "domand" not in testo_minuscolo:
+        parole_quiz = ("quiz", "domand", "question", "pregunta", "frage", "вопрос", "سؤال", "问题")
+        parole_simulazione = ("simulaz", "simulation", "simulación", "simulare", "симуля", "محاك", "模拟")
+        if not any(parola in testo_minuscolo for parola in parole_quiz):
             problemi.append("manca una sezione con quiz o domande effettive")
-        if "simulaz" not in testo_minuscolo:
+        if not any(parola in testo_minuscolo for parola in parole_simulazione):
             problemi.append("manca una sezione di simulazione")
     return problemi
 
