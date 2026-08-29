@@ -965,12 +965,18 @@ def criticita_specificita(testo, genere, sezione):
     """Individua bozze genericamente motivazionali prima che finiscano nel manoscritto."""
     pulito = pulisci_testo_editoriale(testo or "").strip()
     parole = pulito.split()
+    basso = pulito.lower()
     if tipo_sezione_editoriale(sezione) == "parte":
         return ""
     if len(parole) < 150:
         return "testo troppo breve per sviluppare l'argomento assegnato"
 
-    basso = pulito.lower()
+    if genere in {"Manuale Tecnico", "Manuale Pratico"}:
+        ha_passaggi = bool(re.search(r"(?m)^\s*(?:\d+[.)]|passo\s+\d+|fase\s+\d+)", pulito))
+        ha_verifica = any(parola in basso for parola in ("verifica", "controlla", "risultato", "errore"))
+        if len(parole) < 260 or not ha_passaggi or not ha_verifica:
+            return "manuale troppo descrittivo: inserisci una procedura numerata, un controllo verificabile e un errore o limite concreto"
+
     formule_generiche = (
         "è fondamentale", "e fondamentale", "è cruciale", "e cruciale", "in modo efficace",
         "è importante", "e importante", "con sicurezza", "molto utile", "potente strumento"
@@ -1028,7 +1034,11 @@ mostra il contenuto concreto richiesto dal titolo della sezione.
         )
     # Le ricerche web sono riservate a leggi, prezzi, versioni, requisiti e altri
     # dati soggetti a cambiamento; i contenuti didattici stabili non consumano credito web.
-    if richiede_verifica_fatti(testo, sezione):
+    generi_con_verifica_estesa = {
+        "Saggio Scientifico", "Quiz Scientifico", "Manuale Tecnico", "Economia e Finanza",
+        "Biografia", "Test Prep (Preparazione Esami)", "Storico"
+    }
+    if genere in generi_con_verifica_estesa or richiede_verifica_fatti(testo, sezione):
         testo = verifica_e_correggi_fatti_online(testo, sezione, lingua)
     return testo
 
