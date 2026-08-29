@@ -300,6 +300,28 @@ def chiedi_gpt(prompt, system_prompt):
         return "\n".join(righe).strip()
     except Exception as e: return f"ERRORE: {str(e)}"
 
+def verifica_e_correggi_fatti_online(testo, sezione, lingua):
+    """Verifica automaticamente le affermazioni aggiornabili usando la ricerca web OpenAI."""
+    try:
+        risposta = client.responses.create(
+            model="gpt-5.4-mini",
+            tools=[{"type": "web_search_preview"}],
+            input=(
+                f"Verifica il testo seguente in lingua {lingua} relativo alla sezione '{sezione}'. "
+                "Cerca online fonti autorevoli e aggiornate per ogni fatto verificabile, soprattutto "
+                "leggi, normative, prezzi, licenze, specifiche, date, software e dati numerici. "
+                "Correggi soltanto le affermazioni non aggiornate o non supportate; non inventare dati. "
+                "Mantieni struttura e stile. Alla fine aggiungi una sezione 'Fonti verificate' con URL "
+                "e data di consultazione. Distingui chiaramente fatti verificati, esempi ipotetici e "
+                "informazioni che richiedono ulteriore controllo. Restituisci solo il testo revisionato.\n\n"
+                f"TESTO:\n{testo}"
+            )
+        )
+        return getattr(risposta, "output_text", None) or testo
+    except Exception as e:
+        st.warning(f"Verifica online non disponibile: {e}")
+        return testo
+
 def genera_immagine_capitolo(sezione, titolo, genere, trama, contenuto, lingua):
     """GPT-4o-mini prepara il brief; gpt-image-1 genera l'immagine didattica."""
     descrizione = chiedi_gpt(
@@ -901,7 +923,10 @@ Scrivi ora la sezione ESATTA: '{sez_scelta}'. Il testo deve essere rigorosamente
 
 - UTILIZZO E RAGIONAMENTO SULLE FONTI: Se nella tua base di istruzioni ci sono "FONTI ESTERNE", non ignorarle. Trova i collegamenti e i concetti applicabili a '{sez_scelta}', ragionaci sopra criticamente e integrali nel discorso. Spiega, argomenta e dimostra padronanza del testo fornito.
 """
-                        st.session_state[k_sessione] = chiedi_gpt(full_prompt, S_PROMPT)
+                        testo_generato = chiedi_gpt(full_prompt, S_PROMPT)
+                        st.session_state[k_sessione] = verifica_e_correggi_fatti_online(
+                            testo_generato, sez_scelta, lingua_sel
+                        )
             with c2:
                 istr = st.text_input(L["btn_edit"], key=f"mod_{k_sessione}", placeholder="Es: Potenzia l'esposizione...")
                 if st.button(L["btn_edit"] + " 🪄"):
