@@ -9,7 +9,10 @@ import base64
 from fpdf import FPDF
 from openai import OpenAI
 from docx import Document
-from docx.shared import Inches
+from docx.shared import Inches, Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.style import WD_STYLE_TYPE
+from docx.oxml import OxmlElement, ns
 from io import BytesIO
 from collections import Counter
 import PyPDF2  # Libreria necessaria per leggere i PDF caricati
@@ -330,6 +333,10 @@ def pulisci_testo_editoriale(testo):
     if not testo:
         return ""
     testo = str(testo)
+    # Rimuove Markdown e segni di formattazione tecnica: l'editor impagina il testo in modo nativo.
+    testo = re.sub(r"(?m)^\s{0,3}#{1,6}\s+", "", testo)
+    testo = testo.replace("**", "").replace("__", "")
+    testo = re.sub(r"(?m)^\s*>\s?", "", testo)
     testo = re.sub(r"(?is)(?:^|\n)\s{0,3}(?:#+\s*)?(?:fonti verificate|fonti consultate|riferimenti bibliografici|sources|references)\s*:?.*$", "", testo)
     testo = re.sub(r"\[([^\]]+)\]\(https?://[^)]+\)", r"\1", testo)
     testo = re.sub(r"https?://[^\s)\]>]+", "", testo)
@@ -407,6 +414,85 @@ def normalizza_immagine_caricata(file_caricato):
     except Exception as e:
         st.error(f"Il file caricato non è un'immagine valida: {e}")
         return None
+
+def elimina_paragrafo_docx(paragrafo):
+    elemento = paragrafo._element
+    elemento.getparent().remove(elemento)
+    paragrafo._p = paragrafo._element = None
+
+def aggiungi_numeri_pagina_docx(documento):
+    """Inserisce il campo numero pagina nel piè di pagina di ogni sezione Word."""
+    for sezione in documento.sections:
+        paragrafo = sezione.footer.paragraphs[0]
+        paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        campo_inizio = OxmlElement('w:fldChar')
+        campo_inizio.set(ns.qn('w:fldCharType'), 'begin')
+        istruzione = OxmlElement('w:instrText')
+        istruzione.text = 'PAGE'
+        campo_fine = OxmlElement('w:fldChar')
+        campo_fine.set(ns.qn('w:fldCharType'), 'end')
+        run = paragrafo.add_run()
+        run._r.append(campo_inizio)
+        run._r.append(istruzione)
+        run._r.append(campo_fine)
+
+def formatta_manoscritto_kdp(file_docx):
+    """Applica un formato Word pulito 6x9 per il manoscritto KDP caricato dall'utente."""
+    documento = Document(BytesIO(file_docx.getvalue()))
+    for nome_stile in ('Heading 1', 'Heading 2'):
+        try:
+            documento.styles[nome_stile]
+        except KeyError:
+            documento.styles.add_style(nome_stile, WD_STYLE_TYPE.PARAGRAPH)
+
+    for sezione in documento.sections:
+        sezione.page_width = Inches(6)
+        sezione.page_height = Inches(9)
+        sezione.top_margin = Inches(0.75)
+        sezione.bottom_margin = Inches(0.75)
+        sezione.left_margin = Inches(0.75)
+        sezione.right_margin = Inches(0.75)
+
+    for paragrafo in list(documento.paragraphs):
+        testo = pulisci_testo_editoriale(paragrafo.text).strip()
+        if not testo:
+            elimina_paragrafo_docx(paragrafo)
+            continue
+        paragrafo.text = ' '.join(testo.split())
+        if len(paragrafo.text) < 80 and re.search(r'(?i)\b(capitolo|chapter|parte|part)\b', paragrafo.text):
+            paragrafo.style = 'Heading 1'
+            paragrafo.paragraph_format.page_break_before = True
+            paragrafo.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            paragrafo.paragraph_format.space_before = Pt(0)
+            paragrafo.paragraph_format.space_after = Pt(30)
+        elif len(paragrafo.text) < 100 and re.match(r'^\d+(?:\.\d+)?\s+', paragrafo.text):
+            paragrafo.style = 'Heading 2'
+            paragrafo.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            paragrafo.paragraph_format.first_line_indent = Inches(0)
+            paragrafo.paragraph_format.space_before = Pt(18)
+            paragrafo.paragraph_format.space_after = Pt(10)
+        else:
+            paragrafo.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            paragrafo.paragraph_format.first_line_indent = Inches(0.25)
+            paragrafo.paragraph_format.space_after = Pt(6)
+
+    stile_normale = documento.styles['Normal']
+    stile_normale.font.name = 'Georgia'
+    stile_normale.font.size = Pt(11)
+    aggiungi_numeri_pagina_docx(documento)
+    output = BytesIO()
+    documento.save(output)
+    output.seek(0)
+    return output
+
+def estrai_anteprima_manoscritto(file_caricato):
+    """Estrae una porzione di testo da DOCX o PDF per la generazione dei metadati."""
+    dati = BytesIO(file_caricato.getvalue())
+    if file_caricato.name.lower().endswith('.docx'):
+        documento = Document(dati)
+        return '\n'.join(p.text for p in documento.paragraphs[:100])
+    lettore = PyPDF2.PdfReader(dati)
+    return '\n'.join((pagina.extract_text() or '') for pagina in lettore.pages[:15])
 
 def analizza_qualita_prosa(testo):
     """
@@ -658,6 +744,7 @@ Scrivi ora la sezione ESATTA: '{sezione}'. Il testo deve essere rigorosamente in
 - Sii profondo ed esaustivo nell'ambito della sezione, senza rubare materiale alle altre.
 - Redigi contenuto concreto suggerito dal titolo, senza preamboli inutili.
 - Non scrivere e non ripetere mai '{sezione}' come intestazione. Inizia direttamente con il contenuto.
+- Usa formattazione editoriale pulita: non usare Markdown, simboli ###, ##, **, __, ``` o intestazioni tecniche. Se servono elenchi, usa semplici punti o numeri senza caratteri decorativi.
 - Non inserire URL, link, citazioni, note bibliografiche o sezioni fonti.
 - Se sono disponibili fonti esterne, usale solo per ragionare e integrare concetti pertinenti, senza citarle nel testo finale.
 
@@ -914,7 +1001,7 @@ L'intelligenza artificiale DEVE effettuare un controllo lessicale e grammaticale
 - NO SUPERFICIALITÀ: Non dare risposte generiche o banali. Ogni paragrafo deve trasudare competenza profonda, spiegando i meccanismi interni, le ragioni nascoste e i dettagli tecnici dell'argomento.
 """
 
-    tabs = st.tabs(L["tabs"])
+    tabs = st.tabs(L["tabs"] + ["🛠️ 5. Formattazione"])
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
     with tabs[0]:
@@ -977,7 +1064,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 0. ATTINENZA ASSOLUTA: Inserisci esclusivamente capitoli e sottocapitoli direttamente pertinenti al titolo, alla trama, al pubblico e all'obiettivo del libro. Non aggiungere sezioni generiche o accessorie come glossario dei termini, elenco di risorse, checklist generiche, bibliografia, link, ringraziamenti, conclusioni vaghe o suggerimenti finali. Ogni voce dell'indice deve sviluppare un argomento reale del libro e poter essere trasformata in contenuto sostanziale.
 1. SOLO L'INDICE: Non inserire convenevoli, saluti, introduzioni o conclusioni. L'output deve contenere ESCLUSIVAMENTE la lista dell'indice. Nient'altro.
 2. COERENZA ASSOLUTA: I titoli dei capitoli e sottocapitoli devono riflettere perfectly lo stile, il genere e la trama richiesta. Se è un ricettario, l'indice deve sembrare un menu; se è un thriller, i capitoli devono creare suspense.
-3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa da 3 a 5 Sottocapitoli molto specifici.
+3. OBIETTIVO 100+ PAGINE (ESTENSIONE MASSICCIA): Struttura l'indice in modo capillare e profondo per garantire che l'ebook finale superi le 100 pagine. Dividi il libro in almeno 4-5 Macro-Parti. Inserisci un totale di minimo 15-20 Capitoli. Per ogni capitolo, sviluppa normalmente da 3 a 5 Sottocapitoli molto specifici; aumenta fino a 6 soltanto quando l'argomento richiede passaggi, competenze o procedure realmente distinte. Non aggiungere sottocapitoli per riempire spazio.
 4. STRUTTURA GERARCHICA RIGIDA E PULITA: Usa unicamente ed esattamente questo formato di elencazione, SENZA ASTERISCHI O SIMBOLI STRANI:
    {t_parte} I: [Nome Parte]
    {t_cap} 1: [Nome Capitolo]
@@ -990,7 +1077,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
 
 8. PRATICITÀ ESTREMA E IPER-DETTAGLIO: I titoli devono essere estremamente pratici e orientati all'azione. Niente macro-concetti vaghi. Ogni capitolo e sottocapitolo deve puntare a risolvere un problema specifico, mostrando il "come fare" passo dopo passo, con un taglio estremamente operativo e profondo.
 
-9. NUMERO E STRUTTURA OBBLIGATORI: Genera da 15 a 18 Capitoli effettivi, non 13 o 14. Ogni Capitolo deve avere da 3 a 5 sottocapitoli specifici. Adatta il numero di Parti, Capitoli e sottocapitoli al genere, al pubblico, all'obiettivo e all'argomento del brief. Se due temi richiedono competenze, procedure o verifiche diverse, trattali in capitoli distinti e non accorparli artificialmente. Ogni Capitolo deve avere una funzione autonoma e ogni sottocapitolo un confine preciso.
+9. NUMERO E STRUTTURA OBBLIGATORI: Genera da 15 a 18 Capitoli effettivi, non 13 o 14. Ogni Capitolo deve avere normalmente da 3 a 5 sottocapitoli specifici. Il sistema può aumentarli fino a 6 se, e solo se, la complessità del tema rende necessarie ulteriori fasi non sovrapposte; la decisione deve dipendere da competenze, procedure o verifiche realmente diverse. Ogni Capitolo deve avere una funzione autonoma e ogni sottocapitolo un confine preciso.
 
 10. ADATTAMENTO AL TIPO DI LIBRO E OUTPUT FINALE: Per manuali tecnici separa fondamenti, strumenti, procedure, verifiche e progetto applicativo. Per manuali pratici inserisci esercizi, checklist e risultati misurabili. Per business, marketing, economia e self-help inserisci framework, casi studio, piani d'azione e criteri di valutazione. Per saggi scientifici o storici separa contesto, tesi, prove, fonti e conclusioni. Per ricettari organizza tecniche, ingredienti, ricette, varianti e sicurezza. Per test prep inserisci teoria, esercizi, simulazioni e soluzioni. Per narrativa costruisci sviluppo di trama, personaggi, conflitto e risoluzione, senza imporre procedure tecniche. In ogni caso prevedi un output finale coerente con il genere: progetto, piano, esercizio completato, ricetta, simulazione, decisione applicativa, sintesi o conclusione narrativa. Gli esempi devono essere concreti e verificabili secondo il tipo di libro.
 """
@@ -1074,7 +1161,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                     if k_sessione in st.session_state:
                         with st.spinner("Generazione Quiz didattico..."):
                             res_q = chiedi_gpt(f"Crea quiz di 10 domande in lingua {lingua_sel} dando del {val_pov} al lettore su:\n{st.session_state[k_sessione]}", "Learning Expert.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n### TEST DI VALUTAZIONE\n\n" + pulisci_testo_editoriale(res_q); st.rerun()
+                            st.session_state[k_sessione] += f"\n\nTEST DI VALUTAZIONE\n\n" + pulisci_testo_editoriale(res_q); st.rerun()
 
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE ESEMPI ---
                 trad_esempi = {
@@ -1107,7 +1194,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             {mem_esempi[-4000:]}"""
                             
                             res_e = chiedi_gpt(p_esempi, f"Sei un autorevole esperto in {val_genere} e scrittore in lingua {lingua_sel}.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ese}\n\n" + pulisci_testo_editoriale(res_e)
+                            st.session_state[k_sessione] += f"\n\n{pulisci_testo_editoriale(t_tit_ese)}\n\n" + pulisci_testo_editoriale(res_e)
                             st.rerun()
 
                 # --- INIZIO NUOVE RIGHE PER TRADUZIONE RICETTE ---
@@ -1143,7 +1230,7 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             {mem_ricette[-4000:]}"""
                             
                             res_r = chiedi_gpt(p_ricette, f"Sei un autorevole Chef stellato e scrittore di ricettari in lingua {lingua_sel}.")
-                            st.session_state[k_sessione] += f"\n\n---\n\n{t_tit_ric}\n\n" + pulisci_testo_editoriale(res_r)
+                            st.session_state[k_sessione] += f"\n\n{pulisci_testo_editoriale(t_tit_ric)}\n\n" + pulisci_testo_editoriale(res_r)
                             st.rerun()
 
             st.divider()
@@ -1237,6 +1324,83 @@ REGOLE FONDAMENTALI ED ESCLUSIVE:
                             image_caption=img.get("caption") if img else None
                         )
                 out_p = pdf.output(dest='S').encode('latin-1', 'replace'); st.download_button(L["btn_pdf"], data=out_p, file_name=f"{val_titolo}.pdf", mime="application/pdf")
+
+    # TAB 5: FORMATTAZIONE E METADATI KDP
+    with tabs[4]:
+        st.subheader("🛠️ Formattazione")
+        st.caption("Carica un manoscritto DOCX o PDF per generare metadati; i file DOCX possono anche essere formattati per il formato KDP 6×9.")
+        manoscritto = st.file_uploader(
+            "Carica manoscritto",
+            type=["docx", "pdf"],
+            key="manoscritto_formattazione"
+        )
+        if manoscritto:
+            col_metadati, col_formato = st.columns(2)
+            with col_metadati:
+                st.markdown("### Metadati KDP")
+                lingua_metadati = st.selectbox(
+                    "Lingua dei metadati",
+                    ["Italiano", "Inglese", "Spagnolo", "Francese", "Tedesco", "Rumeno", "Russo", "Arabo", "Cinese"],
+                    key="lingua_metadati"
+                )
+                if st.button("Genera metadati dettagliati", key="genera_metadati_formattazione"):
+                    with st.spinner("Analisi del manoscritto e generazione metadati in corso..."):
+                        try:
+                            contesto_metadati = estrai_anteprima_manoscritto(manoscritto)
+                            prompt_metadati = f"""Analizza il seguente manoscritto.
+
+{contesto_metadati[:8000]}
+
+Genera esclusivamente testo semplice in lingua {lingua_metadati.upper()}, senza Markdown, URL, citazioni, commenti o ragionamento. Restituisci soltanto:
+
+DESCRIZIONE MARKETING
+Una descrizione di vendita completa di almeno 450 parole, con apertura coinvolgente, problema del lettore, soluzione proposta dal libro, benefici concreti, elenco puntato semplice con trattini e invito finale all'acquisto. Non fare promesse garantite.
+
+7 KEYWORD A CODA LUNGA
+Sette frasi chiave pertinenti, separate da virgole, senza spiegazioni aggiuntive."""
+                            risposta_metadati = client.chat.completions.create(
+                                model="gpt-4o-mini",
+                                messages=[
+                                    {"role": "system", "content": "Sei un esperto di metadati KDP. Produci soltanto il risultato editoriale richiesto."},
+                                    {"role": "user", "content": prompt_metadati}
+                                ],
+                                temperature=0.6
+                            )
+                            st.session_state["metadati_formattazione"] = pulisci_testo_editoriale(
+                                risposta_metadati.choices[0].message.content
+                            )
+                        except Exception as e:
+                            st.error(f"Impossibile generare i metadati: {e}")
+                if st.session_state.get("metadati_formattazione"):
+                    st.text_area(
+                        "Metadati generati",
+                        value=st.session_state["metadati_formattazione"],
+                        height=480,
+                        key="output_metadati_formattazione"
+                    )
+
+            with col_formato:
+                st.markdown("### Formattazione Word 6×9")
+                if manoscritto.name.lower().endswith('.docx'):
+                    st.write("Imposta pagina 6×9, margini da 0,75 pollici, Georgia 11 pt, titoli, rientri, testo giustificato e numeri di pagina.")
+                    if st.button("Formatta documento", key="formatta_docx_kdp"):
+                        with st.spinner("Formattazione del documento in corso..."):
+                            try:
+                                st.session_state["docx_formattato_kdp"] = formatta_manoscritto_kdp(manoscritto)
+                                st.success("Formattazione completata.")
+                            except Exception as e:
+                                st.error(f"Impossibile formattare il documento: {e}")
+                    if st.session_state.get("docx_formattato_kdp"):
+                        nome_output = f"KDP_FINAL_{manoscritto.name}"
+                        st.download_button(
+                            "Scarica Word 6×9",
+                            data=st.session_state["docx_formattato_kdp"],
+                            file_name=nome_output,
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            key="scarica_docx_formattato"
+                        )
+                else:
+                    st.info("La formattazione completa è disponibile per file DOCX. Per un PDF puoi generare comunque i metadati a sinistra.")
 else:
     st.info(L["welcome"] + " " + L["guide"])
 
