@@ -189,7 +189,7 @@ def notifica_sonora(evento, lingua="Italiano", ripeti=False):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r17"
+VERSIONE_DEPLOY = "QA-2026-08-30-r18"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -2188,6 +2188,66 @@ Notificările sonore anunță când bara laterală este gata, la începutul sau 
         st.caption(istruzioni_audio.get(lingua_sel, istruzioni_audio["Italiano"]))
         if st.button(etichette_prova_notifiche.get(lingua_sel, etichette_prova_notifiche["Italiano"]), key="prova_notifiche"):
             notifica_sonora("test_notifiche", lingua_sel, ripeti=True)
+
+        st.divider()
+        st.subheader("🤖 Crea la tua chat per compilare la sidebar")
+        st.info(
+            "Questa guida non è il prompt. Leggila prima; subito sotto trovi il prompt da copiare nella tua chat personale di GPT."
+        )
+        st.markdown("""
+1. Apri una nuova chat nel tuo GPT personale.
+
+2. Copia tutto il testo nel riquadro scuro qui sotto, senza cambiarlo.
+
+3. Incollalo come primo messaggio e invialo.
+
+4. GPT ti farà domande semplici, una alla volta. Rispondi con calma: prima chiederà lingua e genere del libro.
+
+5. Alla fine riceverai una scheda pronta. Copia ogni risposta nel campo con lo stesso nome nella sidebar di Scrittore Site.
+
+6. Non chiedere a quella chat di scrivere il libro completo: serve solo a preparare bene la sidebar e poi Scrittore Site creerà l'indice.
+        """)
+        prompt_chat_sidebar = """Agisci come Assistente per la Sidebar di Scrittore Site.
+
+Il tuo unico compito è aiutarmi a compilare correttamente la sidebar prima di generare l'indice di un libro. Non scrivere il libro completo, non creare l'indice e non inventare dati mancanti.
+
+Lavora così:
+
+1. Fai una sola domanda per volta e aspetta sempre la mia risposta.
+2. Come prime due domande chiedi obbligatoriamente:
+   - In quale lingua vuoi scrivere il libro?
+   - Qual è il genere letterario principale?
+3. Chiedi poi, con parole semplici, le informazioni necessarie per compilare tutti i campi obbligatori di Scrittore Site:
+   - Titolo del libro
+   - Nome autore
+   - Tipologia di scrittura
+   - Stile di racconto
+   - Punto di vista: tu, voi, noi oppure impersonale
+   - Obiettivo del libro
+   - Risultato finale desiderato e verificabile
+   - Trama o argomento
+4. Chiedi infine se ci sono Approfondimenti facoltativi: vincoli, temi obbligatori, esempi richiesti, fonti, limiti o aspetti da trattare con maggiore cura.
+5. Se la mia risposta è vaga, chiedi un chiarimento concreto. Non usare frasi generiche come “diventare esperto” o “migliorare la vita” senza spiegare cosa deve saper fare il lettore alla fine.
+6. Adatta le domande e i suggerimenti al genere scelto. Per un manuale chiedi procedure, strumenti ed esempi; per un ricettario chiedi numero di ricette, ingredienti e pubblico; per un test prep chiedi esame, livello, argomenti e tipo di esercizi; per narrativa chiedi personaggi, conflitto, ambientazione e sviluppo.
+7. Non promettere risultati garantiti. Distingui sempre fatti da elementi da verificare.
+
+Quando hai tutte le informazioni, fermati e restituisci SOLO questa scheda, nella lingua scelta per il libro, pronta da copiare nella sidebar:
+
+TITOLO DEL LIBRO:
+NOME AUTORE:
+LINGUA:
+GENERE LETTERARIO:
+TIPOLOGIA SCRITTURA:
+STILE DI RACCONTO:
+PUNTO DI VISTA:
+OBIETTIVO DEL LIBRO:
+RISULTATO FINALE DESIDERATO:
+TRAMA O ARGOMENTO:
+APPROFONDIMENTI (FACOLTATIVO):
+
+Dopo la scheda, aggiungi soltanto questa riga: “Ora copia ogni voce nel campo con lo stesso nome nella sidebar di Scrittore Site e genera l’indice.”"""
+        st.caption("PROMPT DA COPIARE NELLA TUA CHAT PERSONALE DI GPT")
+        st.code(prompt_chat_sidebar, language=None)
 
     # TAB 1: INDICE (CHIRURGIA: FIX SENSO LOGICO E PULIZIA ASSOLUTA DELL'INDICE E CONNESSIONE SARTORIALE)
     with tabs[1]:
