@@ -189,7 +189,7 @@ def notifica_sonora(evento, lingua="Italiano", ripeti=False):
 # Developer: Antonino & Gemini Collaboration
 # Core Update: Integrazione Neuromarketing (Triune Brain Methodology) con Motore Decisionale Dinamico.
 # Identificativo visibile: permette di verificare che Streamlit stia eseguendo l'ultimo deploy.
-VERSIONE_DEPLOY = "QA-2026-08-30-r19"
+VERSIONE_DEPLOY = "QA-2026-08-30-r20"
 VERSIONE_AUDIT_COHERENZA = "3"
 
 # --- AGGIORNAMENTO SICUREZZA API ---
@@ -2164,7 +2164,7 @@ Notificările sonore anunță când bara laterală este gata, la începutul sau 
 声音通知会在侧边栏准备好、整本书开始或结束、发生错误以及目录评分、一致性检查、格式化或导出完成时提醒你。发布前务必检查文本和最终文件。""")
     }
     titolo_guida, testo_guida = guide_localizzate.get(lingua_sel, guide_localizzate["Italiano"])
-    tabs = st.tabs([f"📘 1. {titolo_guida}"] + L["tabs"] + ["🛠️ 6. Formattazione"])
+    tabs = st.tabs([f"📘 0. {titolo_guida}"] + L["tabs"] + ["🛠️ 5. Formattazione"])
 
     with tabs[0]:
         st.subheader(titolo_guida)
@@ -2201,7 +2201,7 @@ Notificările sonore anunță când bara laterală este gata, la începutul sau 
 
 3. Incollalo come primo messaggio e invialo.
 
-4. GPT ti farà domande semplici, una alla volta. Rispondi con calma: prima chiederà lingua e genere del libro.
+4. GPT partirà da una domanda semplice sul libro che vuoi creare. Se le informazioni sono già chiare, preparerà subito la scheda; altrimenti farà una sola domanda breve per chiarire la scelta più importante.
 
 5. Alla fine riceverai una scheda pronta. Copia ogni risposta nel campo con lo stesso nome nella sidebar di Scrittore Site.
 
